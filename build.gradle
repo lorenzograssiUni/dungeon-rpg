@@ -36,3 +36,7 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+tasks.named('wrapper') {
+    gradleVersion = '8.7'
+}
