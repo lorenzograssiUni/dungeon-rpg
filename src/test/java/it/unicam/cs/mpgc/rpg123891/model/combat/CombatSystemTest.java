@@ -53,8 +53,8 @@ class CombatSystemTest {
 
     @BeforeEach
     void setUp() {
-        combatSystem    = new CombatSystem();          // produzione (non deterministico)
-        combatSystemNoRng = new CombatSystem(NO_RNG); // test: nessun critico/blocco casuale
+        combatSystem      = new CombatSystem();          // produzione (non deterministico)
+        combatSystemNoRng = new CombatSystem(NO_RNG);    // test: nessun critico/blocco casuale
         warrior = new Warrior("Eroe");
         mage    = new Mage("Gandalf");
         thief   = new Thief("Ombra");
@@ -103,15 +103,15 @@ class CombatSystemTest {
     @DisplayName("Il Thief con stealth bonus infligge sempre un critico (danno doppio)")
     void testThiefStealthFirstAttackIsCritical() {
         thief.applyPassiveBonus();
-        int baseDamage  = thief.getAttack();
-        int defense     = goblin.getDefense();
-        int hpBefore    = goblin.getCurrentHp();
+        int baseDamage = thief.getAttack();   // 20
+        int defense    = goblin.getDefense(); // 2
+        int hpBefore   = goblin.getCurrentHp(); // 30
 
-        // NO_RNG: garantisce che nessun'altra fonte di RNG alteri il risultato
         combatSystemNoRng.executeAttack(thief, goblin, AttackType.PHYSICAL, 0);
 
-        int actualDamage   = hpBefore - goblin.getCurrentHp();
-        int expectedDamage = Math.max(0, (baseDamage * 2) - defense);
+        int actualDamage = hpBefore - goblin.getCurrentHp();
+        // Il danno lordo e' baseDamage*2 - defense, ma cappato agli HP disponibili
+        int expectedDamage = Math.min(hpBefore, Math.max(0, (baseDamage * 2) - defense));
         assertEquals(expectedDamage, actualDamage);
     }
 
@@ -140,9 +140,12 @@ class CombatSystemTest {
     @Test
     @DisplayName("Il Warrior non blocca attacchi magici")
     void testWarriorDoesNotBlockMagicAttack() {
+        // Usiamo un nemico con attacco alto (50) per bucare la difesa del Warrior (10)
+        // danno netto atteso = 50 - 10 = 40, certamente > 0
+        Enemy strongEnemy = new Enemy("Troll", 100, 50, 0, AttackType.MAGICAL, 0.0);
         CombatSystem alwaysBlock = new CombatSystem(ALWAYS_RNG);
         int hpBefore = warrior.getCurrentHp();
-        alwaysBlock.executeAttack(goblin, warrior, AttackType.MAGICAL, 0);
+        alwaysBlock.executeAttack(strongEnemy, warrior, AttackType.MAGICAL, 0);
         assertTrue(warrior.getCurrentHp() < hpBefore);
     }
 
