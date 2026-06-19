@@ -11,6 +11,7 @@ import java.util.Objects;
 /**
  * Classe astratta che rappresenta un personaggio generico del gioco.
  * Implementa Serializable per supportare la persistenza dell'intera gerarchia.
+ * Espone setter pubblici per attack e critChance usati da Weapon.
  */
 public abstract class GameCharacter implements Combatable, Serializable {
 
@@ -51,6 +52,12 @@ public abstract class GameCharacter implements Combatable, Serializable {
 
     public void addItem(Item item) { inventory.add(item); }
     public List<Item> getInventory() { return inventory; }
+
+    /** Aumenta l'attacco del personaggio (usato da Weapon). */
+    public void increaseAttack(int amount) { this.attack += amount; }
+
+    /** Aumenta la chance critica del personaggio (usato da Weapon). */
+    public void increaseCritChance(double amount) { this.critChance += amount; }
 
     public abstract void applyPassiveBonus();
     public abstract CharacterClass getCharacterClass();

@@ -7,6 +7,7 @@ import java.io.Serializable;
 
 /**
  * Arma raccoglibile nelle stanze. Aumenta attacco e critico del personaggio.
+ * Usa i setter pubblici di GameCharacter per non accedere ai campi protected.
  */
 public class Weapon implements Item, Serializable {
 
@@ -25,11 +26,10 @@ public class Weapon implements Item, Serializable {
         this.critBonus = critBonus;
     }
 
-    /** Equipaggiare l'arma aumenta attacco e chance critica del personaggio. */
     @Override
     public void use(GameCharacter character) {
-        character.attack += attackBonus;
-        character.critChance += critBonus;
+        character.increaseAttack(attackBonus);
+        character.increaseCritChance(critBonus);
     }
 
     @Override public String getName() { return name; }

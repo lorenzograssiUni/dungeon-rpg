@@ -3,7 +3,8 @@ package it.unicam.cs.mpgc.rpg123891.model.character;
 import java.io.Serial;
 
 /**
- * Ladro: alta critica. Bonus passivo: primo attacco di ogni stanza e' sempre critico (danno x2).
+ * Ladro: alta critica.
+ * Bonus passivo: primo attacco di ogni stanza e' sempre critico (danno x2).
  */
 public class Thief extends GameCharacter implements PlayerCharacter {
 
@@ -16,10 +17,6 @@ public class Thief extends GameCharacter implements PlayerCharacter {
         super(name, 90, 20, 5, 12, 0.25);
     }
 
-    /**
-     * Bonus passivo del Ladro: attiva lo stealth bonus all'inizio di ogni stanza.
-     * Il prossimo attacco sara' sempre critico (danno raddoppiato).
-     */
     @Override
     public void applyPassiveBonus() {
         this.stealthBonusActive = true;
