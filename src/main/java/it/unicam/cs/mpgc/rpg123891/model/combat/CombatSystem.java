@@ -9,49 +9,44 @@ import java.util.Random;
 
 /**
  * Gestisce tutta la logica del combattimento a turni.
- * Si occupa di calcolare il danno, applicare critici, bonus passivi
- * e modificatori legati al tipo di attacco e al tipo di nemico.
- *
- * Responsabilità: CombatSystem conosce le regole del combattimento,
- * non i dettagli interni dei personaggi.
+ * Calcola il danno, applica critici, bonus passivi e modificatori
+ * legati al tipo di attacco e alle abilita' speciali dei personaggi.
  */
 public class CombatSystem {
 
     private final Random random = new Random();
 
     /**
-     * Esegue un attacco del personaggio attaccante verso il difensore.
-     * Calcola danno base, eventuale critico e applica bonus/malus passivi.
+     * Esegue un attacco dell'attaccante verso il difensore.
      *
-     * @param attacker il combattente che attacca
-     * @param defender il combattente che difende
-     * @param attackType il tipo di attacco sferrato
-     * @param enemyCritModifier modificatore al critico imposto dal tipo di nemico
+     * @param attacker          il combattente che attacca
+     * @param defender          il combattente che difende
+     * @param attackType        il tipo di attacco sferrato
+     * @param enemyCritModifier modificatore al critico imposto dal nemico
      * @return il danno finale inflitto
      */
     public int executeAttack(GameCharacter attacker, GameCharacter defender,
-                              AttackType attackType, double enemyCritModifier) {
+                             AttackType attackType, double enemyCritModifier) {
 
         // 1. Calcolo critico
-        double effectiveCrit = attacker.getCritChance() + enemyCritModifier;
-        boolean isCritical = false;
-
-        // Bonus furtività Ladro: primo attacco sempre critico
+        boolean isCritical;
         if (attacker instanceof Thief thief && thief.isStealthBonusActive()) {
+            // Bonus furtivita' Ladro: primo attacco sempre critico
             isCritical = true;
             thief.consumeStealthBonus();
         } else {
+            double effectiveCrit = attacker.getCritChance() + enemyCritModifier;
             isCritical = random.nextDouble() < effectiveCrit;
         }
 
         // 2. Calcolo danno base
         int baseDamage = attacker.getAttack();
-        int damage = isCritical ? (int) (baseDamage * 2.0) : baseDamage;
+        int damage = isCritical ? baseDamage * 2 : baseDamage;
 
-        // 3. Blocco Guerriero: possibilità di annullare l'attacco fisico
+        // 3. Blocco Guerriero: 20% probabilita' di annullare attacco fisico
         if (defender instanceof Warrior warrior && attackType == AttackType.PHYSICAL) {
             if (random.nextDouble() < warrior.getBlockChance()) {
-                return 0; // attacco bloccato
+                return 0;
             }
         }
 
@@ -62,11 +57,11 @@ public class CombatSystem {
                 return 0; // schermo assorbe l'attacco fisico
             }
             if (attackType == AttackType.MAGICAL || attackType == AttackType.MIXED) {
-                damage = (int) (damage * 1.30); // vulnerabilità magica
+                damage = (int) (damage * 1.30); // vulnerabilita' magica
             }
         }
 
-        // 5. Applica danno al difensore
+        // 5. Applica danno al difensore (la difesa e' sottratta in takeDamage)
         defender.takeDamage(damage);
         return damage;
     }
