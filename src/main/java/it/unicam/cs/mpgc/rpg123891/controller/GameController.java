@@ -11,6 +11,7 @@ import it.unicam.cs.mpgc.rpg123891.model.world.Room;
 import it.unicam.cs.mpgc.rpg123891.persistence.PersistenceManager;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Controller principale del gioco.
@@ -55,10 +56,20 @@ public class GameController {
         );
     }
 
-    /** Usa una pozione dell'inventario. */
-    public void usePotion(Potion potion) {
+    /**
+     * Usa la prima pozione disponibile nell'inventario e la rimuove.
+     * Restituisce true se una pozione è stata usata, false se l'inventario non ne ha.
+     */
+    public boolean useFirstPotion() {
+        List<Item> inventory = gameState.getPlayer().getInventory();
+        Optional<Item> potionOpt = inventory.stream()
+                .filter(item -> item instanceof Potion)
+                .findFirst();
+        if (potionOpt.isEmpty()) return false;
+        Potion potion = (Potion) potionOpt.get();
         potion.use(gameState.getPlayer());
-        gameState.getPlayer().getInventory();
+        inventory.remove(potion);
+        return true;
     }
 
     /** Raccoglie tutti gli oggetti della stanza corrente nell'inventario. */
@@ -67,6 +78,7 @@ public class GameController {
         for (Item item : room.getItems()) {
             gameState.getPlayer().addItem(item);
         }
+        room.getItems().clear();
     }
 
     /** Avanza alla prossima stanza se la corrente è stata liberata. */
@@ -96,6 +108,23 @@ public class GameController {
         }
     }
 
+    /** Verifica se il giocatore è morto e imposta il game over. */
+    public boolean checkPlayerDead() {
+        if (!gameState.getPlayer().isAlive()) {
+            gameState.setGameOver(true);
+            gameState.setVictory(false);
+            return true;
+        }
+        return false;
+    }
+
+    /** Restituisce il numero di pozioni nell'inventario. */
+    public long countPotions() {
+        return gameState.getPlayer().getInventory().stream()
+                .filter(item -> item instanceof Potion)
+                .count();
+    }
+
     public void saveGame() {
         persistenceManager.save(gameState);
     }
@@ -103,6 +132,10 @@ public class GameController {
     public GameState loadGame() {
         this.gameState = persistenceManager.load();
         return this.gameState;
+    }
+
+    public boolean hasSavedGame() {
+        return persistenceManager.hasSave();
     }
 
     public GameState getGameState() { return gameState; }

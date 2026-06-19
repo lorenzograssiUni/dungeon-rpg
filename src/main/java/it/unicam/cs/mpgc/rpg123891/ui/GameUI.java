@@ -1,6 +1,9 @@
 package it.unicam.cs.mpgc.rpg123891.ui;
 
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
+import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
+import it.unicam.cs.mpgc.rpg123891.model.character.PlayerCharacter;
+import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
 import javafx.application.Application;
@@ -10,6 +13,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
+import java.util.Optional;
 
 /**
  * Implementazione della UI tramite JavaFX.
@@ -22,37 +27,39 @@ public class GameUI extends Application implements UIInterface {
     private GameController controller;
     private TextArea logArea;
     private Label statusLabel;
+    private Button attackBtn;
+    private Button advanceBtn;
+    private Button saveBtn;
+    private Button potionBtn;
 
     @Override
     public void start(Stage primaryStage) {
         this.controller = new GameController(new JsonPersistenceManager());
 
-        // Layout principale
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(10));
 
-        // Area log di gioco
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setWrapText(true);
         logArea.setPrefHeight(300);
         root.setCenter(logArea);
 
-        // Status bar
         statusLabel = new Label("Benvenuto in Dungeon RPG! Scegli il tuo personaggio.");
         root.setTop(statusLabel);
 
-        // Pulsanti azione
         HBox buttonBar = createButtonBar();
         root.setBottom(buttonBar);
 
-        Scene scene = new Scene(root, 700, 450);
+        setGameButtonsDisabled(true);
+
+        Scene scene = new Scene(root, 750, 470);
         primaryStage.setTitle("Dungeon RPG");
         primaryStage.setScene(scene);
         primaryStage.show();
 
         showMessage("=== Dungeon RPG ===");
-        showMessage("Clicca 'Nuovo Gioco' per iniziare la tua avventura!");
+        showMessage("Clicca 'Nuovo Gioco' per iniziare o 'Carica' per riprendere una partita salvata.");
     }
 
     private HBox createButtonBar() {
@@ -63,41 +70,86 @@ public class GameUI extends Application implements UIInterface {
         Button newGameBtn = new Button("Nuovo Gioco");
         newGameBtn.setOnAction(e -> startNewGame());
 
-        Button attackBtn = new Button("Attacca");
+        Button loadBtn = new Button("Carica");
+        loadBtn.setOnAction(e -> handleLoad());
+
+        attackBtn = new Button("Attacca");
         attackBtn.setOnAction(e -> handleAttack());
 
-        Button advanceBtn = new Button("Avanza");
+        advanceBtn = new Button("Avanza");
         advanceBtn.setOnAction(e -> handleAdvance());
 
-        Button saveBtn = new Button("Salva");
+        potionBtn = new Button("Usa Pozione");
+        potionBtn.setOnAction(e -> handlePotion());
+
+        saveBtn = new Button("Salva");
         saveBtn.setOnAction(e -> handleSave());
 
-        bar.getChildren().addAll(newGameBtn, attackBtn, advanceBtn, saveBtn);
+        bar.getChildren().addAll(newGameBtn, loadBtn, attackBtn, advanceBtn, potionBtn, saveBtn);
         return bar;
     }
 
     private void startNewGame() {
-        // Per ora usa Warrior come default; estendibile con dialogo di scelta classe
-        controller.startNewGame(new Warrior("Eroe"));
+        Optional<PlayerCharacter> choice = showClassChoiceDialog();
+        if (choice.isEmpty()) return;
+        controller.startNewGame(choice.get());
+        setGameButtonsDisabled(false);
         updateGameView();
-        showMessage("Nuova partita iniziata con il Guerriero!");
+        showMessage("\n--- Nuova partita iniziata con " + controller.getPlayer().getCharacterClass() + "! ---");
         showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
+        showEnemiesInRoom();
+    }
+
+    private Optional<PlayerCharacter> showClassChoiceDialog() {
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("Guerriero", "Guerriero", "Mago", "Ladro");
+        dialog.setTitle("Scelta Classe");
+        dialog.setHeaderText("Scegli la classe del tuo personaggio");
+        dialog.setContentText("Classe:");
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) return Optional.empty();
+        return switch (result.get()) {
+            case "Mago"  -> Optional.of(new Mage("Eroe"));
+            case "Ladro" -> Optional.of(new Thief("Eroe"));
+            default      -> Optional.of(new Warrior("Eroe"));
+        };
+    }
+
+    private void handleLoad() {
+        if (!controller.hasSavedGame()) {
+            showMessage("Nessun salvataggio trovato!");
+            return;
+        }
+        controller.loadGame();
+        setGameButtonsDisabled(false);
+        updateGameView();
+        showMessage("\n--- Partita caricata! ---");
+        showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
+        showEnemiesInRoom();
     }
 
     private void handleAttack() {
         if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
-        var enemies = controller.getCurrentRoom().getEnemies();
-        var aliveEnemies = enemies.stream().filter(e -> e.isAlive()).toList();
-        if (aliveEnemies.isEmpty()) { showMessage("Nessun nemico nella stanza."); return; }
+        if (controller.getGameState().isGameOver()) { showMessage("La partita è terminata. Inizia una nuova!"); return; }
+        var aliveEnemies = controller.getCurrentRoom().getEnemies().stream()
+                .filter(e -> e.isAlive()).toList();
+        if (aliveEnemies.isEmpty()) { showMessage("Nessun nemico vivo nella stanza. Avanza!"); return; }
         var enemy = aliveEnemies.get(0);
         int dmg = controller.playerAttack(enemy);
-        showMessage("Attacchi " + enemy.getName() + " per " + dmg + " danni!");
+        showMessage("⚔ Attacchi " + enemy.getName() + " per " + dmg + " danni!");
         if (!enemy.isAlive()) {
-            showMessage(enemy.getName() + " è stato sconfitto!");
+            showMessage("💀 " + enemy.getName() + " è stato sconfitto!");
             controller.checkRoomCleared();
+            if (controller.getGameState().isVictory()) {
+                showMessage("\n🏆 HAI VINTO! Hai completato il dungeon!");
+                setGameButtonsDisabled(true);
+            }
         } else {
             int enmDmg = controller.enemyAttack(enemy);
-            showMessage(enemy.getName() + " ti attacca per " + enmDmg + " danni!");
+            showMessage("🗡 " + enemy.getName() + " ti attacca per " + enmDmg + " danni!");
+            if (controller.checkPlayerDead()) {
+                showMessage("\n💀 SEI MORTO! Game Over.");
+                setGameButtonsDisabled(true);
+            }
         }
         updateGameView();
     }
@@ -106,10 +158,23 @@ public class GameUI extends Application implements UIInterface {
         if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
         boolean advanced = controller.advanceRoom();
         if (advanced) {
-            showMessage("Avanzi nella prossima stanza...");
+            showMessage("\n➡ Avanzi nella prossima stanza...");
             showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
+            showEnemiesInRoom();
         } else {
-            showMessage("Non puoi avanzare. Sconfiggi tutti i nemici prima!");
+            showMessage("❌ Non puoi avanzare. Sconfiggi tutti i nemici prima!");
+        }
+        updateGameView();
+    }
+
+    private void handlePotion() {
+        if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
+        boolean used = controller.useFirstPotion();
+        if (used) {
+            showMessage("🧪 Hai usato una pozione! HP: " + controller.getPlayer().getCurrentHp()
+                    + "/" + controller.getPlayer().getMaxHp());
+        } else {
+            showMessage("Nessuna pozione nell'inventario!");
         }
         updateGameView();
     }
@@ -117,7 +182,25 @@ public class GameUI extends Application implements UIInterface {
     private void handleSave() {
         if (controller.getGameState() == null) { showMessage("Nessuna partita da salvare!"); return; }
         controller.saveGame();
-        showMessage("Partita salvata!");
+        showMessage("💾 Partita salvata!");
+    }
+
+    private void showEnemiesInRoom() {
+        var enemies = controller.getCurrentRoom().getEnemies();
+        if (enemies.isEmpty()) {
+            showMessage("La stanza è libera.");
+        } else {
+            enemies.stream()
+                    .filter(e -> e.isAlive())
+                    .forEach(e -> showMessage("👾 Nemico: " + e.getName() + " (HP: " + e.getCurrentHp() + ")"));
+        }
+    }
+
+    private void setGameButtonsDisabled(boolean disabled) {
+        attackBtn.setDisable(disabled);
+        advanceBtn.setDisable(disabled);
+        potionBtn.setDisable(disabled);
+        saveBtn.setDisable(disabled);
     }
 
     @Override
@@ -134,6 +217,7 @@ public class GameUI extends Application implements UIInterface {
     public void updateGameView() {
         if (controller.getGameState() == null) return;
         var player = controller.getPlayer();
-        statusLabel.setText(player.toString());
+        long potions = controller.countPotions();
+        statusLabel.setText(player.toString() + " | Pozioni: " + potions);
     }
 }
