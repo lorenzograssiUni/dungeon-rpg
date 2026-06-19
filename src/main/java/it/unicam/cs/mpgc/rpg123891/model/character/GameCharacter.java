@@ -5,11 +5,12 @@ import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Classe astratta che rappresenta un personaggio generico del gioco.
- * Contiene le statistiche base comuni a tutti i personaggi (giocatori e nemici).
- * Le sottoclassi devono implementare il comportamento specifico della propria classe/tipo.
+ * Contiene le statistiche base comuni a tutti i personaggi.
+ * Due personaggi sono considerati uguali se hanno lo stesso nome e la stessa classe.
  */
 public abstract class GameCharacter implements Combatable {
 
@@ -20,7 +21,7 @@ public abstract class GameCharacter implements Combatable {
     protected int defense;
     protected int stamina;
     protected int currentStamina;
-    protected double critChance; // valore tra 0.0 e 1.0
+    protected double critChance;
 
     protected List<Item> inventory = new ArrayList<>();
 
@@ -34,10 +35,6 @@ public abstract class GameCharacter implements Combatable {
         this.currentStamina = stamina;
         this.critChance = critChance;
     }
-
-    // -------------------------
-    // Metodi base comuni
-    // -------------------------
 
     public boolean isAlive() {
         return currentHp > 0;
@@ -57,22 +54,11 @@ public abstract class GameCharacter implements Combatable {
     }
 
     public List<Item> getInventory() {
-        return List.copyOf(inventory);
+        return inventory;
     }
 
-    // -------------------------
-    // Metodo astratto: bonus passivo specifico della sottoclasse
-    // -------------------------
-
-    /**
-     * Applica il bonus passivo specifico della classe/tipo.
-     * Ogni sottoclasse implementa la propria meccanica unica.
-     */
     public abstract void applyPassiveBonus();
-
-    // -------------------------
-    // Getters
-    // -------------------------
+    public abstract CharacterClass getCharacterClass();
 
     public String getName() { return name; }
     public int getCurrentHp() { return currentHp; }
@@ -82,6 +68,23 @@ public abstract class GameCharacter implements Combatable {
     public int getCurrentStamina() { return currentStamina; }
     public int getStamina() { return stamina; }
     public double getCritChance() { return critChance; }
+
+    /**
+     * Due personaggi sono uguali se hanno lo stesso nome e la stessa classe.
+     * Questo permette di usare i personaggi in HashSet e come chiavi di HashMap.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof GameCharacter other)) return false;
+        return Objects.equals(name, other.name)
+                && Objects.equals(getCharacterClass(), other.getCharacterClass());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, getCharacterClass());
+    }
 
     @Override
     public String toString() {
