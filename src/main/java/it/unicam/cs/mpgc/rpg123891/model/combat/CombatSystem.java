@@ -18,7 +18,21 @@ import java.util.Random;
  */
 public class CombatSystem {
 
-    private final Random random = new Random();
+    private final Random random;
+
+    /** Costruttore di default: usa un Random non deterministico (produzione). */
+    public CombatSystem() {
+        this.random = new Random();
+    }
+
+    /**
+     * Costruttore per i test: accetta un Random controllato.
+     *
+     * @param random istanza di Random da usare (es. mock o seed fisso)
+     */
+    public CombatSystem(Random random) {
+        this.random = random;
+    }
 
     /**
      * Esegue un attacco dell'attaccante verso il difensore.
