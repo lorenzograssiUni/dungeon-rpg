@@ -26,11 +26,14 @@ repositories {
 }
 
 dependencies {
-    // JSON persistence
     implementation 'com.google.code.gson:gson:2.10.1'
-    // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Forza encoding UTF-8 per la compilazione (necessario su Windows)
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
 
 test {

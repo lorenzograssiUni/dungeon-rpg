@@ -129,25 +129,25 @@ public class GameUI extends Application implements UIInterface {
 
     private void handleAttack() {
         if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
-        if (controller.getGameState().isGameOver()) { showMessage("La partita è terminata. Inizia una nuova!"); return; }
+        if (controller.getGameState().isGameOver()) { showMessage("La partita e' terminata. Inizia una nuova!"); return; }
         var aliveEnemies = controller.getCurrentRoom().getEnemies().stream()
                 .filter(e -> e.isAlive()).toList();
         if (aliveEnemies.isEmpty()) { showMessage("Nessun nemico vivo nella stanza. Avanza!"); return; }
         var enemy = aliveEnemies.get(0);
         int dmg = controller.playerAttack(enemy);
-        showMessage("⚔ Attacchi " + enemy.getName() + " per " + dmg + " danni!");
+        showMessage("[ATK] Attacchi " + enemy.getName() + " per " + dmg + " danni!");
         if (!enemy.isAlive()) {
-            showMessage("💀 " + enemy.getName() + " è stato sconfitto!");
+            showMessage("[KILL] " + enemy.getName() + " e' stato sconfitto!");
             controller.checkRoomCleared();
             if (controller.getGameState().isVictory()) {
-                showMessage("\n🏆 HAI VINTO! Hai completato il dungeon!");
+                showMessage("\n*** HAI VINTO! Hai completato il dungeon! ***");
                 setGameButtonsDisabled(true);
             }
         } else {
             int enmDmg = controller.enemyAttack(enemy);
-            showMessage("🗡 " + enemy.getName() + " ti attacca per " + enmDmg + " danni!");
+            showMessage("[DMG] " + enemy.getName() + " ti attacca per " + enmDmg + " danni!");
             if (controller.checkPlayerDead()) {
-                showMessage("\n💀 SEI MORTO! Game Over.");
+                showMessage("\n*** SEI MORTO! Game Over. ***");
                 setGameButtonsDisabled(true);
             }
         }
@@ -158,11 +158,11 @@ public class GameUI extends Application implements UIInterface {
         if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
         boolean advanced = controller.advanceRoom();
         if (advanced) {
-            showMessage("\n➡ Avanzi nella prossima stanza...");
+            showMessage("\n[>>>] Avanzi nella prossima stanza...");
             showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
             showEnemiesInRoom();
         } else {
-            showMessage("❌ Non puoi avanzare. Sconfiggi tutti i nemici prima!");
+            showMessage("[!] Non puoi avanzare. Sconfiggi tutti i nemici prima!");
         }
         updateGameView();
     }
@@ -171,7 +171,7 @@ public class GameUI extends Application implements UIInterface {
         if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
         boolean used = controller.useFirstPotion();
         if (used) {
-            showMessage("🧪 Hai usato una pozione! HP: " + controller.getPlayer().getCurrentHp()
+            showMessage("[HEAL] Hai usato una pozione! HP: " + controller.getPlayer().getCurrentHp()
                     + "/" + controller.getPlayer().getMaxHp());
         } else {
             showMessage("Nessuna pozione nell'inventario!");
@@ -182,17 +182,17 @@ public class GameUI extends Application implements UIInterface {
     private void handleSave() {
         if (controller.getGameState() == null) { showMessage("Nessuna partita da salvare!"); return; }
         controller.saveGame();
-        showMessage("💾 Partita salvata!");
+        showMessage("[SAVE] Partita salvata!");
     }
 
     private void showEnemiesInRoom() {
         var enemies = controller.getCurrentRoom().getEnemies();
         if (enemies.isEmpty()) {
-            showMessage("La stanza è libera.");
+            showMessage("La stanza e' libera.");
         } else {
             enemies.stream()
                     .filter(e -> e.isAlive())
-                    .forEach(e -> showMessage("👾 Nemico: " + e.getName() + " (HP: " + e.getCurrentHp() + ")"));
+                    .forEach(e -> showMessage("[NEMICO] " + e.getName() + " (HP: " + e.getCurrentHp() + ")"));
         }
     }
 
