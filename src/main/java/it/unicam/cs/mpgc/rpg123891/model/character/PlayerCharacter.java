@@ -6,12 +6,27 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Interfaccia marcatore per i personaggi controllati dal giocatore.
- * Non ridefinisce metodi gia' presenti in GameCharacter: i player sono
- * sempre istanze di GameCharacter, quindi il cast e' sicuro.
- * Estende Serializable per garantire la serializzazione dell'intera gerarchia.
+ * Interfaccia per i personaggi controllati dal giocatore.
+ * Dichiara tutti i metodi usati da GameController e GameUI.
+ * Warrior, Mage e Thief la implementano estendendo GameCharacter,
+ * quindi il cast a GameCharacter e' sempre sicuro.
+ * Estende Serializable per la persistenza dell'intera gerarchia.
  */
 public interface PlayerCharacter extends Serializable {
-    // Interfaccia marcatore: tutti i metodi sono ereditati da GameCharacter.
-    // Serve per distinguere i personaggi giocatore dai nemici a livello di tipo.
+
+    String getName();
+    int getCurrentHp();
+    int getMaxHp();
+    int getAttack();
+    int getDefense();
+    int getCurrentStamina();
+    int getStamina();
+    double getCritChance();
+    boolean isAlive();
+    CharacterClass getCharacterClass();
+    void applyPassiveBonus();
+    List<Item> getInventory();
+    void addItem(Item item);
+    void takeDamage(int damage);
+    void heal(int amount);
 }
