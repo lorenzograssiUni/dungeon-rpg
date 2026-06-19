@@ -11,6 +11,10 @@ import java.util.Random;
  * Gestisce tutta la logica del combattimento a turni.
  * Calcola il danno, applica critici, bonus passivi e modificatori
  * legati al tipo di attacco e alle abilita' speciali dei personaggi.
+ *
+ * NOTA: executeAttack restituisce il danno NETTO effettivamente subito
+ * dal difensore (cioe' gia' ridotto dalla sua difesa), non il danno lordo.
+ * Questo e' coerente con quanto si legge dall'esterno (HP prima - HP dopo).
  */
 public class CombatSystem {
 
@@ -23,15 +27,15 @@ public class CombatSystem {
      * @param defender          il combattente che difende
      * @param attackType        il tipo di attacco sferrato
      * @param enemyCritModifier modificatore al critico imposto dal nemico
-     * @return il danno finale inflitto
+     * @return il danno netto inflitto (HP persi dal difensore)
      */
     public int executeAttack(GameCharacter attacker, GameCharacter defender,
                              AttackType attackType, double enemyCritModifier) {
 
-        // 1. Calcolo critico
+        // 1. Critico
         boolean isCritical;
         if (attacker instanceof Thief thief && thief.isStealthBonusActive()) {
-            // Bonus furtivita' Ladro: primo attacco sempre critico
+            // Bonus furtivita' Ladro: primo attacco di ogni stanza sempre critico
             isCritical = true;
             thief.consumeStealthBonus();
         } else {
@@ -39,7 +43,7 @@ public class CombatSystem {
             isCritical = random.nextDouble() < effectiveCrit;
         }
 
-        // 2. Calcolo danno base
+        // 2. Danno lordo
         int baseDamage = attacker.getAttack();
         int damage = isCritical ? baseDamage * 2 : baseDamage;
 
@@ -50,19 +54,20 @@ public class CombatSystem {
             }
         }
 
-        // 4. Schermo Magico del Mago
+        // 4. Schermo e vulnerabilita' del Mago
         if (defender instanceof Mage mage) {
             if (attackType == AttackType.PHYSICAL && mage.isMagicShieldActive()) {
                 mage.setMagicShieldActive(false);
-                return 0; // schermo assorbe l'attacco fisico
+                return 0; // schermo assorbe completamente
             }
             if (attackType == AttackType.MAGICAL || attackType == AttackType.MIXED) {
-                damage = (int) (damage * 1.30); // vulnerabilita' magica
+                damage = (int) (damage * 1.30); // vulnerabilita' magica +30%
             }
         }
 
-        // 5. Applica danno al difensore (la difesa e' sottratta in takeDamage)
+        // 5. Applica e restituisce danno NETTO (HP persi = differenza prima/dopo)
+        int hpBefore = defender.getCurrentHp();
         defender.takeDamage(damage);
-        return damage;
+        return hpBefore - defender.getCurrentHp();
     }
 }
