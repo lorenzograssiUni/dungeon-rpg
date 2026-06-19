@@ -1,68 +1,62 @@
-# Dungeon RPG
+# 📌 Dungeon RPG
 
-Gioco di ruolo a turni sviluppato in Java come progetto per il corso di **Metodologie di Programmazione e Modellazione e Gestione della Conoscenza** (AA 2025/26), Università di Camerino.
+Gioco di ruolo a turni sviluppato in Java come progetto per il corso di **Metodologie di Programmazione e Modellazione e Gestione della Conoscenza** (AA 2025/26), Università di Camerino.  
+Il giocatore sceglie una classe (Guerriero, Mago, Ladro), esplora stanze di un dungeon fantasy, combatte nemici a turni, raccoglie oggetti e salva i progressi su file JSON.
 
-## Descrizione
+---
 
-Dungeon RPG è un gioco di ruolo a turni ambientato in un dungeon fantasy. Il giocatore sceglie una classe (Guerriero, Mago, Ladro), esplora stanze collegate tra loro, combatte nemici, raccoglie oggetti e gestisce il proprio inventario. Il progetto è sviluppato in Java con interfaccia grafica JavaFX e persistenza tramite file JSON.
+## 🚀 Come eseguire il progetto
 
-## Requisiti
+### Prerequisiti
+- Java 17 o superiore (testato con OpenJDK 19)
+- Gradle (incluso tramite wrapper — non richiede installazione)
 
-- **JDK 17 o superiore** (testato con OpenJDK 19)
-- Il Gradle Wrapper è incluso nel repository — non è necessario installare Gradle
+### Istruzioni
 
-## Compilazione ed Esecuzione
-
-Su Linux / macOS:
 ```bash
-./gradlew build
-./gradlew run
+git clone https://github.com/lorenzograssiUni/dungeon-rpg.git
+cd dungeon-rpg
 ```
 
+### Build del progetto
+```bash
+./gradlew build
+```
 Su Windows:
 ```bat
 gradlew.bat build
+```
+
+### Esecuzione
+```bash
+./gradlew run
+```
+Su Windows:
+```bat
 gradlew.bat run
 ```
 
-> Se sul sistema è installato un JDK diverso da quello richiesto, impostare il path corretto in `gradle.properties` alla voce `org.gradle.java.home`.
+> Se il JDK sul sistema è diverso da quello atteso, impostare il path in `gradle.properties` alla voce `org.gradle.java.home`.
 
-## Struttura del Progetto
+---
 
-```
-src/main/java/it/unicam/cs/mpgc/rpg123891/
-├── Main.java                  # Entry point
-├── model/
-│   ├── character/             # Character (astratta), Warrior, Mage, Thief
-│   ├── combat/                # Combatable (interfaccia), CombatSystem, Enemy
-│   ├── world/                 # Room, DungeonMap, Direction
-│   ├── item/                  # Item (interfaccia), Weapon, Potion
-│   └── game/                  # GameState
-├── controller/                # GameController
-├── persistence/               # Saveable (interfaccia), JsonPersistenceManager
-└── ui/                        # UIInterface (interfaccia), JavaFXUI
-```
+## 🤖 Uso di strumenti di AI
 
-## Funzionalità Principali
+Nella realizzazione di questo progetto sono stati utilizzati i seguenti strumenti di AI come **supporto**, non come sostituto del lavoro personale:
 
-- Creazione personaggio con scelta della classe (Warrior / Mage / Thief)
-- Esplorazione dungeon con stanze collegate in direzioni cardinali
-- Sistema di combattimento a turni con calcolo danni e level-up
-- Inventario con armi e pozioni
-- Salvataggio e caricamento partita tramite file JSON (`savegame.json`)
-- Interfaccia grafica desktop con JavaFX 21
+* Utilizzato **Perplexity AI** per:
+  * progettare l'architettura del sistema (package, interfacce, pattern)
+  * applicare i principi SOLID alla struttura delle classi
+  * risolvere problemi di configurazione Gradle e compatibilità JavaFX
+  * generare bozze di codice successivamente lette, comprese e modificate
+  * redigere la documentazione nella Wiki del repository
 
-## Documentazione
+* Utilizzato **GitHub Copilot** per:
+  * autocompletamento di metodi semplici (getter/setter)
+  * generazione di codice ripetitivo (costruttori, pattern boilerplate)
 
-La documentazione completa del progetto (funzionalità, responsabilità delle classi, persistenza, estendibilità) è disponibile nella **[Wiki del repository](../../wiki)**.
+Tutto il codice è stato **compreso, verificato e testato** personalmente prima dell'integrazione. Le scelte architetturali significative sono state prese in modo autonomo.
 
-## Dichiarazione Uso di Strumenti di AI
+---
 
-Nella realizzazione di questo progetto sono stati utilizzati i seguenti strumenti di intelligenza artificiale:
-
-| Strumento | Scopo |
-|---|---|
-| **Perplexity AI** | Progettazione architettura, definizione interfacce e classi, risoluzione problemi di configurazione Gradle/JavaFX, generazione bozze di codice, redazione della Wiki |
-| **GitHub Copilot** | Suggerimenti inline durante la scrittura del codice (getter/setter, pattern boilerplate) |
-
-Tutto il codice generato è stato letto, compreso e verificato dallo studente prima dell'integrazione. Le decisioni architetturali significative (scelta del tipo di gioco, meccaniche, struttura della mappa) sono state prese autonomamente. La dichiarazione dettagliata è disponibile nella [Wiki — Dichiarazione Uso AI](../../wiki/Dichiarazione-Uso-AI).
+📌 Per una descrizione più dettagliata dell'uso dell'AI, consultare la **[Wiki — Dichiarazione Uso AI](../../wiki/Dichiarazione-Uso-AI)**.
