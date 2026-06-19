@@ -1,46 +1,33 @@
 package it.unicam.cs.mpgc.rpg123891.model.character;
 
+import java.io.Serial;
+
 /**
- * Personaggio giocabile di classe Ladro.
- * Bonus passivo: FURTIVITÀ — il primo attacco di ogni combattimento è sempre critico.
- * Può sempre tentare la fuga da qualsiasi scontro.
+ * Ladro: alta critica. Bonus passivo: primo attacco di ogni stanza e' sempre critico (danno x2).
  */
-public class Thief extends PlayerCharacter {
+public class Thief extends GameCharacter implements PlayerCharacter {
 
-    private static final int BASE_HP      = 85;
-    private static final int BASE_ATTACK  = 12;
-    private static final int BASE_DEFENSE = 5;
-    private static final int BASE_STAMINA = 100;
-    private static final double BASE_CRIT = 0.20;
+    @Serial
+    private static final long serialVersionUID = 1L;
 
-    /** Se true, il prossimo attacco sarà automaticamente critico. */
-    private boolean stealthBonusActive;
+    private boolean stealthBonusActive = false;
 
     public Thief(String name) {
-        super(name, BASE_HP, BASE_ATTACK, BASE_DEFENSE, BASE_STAMINA, BASE_CRIT, CharacterClass.THIEF);
-        this.stealthBonusActive = true;
+        super(name, 90, 20, 5, 12, 0.25);
     }
 
     /**
-     * Applica il bonus passivo FURTIVITÀ.
-     * Riattiva il bonus critico garantito ad ogni inizio di combattimento.
+     * Bonus passivo del Ladro: attiva lo stealth bonus all'inizio di ogni stanza.
+     * Il prossimo attacco sara' sempre critico (danno raddoppiato).
      */
     @Override
     public void applyPassiveBonus() {
         this.stealthBonusActive = true;
     }
 
-    public boolean isStealthBonusActive() {
-        return stealthBonusActive;
-    }
-
-    /** Consuma il bonus furtività dopo il primo attacco. */
-    public void consumeStealthBonus() {
-        this.stealthBonusActive = false;
-    }
+    public boolean isStealthBonusActive() { return stealthBonusActive; }
+    public void consumeStealthBonus() { this.stealthBonusActive = false; }
 
     @Override
-    public CharacterClass getCharacterClass() {
-        return CharacterClass.THIEF;
-    }
+    public CharacterClass getCharacterClass() { return CharacterClass.THIEF; }
 }

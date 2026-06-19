@@ -3,16 +3,18 @@ package it.unicam.cs.mpgc.rpg123891.model.character;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Combatable;
 import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Classe astratta che rappresenta un personaggio generico del gioco.
- * Contiene le statistiche base comuni a tutti i personaggi.
- * Due personaggi sono considerati uguali se hanno lo stesso nome e la stessa classe.
+ * Implementa Serializable per supportare la persistenza dell'intera gerarchia.
  */
-public abstract class GameCharacter implements Combatable {
+public abstract class GameCharacter implements Combatable, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     protected String name;
     protected int maxHp;
@@ -36,9 +38,7 @@ public abstract class GameCharacter implements Combatable {
         this.critChance = critChance;
     }
 
-    public boolean isAlive() {
-        return currentHp > 0;
-    }
+    public boolean isAlive() { return currentHp > 0; }
 
     public void heal(int amount) {
         currentHp = Math.min(currentHp + amount, maxHp);
@@ -49,13 +49,8 @@ public abstract class GameCharacter implements Combatable {
         currentHp = Math.max(0, currentHp - reduced);
     }
 
-    public void addItem(Item item) {
-        inventory.add(item);
-    }
-
-    public List<Item> getInventory() {
-        return inventory;
-    }
+    public void addItem(Item item) { inventory.add(item); }
+    public List<Item> getInventory() { return inventory; }
 
     public abstract void applyPassiveBonus();
     public abstract CharacterClass getCharacterClass();
@@ -69,10 +64,6 @@ public abstract class GameCharacter implements Combatable {
     public int getStamina() { return stamina; }
     public double getCritChance() { return critChance; }
 
-    /**
-     * Due personaggi sono uguali se hanno lo stesso nome e la stessa classe.
-     * Questo permette di usare i personaggi in HashSet e come chiavi di HashMap.
-     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -82,9 +73,7 @@ public abstract class GameCharacter implements Combatable {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(name, getCharacterClass());
-    }
+    public int hashCode() { return Objects.hash(name, getCharacterClass()); }
 
     @Override
     public String toString() {

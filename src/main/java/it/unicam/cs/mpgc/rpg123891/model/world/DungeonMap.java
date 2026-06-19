@@ -5,26 +5,37 @@ import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
 import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
 import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Rappresenta la mappa del dungeon come sequenza ordinata di stanze.
- * Costruisce le stanze predefinite del gioco e gestisce la navigazione.
- * Usa la Stream API per interrogare lo stato complessivo del dungeon.
+ * Implementa Serializable: la lista rooms viene serializzata con tutto lo stato
+ * (nemici, HP, cleared, items), quindi il caricamento ripristina esattamente
+ * la partita salvata senza ricostruire il dungeon da zero.
  */
-public class DungeonMap {
+public class DungeonMap implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final List<Room> rooms = new ArrayList<>();
     private int currentRoomIndex = 0;
 
+    /**
+     * Costruisce il dungeon con le stanze predefinite.
+     * Chiamato SOLO alla creazione di una nuova partita.
+     * Durante la deserializzazione questo costruttore NON viene chiamato:
+     * Java Object Serialization ripristina i campi direttamente.
+     */
     public DungeonMap() {
         buildDungeon();
     }
 
     private void buildDungeon() {
-
         Room entrance = new Room("r1", "Entrata del Dungeon",
                 "Un corridoio umido e buio. L'aria sa di muffa e pericolo.");
         entrance.addEnemy(EnemyFactory.createGoblin());
@@ -58,62 +69,22 @@ public class DungeonMap {
         rooms.add(bossRoom);
     }
 
-    // -------------------------
-    // Navigazione
-    // -------------------------
+    public Room getCurrentRoom() { return rooms.get(currentRoomIndex); }
+    public boolean hasNextRoom() { return currentRoomIndex < rooms.size() - 1; }
+    public void advanceToNextRoom() { if (hasNextRoom()) currentRoomIndex++; }
 
-    public Room getCurrentRoom() {
-        return rooms.get(currentRoomIndex);
-    }
-
-    public boolean hasNextRoom() {
-        return currentRoomIndex < rooms.size() - 1;
-    }
-
-    public void advanceToNextRoom() {
-        if (hasNextRoom()) currentRoomIndex++;
-    }
-
-    // -------------------------
-    // Query con Stream API
-    // -------------------------
-
-    /**
-     * Restituisce tutte le stanze ancora non liberate.
-     * Usa filter() per selezionare le stanze con nemici ancora vivi.
-     */
     public List<Room> getUnclearedRooms() {
-        return rooms.stream()
-                .filter(room -> !room.isCleared())
-                .collect(Collectors.toList());
+        return rooms.stream().filter(r -> !r.isCleared()).collect(Collectors.toList());
     }
 
-    /**
-     * Restituisce il numero totale di nemici vivi in tutto il dungeon.
-     * Usa flatMap() per appiattire nemici di tutte le stanze in un unico stream.
-     */
     public long countAliveEnemies() {
-        return rooms.stream()
-                .flatMap(room -> room.getEnemies().stream())
-                .filter(Enemy::isAlive)
-                .count();
+        return rooms.stream().flatMap(r -> r.getEnemies().stream()).filter(Enemy::isAlive).count();
     }
 
-    /**
-     * Restituisce i nomi di tutte le stanze visitate dal giocatore.
-     * Usa filter() + map() per estrarre solo i nomi delle stanze visitate.
-     */
     public List<String> getVisitedRoomNames() {
-        return rooms.stream()
-                .filter(Room::isVisited)
-                .map(Room::getName)
-                .collect(Collectors.toList());
+        return rooms.stream().filter(Room::isVisited).map(Room::getName).collect(Collectors.toList());
     }
 
-    /**
-     * Verifica se tutte le stanze sono state liberate (condizione di vittoria alternativa).
-     * Usa allMatch() per un controllo booleano su tutti gli elementi.
-     */
     public boolean areAllRoomsCleared() {
         return rooms.stream().allMatch(Room::isCleared);
     }

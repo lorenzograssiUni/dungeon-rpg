@@ -1,13 +1,17 @@
 package it.unicam.cs.mpgc.rpg123891.model.item;
 
-import java.util.Objects;
+import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
+
+import java.io.Serial;
+import java.io.Serializable;
 
 /**
- * Rappresenta un'arma equipaggiabile dal personaggio.
- * Un'arma aggiunge bonus all'attacco e alla probabilità di critico.
- * Due armi sono considerate uguali se hanno lo stesso nome e attackBonus.
+ * Arma raccoglibile nelle stanze. Aumenta attacco e critico del personaggio.
  */
-public class Weapon implements Item {
+public class Weapon implements Item, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final String name;
     private final String description;
@@ -21,33 +25,15 @@ public class Weapon implements Item {
         this.critBonus = critBonus;
     }
 
+    /** Equipaggiare l'arma aumenta attacco e chance critica del personaggio. */
     @Override
-    public String getName() { return name; }
+    public void use(GameCharacter character) {
+        character.attack += attackBonus;
+        character.critChance += critBonus;
+    }
 
-    @Override
-    public String getDescription() { return description; }
-
+    @Override public String getName() { return name; }
+    @Override public String getDescription() { return description; }
     public int getAttackBonus() { return attackBonus; }
     public double getCritBonus() { return critBonus; }
-
-    /**
-     * Due armi sono uguali se hanno lo stesso nome e lo stesso attackBonus.
-     * Utile per confronti nell'inventario e nelle strutture dati (HashSet, HashMap).
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Weapon other)) return false;
-        return attackBonus == other.attackBonus && Objects.equals(name, other.name);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, attackBonus);
-    }
-
-    @Override
-    public String toString() {
-        return "Arma(" + name + ", atk+" + attackBonus + ", crit+" + (int)(critBonus * 100) + "%)";
-    }
 }

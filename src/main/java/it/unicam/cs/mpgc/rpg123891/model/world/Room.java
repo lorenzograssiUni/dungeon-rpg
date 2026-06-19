@@ -3,15 +3,19 @@ package it.unicam.cs.mpgc.rpg123891.model.world;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Rappresenta una stanza del dungeon.
- * Contiene nemici e oggetti. Tiene traccia se e' stata visitata e liberata.
- * Una stanza e' "cleared" quando tutti i nemici sono stati sconfitti.
+ * Serializable: lo stato (nemici HP, cleared, visited) viene salvato fedelmente.
  */
-public class Room {
+public class Room implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final String id;
     private final String name;
@@ -31,8 +35,7 @@ public class Room {
     public void addItem(Item item) { items.add(item); }
 
     /**
-     * Una stanza senza nemici e' considerata gia' liberata alla creazione.
-     * Questo evita che stanze vuote blocchino la navigazione.
+     * Una stanza senza nemici e' considerata liberata automaticamente.
      */
     public boolean isCleared() {
         if (enemies.isEmpty()) return true;
@@ -40,7 +43,6 @@ public class Room {
     }
 
     public void setCleared(boolean cleared) { this.cleared = cleared; }
-
     public boolean isVisited() { return visited; }
     public void setVisited(boolean visited) { this.visited = visited; }
 

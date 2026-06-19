@@ -1,19 +1,15 @@
 package it.unicam.cs.mpgc.rpg123891.model.item;
 
+import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
+
+import java.io.Serializable;
+
 /**
- * Interfaccia che rappresenta un oggetto generico dell'inventario.
- * Tutti gli oggetti del gioco devono implementare questa interfaccia.
- * Estendibile per aggiungere nuovi tipi di oggetti senza modificare il codice esistente.
+ * Interfaccia per tutti gli oggetti del gioco.
+ * Estende Serializable per garantire la serializzazione dell'inventario.
  */
-public interface Item {
-
-    /**
-     * Restituisce il nome dell'oggetto.
-     */
+public interface Item extends Serializable {
     String getName();
-
-    /**
-     * Restituisce la descrizione dell'oggetto.
-     */
     String getDescription();
+    void use(GameCharacter character);
 }

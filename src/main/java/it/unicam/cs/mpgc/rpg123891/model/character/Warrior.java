@@ -1,50 +1,30 @@
 package it.unicam.cs.mpgc.rpg123891.model.character;
 
+import java.io.Serial;
+
 /**
- * Personaggio giocabile di classe Guerriero.
- * Bonus passivo: BLOCCO — ad ogni turno ha una probabilità di bloccare
- * completamente l'attacco nemico, in base alla propria difesa.
+ * Guerriero: alta difesa e HP. Bonus passivo: +5 difesa, +20 HP massimi.
  */
-public class Warrior extends PlayerCharacter {
+public class Warrior extends GameCharacter implements PlayerCharacter {
 
-    private static final int BASE_HP      = 120;
-    private static final int BASE_ATTACK  = 15;
-    private static final int BASE_DEFENSE = 10;
-    private static final int BASE_STAMINA = 100;
-    private static final double BASE_CRIT = 0.08;
-
-    /** Probabilità base di blocco (aumenta con la difesa). */
-    private double blockChance;
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     public Warrior(String name) {
-        super(name, BASE_HP, BASE_ATTACK, BASE_DEFENSE, BASE_STAMINA, BASE_CRIT, CharacterClass.WARRIOR);
-        this.blockChance = calculateBlockChance();
+        super(name, 120, 18, 10, 8, 0.05);
     }
 
     /**
-     * Calcola la probabilità di blocco in base alla difesa attuale.
-     * Formula: difesa / 100.0, con un massimo del 40%.
-     */
-    private double calculateBlockChance() {
-        return Math.min(defense / 100.0, 0.40);
-    }
-
-    /**
-     * Applica il bonus passivo BLOCCO.
-     * Il Guerriero può bloccare completamente un attacco fisico
-     * con probabilità pari a blockChance.
+     * Bonus passivo del Guerriero: +5 difesa e +20 HP massimi.
+     * Applicato all'inizio della partita e ad ogni nuova stanza.
      */
     @Override
     public void applyPassiveBonus() {
-        this.blockChance = calculateBlockChance();
-    }
-
-    public double getBlockChance() {
-        return blockChance;
+        this.defense += 5;
+        this.maxHp += 20;
+        this.currentHp = Math.min(currentHp + 20, maxHp);
     }
 
     @Override
-    public CharacterClass getCharacterClass() {
-        return CharacterClass.WARRIOR;
-    }
+    public CharacterClass getCharacterClass() { return CharacterClass.WARRIOR; }
 }
