@@ -20,6 +20,7 @@ class PotionTest {
     @BeforeEach
     void setUp() {
         warrior = new Warrior("Eroe");
+        // costruttore semplificato a 2 argomenti: name, healAmount
         potion = new Potion("Pozione di Cura", 30);
     }
 
@@ -27,6 +28,12 @@ class PotionTest {
     @DisplayName("La pozione ha il nome corretto")
     void testPotionName() {
         assertEquals("Pozione di Cura", potion.getName());
+    }
+
+    @Test
+    @DisplayName("La pozione ha il healAmount corretto")
+    void testPotionHealAmount() {
+        assertEquals(30, potion.getHealAmount());
     }
 
     @Test
@@ -41,13 +48,12 @@ class PotionTest {
     @Test
     @DisplayName("La pozione non porta gli HP oltre il massimo")
     void testPotionDoesNotExceedMaxHp() {
-        // Warrior ha HP pieni: la pozione non deve superare maxHp
-        potion.use(warrior);
+        potion.use(warrior); // warrior gia' a piena salute
         assertEquals(warrior.getMaxHp(), warrior.getCurrentHp());
     }
 
     @Test
-    @DisplayName("La pozione ripristina esattamente healAmount se non supera maxHp")
+    @DisplayName("La pozione ripristina al massimo healAmount punti HP")
     void testPotionRestoresCorrectAmount() {
         warrior.takeDamage(50);
         int hpBefore = warrior.getCurrentHp();

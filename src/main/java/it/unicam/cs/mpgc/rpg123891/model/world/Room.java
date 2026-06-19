@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Rappresenta una singola stanza del dungeon.
- * Ogni stanza può contenere nemici, oggetti e avere una descrizione narrativa.
- * La stanza sa se è stata già visitata e se i nemici sono stati sconfitti.
+ * Rappresenta una stanza del dungeon.
+ * Contiene nemici e oggetti. Tiene traccia se e' stata visitata e liberata.
+ * Una stanza e' "cleared" quando tutti i nemici sono stati sconfitti.
  */
 public class Room {
 
@@ -30,22 +30,23 @@ public class Room {
     public void addEnemy(Enemy enemy) { enemies.add(enemy); }
     public void addItem(Item item) { items.add(item); }
 
-    public List<Enemy> getEnemies() { return List.copyOf(enemies); }
-    public List<Item> getItems() { return List.copyOf(items); }
+    /**
+     * Una stanza senza nemici e' considerata gia' liberata alla creazione.
+     * Questo evita che stanze vuote blocchino la navigazione.
+     */
+    public boolean isCleared() {
+        if (enemies.isEmpty()) return true;
+        return cleared;
+    }
 
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
+    public void setCleared(boolean cleared) { this.cleared = cleared; }
 
     public boolean isVisited() { return visited; }
     public void setVisited(boolean visited) { this.visited = visited; }
 
-    public boolean isCleared() { return cleared; }
-    public void setCleared(boolean cleared) { this.cleared = cleared; }
-
-    /** Rimuove un oggetto dalla stanza quando viene raccolta dal giocatore. */
-    public void removeItem(Item item) { items.remove(item); }
-
-    /** Rimuove un nemico dalla stanza quando viene sconfitto. */
-    public void removeEnemy(Enemy enemy) { enemies.remove(enemy); }
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
+    public List<Enemy> getEnemies() { return enemies; }
+    public List<Item> getItems() { return items; }
 }
