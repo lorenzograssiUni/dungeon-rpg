@@ -7,9 +7,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Pozione di cura. Ripristina una quantita' fissa di HP al personaggio.
- * Implementa equals/hashCode basati su nome e healAmount per supportare
- * HashSet e le operazioni di deduplicazione dell'inventario.
+ * Pozione di cura: ripristina una quantita' fissa di HP al personaggio.
+ * Valore standard: +40 HP.
  */
 public class Potion implements Item, Serializable {
 
@@ -21,14 +20,18 @@ public class Potion implements Item, Serializable {
     private final int healAmount;
 
     public Potion(String name, String description, int healAmount) {
-        this.name = name;
+        this.name        = name;
         this.description = description;
-        this.healAmount = healAmount;
+        this.healAmount  = healAmount;
     }
 
-    /** Costruttore semplificato usato nei test. */
     public Potion(String name, int healAmount) {
         this(name, "Ripristina " + healAmount + " HP", healAmount);
+    }
+
+    /** Costruttore standard: Pozione da 40 HP. */
+    public Potion() {
+        this("Pozione", 40);
     }
 
     @Override
@@ -36,10 +39,10 @@ public class Potion implements Item, Serializable {
         character.heal(healAmount);
     }
 
-    /**
-     * Due pozioni sono uguali se hanno lo stesso nome e lo stesso healAmount.
-     * La descrizione e' ignorata per permettere varianti descrittive dello stesso oggetto.
-     */
+    @Override public String getName()        { return name; }
+    @Override public String getDescription() { return description; }
+    public int getHealAmount()               { return healAmount; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -48,11 +51,5 @@ public class Potion implements Item, Serializable {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(name, healAmount);
-    }
-
-    @Override public String getName() { return name; }
-    @Override public String getDescription() { return description; }
-    public int getHealAmount() { return healAmount; }
+    public int hashCode() { return Objects.hash(name, healAmount); }
 }

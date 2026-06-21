@@ -4,52 +4,69 @@ import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
+import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
 
 import java.util.Random;
 
 /**
- * Gestisce tutta la logica del combattimento a turni.
- * Calcola il danno, applica critici, bonus passivi e modificatori
- * legati al tipo di attacco e alle abilita' speciali dei personaggi.
+ * Gestisce la logica del combattimento a turni.
  *
- * NOTA: executeAttack restituisce il danno NETTO effettivamente subito
- * dal difensore (cioe' gia' ridotto dalla sua difesa), non il danno lordo.
- * Questo e' coerente con quanto si legge dall'esterno (HP prima - HP dopo).
+ * Novita' rispetto alla versione precedente:
+ *   - Iniziativa: chi ha agility >= agility avversario attacca per primo.
+ *     In caso di parita' va prima il giocatore.
+ *   - Stamina: ogni executeAttack consuma 1 stamina all'attaccante.
+ *     Se stamina = 0, il metodo lancia IllegalStateException (il chiamante
+ *     deve verificare canAttack() prima di invocare).
+ *   - executeSpecialAttack: esegue un SpecialAttack consumando la stamina
+ *     richiesta dall'attacco speciale.
  */
 public class CombatSystem {
 
     private final Random random;
 
-    /** Costruttore di default: usa un Random non deterministico (produzione). */
     public CombatSystem() {
         this.random = new Random();
     }
 
-    /**
-     * Costruttore per i test: accetta un Random controllato.
-     *
-     * @param random istanza di Random da usare (es. mock o seed fisso)
-     */
     public CombatSystem(Random random) {
         this.random = random;
     }
 
+    // -------------------------------------------------------------------------
+    // Iniziativa
+    // -------------------------------------------------------------------------
+
     /**
-     * Esegue un attacco dell'attaccante verso il difensore.
+     * Restituisce true se l'attaccante ha l'iniziativa sul difensore.
+     * In parita' l'attaccante (giocatore) ha priorita'.
+     */
+    public boolean hasInitiative(GameCharacter attacker, GameCharacter defender) {
+        return attacker.getAgility() >= defender.getAgility();
+    }
+
+    // -------------------------------------------------------------------------
+    // Attacco normale
+    // -------------------------------------------------------------------------
+
+    /**
+     * Esegue un attacco normale dell'attaccante verso il difensore.
+     * Consuma 1 stamina all'attaccante.
      *
-     * @param attacker          il combattente che attacca
-     * @param defender          il combattente che difende
-     * @param attackType        il tipo di attacco sferrato
-     * @param enemyCritModifier modificatore al critico imposto dal nemico
-     * @return il danno netto inflitto (HP persi dal difensore)
+     * @throws IllegalStateException se l'attaccante non ha stamina sufficiente
      */
     public int executeAttack(GameCharacter attacker, GameCharacter defender,
                              AttackType attackType, double enemyCritModifier) {
+        if (!attacker.canAttack()) {
+            throw new IllegalStateException(
+                    attacker.getName() + " non puo' attaccare: stamina esaurita!");
+        }
 
-        // 1. Critico
+        // Consuma 1 stamina
+        attacker.consumeStaminaForAttack();
+
+        // Critico
         boolean isCritical;
         if (attacker instanceof Thief thief && thief.isStealthBonusActive()) {
-            // Bonus furtivita' Ladro: primo attacco di ogni stanza sempre critico
             isCritical = true;
             thief.consumeStealthBonus();
         } else {
@@ -57,31 +74,53 @@ public class CombatSystem {
             isCritical = random.nextDouble() < effectiveCrit;
         }
 
-        // 2. Danno lordo
+        // Danno lordo
         int baseDamage = attacker.getAttack();
         int damage = isCritical ? baseDamage * 2 : baseDamage;
 
-        // 3. Blocco Guerriero: 20% probabilita' di annullare attacco fisico
+        // Blocco Guerriero (solo attacchi fisici)
         if (defender instanceof Warrior warrior && attackType == AttackType.PHYSICAL) {
             if (random.nextDouble() < warrior.getBlockChance()) {
                 return 0;
             }
         }
 
-        // 4. Schermo e vulnerabilita' del Mago
+        // Schermo e vulnerabilita' Mago
         if (defender instanceof Mage mage) {
             if (attackType == AttackType.PHYSICAL && mage.isMagicShieldActive()) {
                 mage.setMagicShieldActive(false);
-                return 0; // schermo assorbe completamente
+                return 0;
             }
             if (attackType == AttackType.MAGICAL || attackType == AttackType.MIXED) {
-                damage = (int) (damage * 1.30); // vulnerabilita' magica +30%
+                damage = (int)(damage * 1.30);
             }
         }
 
-        // 5. Applica e restituisce danno NETTO (HP persi = differenza prima/dopo)
+        // Danno netto
         int hpBefore = defender.getCurrentHp();
         defender.takeDamage(damage);
         return hpBefore - defender.getCurrentHp();
+    }
+
+    // -------------------------------------------------------------------------
+    // Attacco speciale
+    // -------------------------------------------------------------------------
+
+    /**
+     * Esegue un attacco speciale.
+     * Consuma la stamina richiesta dall'attacco speciale.
+     *
+     * @throws IllegalStateException se l'attaccante non ha stamina sufficiente
+     */
+    public int executeSpecialAttack(GameCharacter attacker, GameCharacter defender,
+                                    SpecialAttack specialAttack) {
+        int cost = specialAttack.getStaminaCost();
+        if (!attacker.canUseSpecial(cost)) {
+            throw new IllegalStateException(
+                    attacker.getName() + " non ha abbastanza stamina per " +
+                    specialAttack.getName() + " (richiede " + cost + ")");
+        }
+        attacker.consumeStaminaForSpecial(cost);
+        return specialAttack.execute(attacker, defender);
     }
 }

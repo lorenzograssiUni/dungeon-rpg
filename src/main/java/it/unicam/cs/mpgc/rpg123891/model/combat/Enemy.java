@@ -7,7 +7,11 @@ import java.io.Serial;
 
 /**
  * Rappresenta un nemico generico del gioco.
- * Estende GameCharacter con le proprieta' specifiche dei nemici.
+ * Estende GameCharacter aggiungendo:
+ *   - attackType        : tipo di danno inflitto
+ *   - critModifierOnPlayer : modifica la crit chance dell'attaccante avversario
+ *   - isBoss            : flag per nemici boss
+ *   - agility           : passato al super per gestire l'iniziativa
  */
 public class Enemy extends GameCharacter {
 
@@ -18,29 +22,32 @@ public class Enemy extends GameCharacter {
     private final double critModifierOnPlayer;
     private final boolean isBoss;
 
-    /** Costruttore completo usato da EnemyFactory. */
+    /**
+     * Costruttore completo usato da EnemyFactory.
+     * agility determina se il nemico attacca prima o dopo il giocatore.
+     */
     public Enemy(String name, int maxHp, int attack, int defense,
-                 double critChance, AttackType attackType,
+                 int agility, double critChance, AttackType attackType,
                  double critModifierOnPlayer, boolean isBoss) {
-        super(name, maxHp, attack, defense, 0, critChance);
-        this.attackType = attackType;
-        this.critModifierOnPlayer = critModifierOnPlayer;
-        this.isBoss = isBoss;
+        super(name, maxHp, attack, defense, agility, 0, critChance);
+        this.attackType            = attackType;
+        this.critModifierOnPlayer  = critModifierOnPlayer;
+        this.isBoss                = isBoss;
     }
 
-    /** Costruttore semplificato usato nei test: name, maxHp, attack, defense, attackType, critChance. */
+    /** Costruttore semplificato per i test. */
     public Enemy(String name, int maxHp, int attack, int defense,
                  AttackType attackType, double critChance) {
-        this(name, maxHp, attack, defense, critChance, attackType, 0.0, false);
+        this(name, maxHp, attack, defense, 0, critChance, attackType, 0.0, false);
     }
 
     @Override
     public CharacterClass getCharacterClass() { return CharacterClass.ENEMY; }
 
     @Override
-    public void applyPassiveBonus() { /* nemici base senza bonus */ }
+    public void applyPassiveBonus() { /* i nemici base non hanno bonus passivi */ }
 
-    public AttackType getAttackType() { return attackType; }
-    public double getCritModifierOnPlayer() { return critModifierOnPlayer; }
-    public boolean isBoss() { return isBoss; }
+    public AttackType getAttackType()            { return attackType; }
+    public double getCritModifierOnPlayer()       { return critModifierOnPlayer; }
+    public boolean isBoss()                      { return isBoss; }
 }
