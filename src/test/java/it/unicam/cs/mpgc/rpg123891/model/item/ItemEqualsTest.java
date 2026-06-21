@@ -1,7 +1,8 @@
 package it.unicam.cs.mpgc.rpg123891.model.item;
 
-import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
-import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Sword;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.DualDaggers;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Greatsword;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,106 +12,82 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test per equals() e hashCode() di Potion, Weapon e GameCharacter.
- * Verifica il contratto: oggetti uguali devono avere lo stesso hashCode.
- * Dimostra anche l'uso corretto con HashSet (lezione 14).
+ * Test di equals/hashCode per Weapon e Potion.
+ * Weapon usa il nome come chiave di uguaglianza.
  */
 class ItemEqualsTest {
 
-    // --- Potion ---
+    // -----------------------------------------------------------------------
+    // Potion equals
+    // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("Due pozioni con stesso nome e healAmount sono uguali")
-    void testPotionEquality() {
-        Potion p1 = new Potion("Pozione di Cura", 30);
-        Potion p2 = new Potion("Pozione di Cura", 30);
+    @DisplayName("Due Potion con stessa quantita' e nome sono uguali")
+    void testPotionEquals() {
+        Potion p1 = new Potion("Pozione", 40);
+        Potion p2 = new Potion("Pozione", 40);
         assertEquals(p1, p2);
-    }
-
-    @Test
-    @DisplayName("Due pozioni uguali hanno lo stesso hashCode")
-    void testPotionHashCode() {
-        Potion p1 = new Potion("Pozione di Cura", 30);
-        Potion p2 = new Potion("Pozione di Cura", 30);
         assertEquals(p1.hashCode(), p2.hashCode());
     }
 
     @Test
-    @DisplayName("Due pozioni diverse non sono uguali")
-    void testPotionInequality() {
-        Potion p1 = new Potion("Piccola", 10);
-        Potion p2 = new Potion("Grande", 50);
+    @DisplayName("Due Potion con quantita' diversa non sono uguali")
+    void testPotionNotEquals() {
+        Potion p1 = new Potion("Pozione", 40);
+        Potion p2 = new Potion("Pozione Grande", 80);
         assertNotEquals(p1, p2);
     }
 
     @Test
-    @DisplayName("HashSet deduplica pozioni uguali correttamente")
-    void testPotionInHashSet() {
+    @DisplayName("Potion in HashSet: duplicati non inseriti")
+    void testPotionInSet() {
         Set<Potion> set = new HashSet<>();
-        set.add(new Potion("Pozione di Cura", 30));
-        set.add(new Potion("Pozione di Cura", 30)); // duplicato
+        set.add(new Potion("Pozione", 40));
+        set.add(new Potion("Pozione", 40)); // duplicato
         assertEquals(1, set.size());
     }
 
-    // --- Weapon ---
+    // -----------------------------------------------------------------------
+    // Weapon equals (basato sul nome)
+    // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("Due armi con stesso nome e attackBonus sono uguali")
-    void testWeaponEquality() {
-        Weapon w1 = new Weapon("Spada", "Desc", 10, 0.1);
-        Weapon w2 = new Weapon("Spada", "Altra desc", 10, 0.1);
+    @DisplayName("Due Sword sono uguali (stesso tipo = stesso nome)")
+    void testWeaponEquals() {
+        Weapon w1 = new Sword();
+        Weapon w2 = new Sword();
         assertEquals(w1, w2);
-    }
-
-    @Test
-    @DisplayName("Due armi uguali hanno lo stesso hashCode")
-    void testWeaponHashCode() {
-        Weapon w1 = new Weapon("Spada", "Desc", 10, 0.1);
-        Weapon w2 = new Weapon("Spada", "Altra desc", 10, 0.1);
         assertEquals(w1.hashCode(), w2.hashCode());
     }
 
     @Test
-    @DisplayName("HashSet deduplica armi uguali correttamente")
-    void testWeaponInHashSet() {
+    @DisplayName("Sword e DualDaggers non sono uguali")
+    void testWeaponNotEquals() {
+        Weapon w1 = new Sword();
+        Weapon w2 = new DualDaggers();
+        assertNotEquals(w1, w2);
+    }
+
+    @Test
+    @DisplayName("Weapon in HashSet: duplicati non inseriti")
+    void testWeaponInSet() {
         Set<Weapon> set = new HashSet<>();
-        set.add(new Weapon("Spada", "Desc", 10, 0.1));
-        set.add(new Weapon("Spada", "Altra", 10, 0.05)); // stesso nome+atk = uguale
-        assertEquals(1, set.size());
+        set.add(new Sword());
+        set.add(new Sword());      // duplicato, non inserito
+        set.add(new Greatsword()); // diverso, inserito
+        assertEquals(2, set.size());
     }
 
-    // --- GameCharacter ---
+    // -----------------------------------------------------------------------
+    // Meat equals
+    // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("Due Warrior con stesso nome sono uguali")
-    void testCharacterEquality() {
-        Warrior w1 = new Warrior("Eroe");
-        Warrior w2 = new Warrior("Eroe");
-        assertEquals(w1, w2);
-    }
-
-    @Test
-    @DisplayName("Due personaggi uguali hanno lo stesso hashCode")
-    void testCharacterHashCode() {
-        Warrior w1 = new Warrior("Eroe");
-        Warrior w2 = new Warrior("Eroe");
-        assertEquals(w1.hashCode(), w2.hashCode());
-    }
-
-    @Test
-    @DisplayName("Warrior e Mage con stesso nome non sono uguali (classi diverse)")
-    void testDifferentClassSameName() {
-        Warrior warrior = new Warrior("Eroe");
-        Mage mage = new Mage("Eroe");
-        assertNotEquals(warrior, mage);
-    }
-
-    @Test
-    @DisplayName("HashSet deduplica personaggi uguali correttamente")
-    void testCharacterInHashSet() {
-        Set<Warrior> set = new HashSet<>();
-        set.add(new Warrior("Eroe"));
-        set.add(new Warrior("Eroe")); // duplicato
-        assertEquals(1, set.size());
+    @DisplayName("Due Meat sono sempre uguali")
+    void testMeatEquals() {
+        Meat m1 = new Meat();
+        Meat m2 = new Meat();
+        assertEquals(m1, m2);
+        assertEquals(m1.hashCode(), m2.hashCode());
     }
 }

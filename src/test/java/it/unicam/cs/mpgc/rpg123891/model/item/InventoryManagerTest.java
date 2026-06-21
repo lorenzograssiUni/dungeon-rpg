@@ -1,9 +1,9 @@
 package it.unicam.cs.mpgc.rpg123891.model.item;
 
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
-import it.unicam.cs.mpgc.rpg123891.model.item.InventoryManager;
-import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
-import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Sword;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.DualDaggers;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.MagicStaff;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,9 +13,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test per InventoryManager.
- * Verifica i metodi basati su Stream API (lezione 15):
- * filter, map, collect, count, max, findFirst, anyMatch.
+ * Test per InventoryManager con il nuovo sistema di armi (Weapon astratta).
+ * Le armi concrete usate: Sword (MAIN_HAND), DualDaggers (MAIN_HAND 2h), MagicStaff.
  */
 class InventoryManagerTest {
 
@@ -24,76 +23,89 @@ class InventoryManagerTest {
 
     @BeforeEach
     void setUp() {
-        warrior = new Warrior("Eroe");
-        warrior.addItem(new Potion("Pozione Piccola", 20));
-        warrior.addItem(new Potion("Pozione Grande", 50));
-        warrior.addItem(new Weapon("Spada", "Desc", 10, 0.1));
-        warrior.addItem(new Weapon("Pugnale", "Desc", 5, 0.15));
+        warrior = new Warrior("TestWarrior");
+        warrior.addItem(new Sword());
+        warrior.addItem(new DualDaggers());
+        warrior.addItem(new Potion());
         manager = new InventoryManager(warrior);
     }
 
     @Test
-    @DisplayName("getPotions() restituisce solo le pozioni (filter + map)")
-    void testGetPotions() {
-        List<Potion> potions = manager.getPotions();
-        assertEquals(2, potions.size());
-        assertTrue(potions.stream().allMatch(p -> p instanceof Potion));
-    }
-
-    @Test
-    @DisplayName("getWeapons() restituisce solo le armi (filter + map)")
+    @DisplayName("getWeapons restituisce solo le armi nell'inventario")
     void testGetWeapons() {
         List<Weapon> weapons = manager.getWeapons();
         assertEquals(2, weapons.size());
+        assertTrue(weapons.stream().anyMatch(w -> w.getName().equals("Spada Semplice")));
+        assertTrue(weapons.stream().anyMatch(w -> w.getName().equals("Doppie Daghe")));
     }
 
     @Test
-    @DisplayName("countPotions() conta correttamente le pozioni (filter + count)")
-    void testCountPotions() {
-        assertEquals(2, manager.countPotions());
+    @DisplayName("getPotions restituisce solo le pozioni")
+    void testGetPotions() {
+        List<Potion> potions = manager.getPotions();
+        assertEquals(1, potions.size());
     }
 
     @Test
-    @DisplayName("getTotalAttackBonus() somma i bonus ATK di tutte le armi (mapToInt + sum)")
-    void testTotalAttackBonus() {
-        assertEquals(15, manager.getTotalAttackBonus()); // 10 + 5
+    @DisplayName("usePotion usa e rimuove la prima pozione")
+    void testUsePotion() {
+        int hpBefore = warrior.getCurrentHp();
+        warrior.takeDamage(30); // toglie 30 - 8 DEF = 22 HP
+        assertTrue(manager.usePotion());
+        assertTrue(warrior.getCurrentHp() > warrior.getCurrentHp() - 40);
+        assertEquals(0, manager.countPotions(), "La pozione deve essere rimossa dopo l'uso");
     }
 
     @Test
-    @DisplayName("getBestWeapon() restituisce l'arma con ATK più alto (max)")
-    void testGetBestWeapon() {
-        assertTrue(manager.getBestWeapon().isPresent());
-        assertEquals("Spada", manager.getBestWeapon().get().getName());
+    @DisplayName("usePotion restituisce false se non ci sono pozioni")
+    void testUsePotionEmpty() {
+        Warrior w2 = new Warrior("Empty");
+        InventoryManager emptyManager = new InventoryManager(w2);
+        assertFalse(emptyManager.usePotion());
     }
 
     @Test
-    @DisplayName("getFirstPotion() restituisce la prima pozione (findFirst)")
-    void testGetFirstPotion() {
-        assertTrue(manager.getFirstPotion().isPresent());
-        assertEquals("Pozione Piccola", manager.getFirstPotion().get().getName());
+    @DisplayName("getAllSpecials raccoglie gli attacchi speciali di tutte le armi")
+    void testGetAllSpecials() {
+        // Sword ha 2 speciali, DualDaggers ha 2 speciali -> totale 4
+        List<SpecialAttack> specials = manager.getAllSpecials();
+        assertEquals(4, specials.size());
+        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Fendente")));
+        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Carica!")));
+        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Sfuriata")));
+        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Ira")));
     }
 
     @Test
-    @DisplayName("getItemNames() restituisce i nomi di tutti gli oggetti (map + collect)")
+    @DisplayName("hasItem trova un oggetto per nome")
+    void testHasItem() {
+        assertTrue(manager.hasItem("Spada Semplice"));
+        assertTrue(manager.hasItem("Pozione"));
+        assertFalse(manager.hasItem("Spadone"));
+    }
+
+    @Test
+    @DisplayName("getItemNames restituisce i nomi di tutti gli oggetti")
     void testGetItemNames() {
         List<String> names = manager.getItemNames();
-        assertEquals(4, names.size());
-        assertTrue(names.contains("Spada"));
-        assertTrue(names.contains("Pozione Piccola"));
+        assertEquals(3, names.size());
+        assertTrue(names.contains("Spada Semplice"));
+        assertTrue(names.contains("Doppie Daghe"));
+        assertTrue(names.contains("Pozione"));
     }
 
     @Test
-    @DisplayName("hasItem() trova un oggetto per nome (anyMatch)")
-    void testHasItem() {
-        assertTrue(manager.hasItem("Spada"));
-        assertFalse(manager.hasItem("OggettoInesistente"));
-    }
+    @DisplayName("useMeat usa e rimuove la carne ripristinando stamina")
+    void testUseMeat() {
+        Warrior w2 = new Warrior("MeatTest");
+        w2.consumeStaminaForAttack(); // stamina 8 -> 7
+        w2.consumeStaminaForAttack(); // stamina 7 -> 6
+        w2.addItem(new Meat());
+        InventoryManager m2 = new InventoryManager(w2);
 
-    @Test
-    @DisplayName("getBestWeapon() restituisce empty su inventario senza armi")
-    void testBestWeaponEmptyInventory() {
-        Warrior nudo = new Warrior("Senzarmi");
-        InventoryManager emptyManager = new InventoryManager(nudo);
-        assertTrue(emptyManager.getBestWeapon().isEmpty());
+        int staBefore = w2.getCurrentStamina(); // 6
+        assertTrue(m2.useMeat());
+        assertEquals(staBefore + 2, w2.getCurrentStamina()); // 6 + 2 = 8
+        assertEquals(0, m2.countMeats(), "La carne deve essere rimossa dopo l'uso");
     }
 }
