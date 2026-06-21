@@ -19,14 +19,18 @@ public interface PlayerCharacter extends Serializable {
     int getMaxHp();
     int getAttack();
     int getDefense();
+    int getAgility();
     int getCurrentStamina();
-    int getStamina();
+    int getMaxStamina();
     double getCritChance();
     boolean isAlive();
+    boolean canAttack();
     CharacterClass getCharacterClass();
     void applyPassiveBonus();
     List<Item> getInventory();
     void addItem(Item item);
+    void removeItem(Item item);
     void takeDamage(int damage);
     void heal(int amount);
+    void restoreStamina(int amount);
 }
