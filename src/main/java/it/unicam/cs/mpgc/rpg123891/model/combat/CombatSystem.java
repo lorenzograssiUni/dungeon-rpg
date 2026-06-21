@@ -11,14 +11,13 @@ import java.util.Random;
 /**
  * Gestisce la logica del combattimento a turni.
  *
- * Novita' rispetto alla versione precedente:
- *   - Iniziativa: chi ha agility >= agility avversario attacca per primo.
- *     In caso di parita' va prima il giocatore.
- *   - Stamina: ogni executeAttack consuma 1 stamina all'attaccante.
- *     Se stamina = 0, il metodo lancia IllegalStateException (il chiamante
- *     deve verificare canAttack() prima di invocare).
- *   - executeSpecialAttack: esegue un SpecialAttack consumando la stamina
- *     richiesta dall'attacco speciale.
+ * Regole stamina:
+ *   - Solo i personaggi giocabili (non Enemy) consumano stamina.
+ *   - Se un PlayerCharacter ha stamina 0, non puo' attaccare.
+ *   - I nemici non hanno stamina e attaccano sempre liberamente.
+ *
+ * Iniziativa: chi ha agility >= agility avversario attacca per primo.
+ *   In parita' il giocatore ha priorita'.
  */
 public class CombatSystem {
 
@@ -36,10 +35,6 @@ public class CombatSystem {
     // Iniziativa
     // -------------------------------------------------------------------------
 
-    /**
-     * Restituisce true se l'attaccante ha l'iniziativa sul difensore.
-     * In parita' l'attaccante (giocatore) ha priorita'.
-     */
     public boolean hasInitiative(GameCharacter attacker, GameCharacter defender) {
         return attacker.getAgility() >= defender.getAgility();
     }
@@ -49,20 +44,27 @@ public class CombatSystem {
     // -------------------------------------------------------------------------
 
     /**
-     * Esegue un attacco normale dell'attaccante verso il difensore.
-     * Consuma 1 stamina all'attaccante.
+     * Esegue un attacco normale.
      *
-     * @throws IllegalStateException se l'attaccante non ha stamina sufficiente
+     * Se l'attaccante e' un giocatore (non Enemy):
+     *   - Controlla che abbia almeno 1 stamina (lancia IllegalStateException se 0)
+     *   - Consuma 1 stamina
+     * I nemici (Enemy) non consumano stamina.
+     *
+     * @throws IllegalStateException se un giocatore ha stamina 0
      */
     public int executeAttack(GameCharacter attacker, GameCharacter defender,
                              AttackType attackType, double enemyCritModifier) {
-        if (!attacker.canAttack()) {
-            throw new IllegalStateException(
-                    attacker.getName() + " non puo' attaccare: stamina esaurita!");
-        }
 
-        // Consuma 1 stamina
-        attacker.consumeStaminaForAttack();
+        boolean isPlayer = !(attacker instanceof Enemy);
+
+        if (isPlayer) {
+            if (!attacker.canAttack()) {
+                throw new IllegalStateException(
+                        attacker.getName() + " non puo' attaccare: stamina esaurita!");
+            }
+            attacker.consumeStaminaForAttack();
+        }
 
         // Critico
         boolean isCritical;
@@ -78,17 +80,17 @@ public class CombatSystem {
         int baseDamage = attacker.getAttack();
         int damage = isCritical ? baseDamage * 2 : baseDamage;
 
-        // Blocco Guerriero (solo attacchi fisici)
+        // Blocco Warrior (solo attacchi fisici)
         if (defender instanceof Warrior warrior && attackType == AttackType.PHYSICAL) {
             if (random.nextDouble() < warrior.getBlockChance()) {
                 return 0;
             }
         }
 
-        // Schermo e vulnerabilita' Mago
-        if (defender instanceof Mage mage) {
-            if (attackType == AttackType.PHYSICAL && mage.isMagicShieldActive()) {
-                mage.setMagicShieldActive(false);
+        // Scudo e vulnerabilita' Mago
+        if (defender instanceof Mage mageChar) {
+            if (attackType == AttackType.PHYSICAL && mageChar.isMagicShieldActive()) {
+                mageChar.setMagicShieldActive(false);
                 return 0;
             }
             if (attackType == AttackType.MAGICAL || attackType == AttackType.MIXED) {
@@ -103,14 +105,13 @@ public class CombatSystem {
     }
 
     // -------------------------------------------------------------------------
-    // Attacco speciale
+    // Attacco speciale (solo giocatori)
     // -------------------------------------------------------------------------
 
     /**
-     * Esegue un attacco speciale.
-     * Consuma la stamina richiesta dall'attacco speciale.
+     * Esegue un attacco speciale consumando la stamina richiesta.
      *
-     * @throws IllegalStateException se l'attaccante non ha stamina sufficiente
+     * @throws IllegalStateException se la stamina e' insufficiente
      */
     public int executeSpecialAttack(GameCharacter attacker, GameCharacter defender,
                                     SpecialAttack specialAttack) {

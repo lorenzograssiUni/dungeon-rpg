@@ -8,8 +8,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test per la classe Mage.
- * Verifica che la classe rispetti il contratto di GameCharacter
- * e che le statistiche siano coerenti con il profilo "bassa difesa, alto attacco".
+ * Riflette il nuovo design: Mage e' un caster con ATK base basso (15)
+ * ma alta stamina (10) e buona agilita' (6). Il danno viene amplificato
+ * dalle armi magiche (Bastone Magico +5 ATK per il Mage).
  */
 class MageTest {
 
@@ -18,7 +19,7 @@ class MageTest {
 
     @BeforeEach
     void setUp() {
-        mage = new Mage("Gandalf");
+        mage    = new Mage("Gandalf");
         warrior = new Warrior("Eroe");
     }
 
@@ -29,9 +30,24 @@ class MageTest {
     }
 
     @Test
-    @DisplayName("Il Mage ha attacco maggiore del Warrior")
-    void testMageHasHigherAttackThanWarrior() {
-        assertTrue(mage.getAttack() > warrior.getAttack());
+    @DisplayName("Il Mage ha ATK base inferiore al Warrior (caster: potenziato dalle armi)")
+    void testMageHasLowerBaseAttackThanWarrior() {
+        assertTrue(mage.getAttack() < warrior.getAttack(),
+            "Mage ATK base (" + mage.getAttack() + ") deve essere < Warrior ATK base (" + warrior.getAttack() + ")");
+    }
+
+    @Test
+    @DisplayName("Il Mage ha piu' stamina del Warrior")
+    void testMageHasMoreStaminaThanWarrior() {
+        assertTrue(mage.getMaxStamina() > warrior.getMaxStamina(),
+            "Mage stamina (" + mage.getMaxStamina() + ") deve essere > Warrior stamina (" + warrior.getMaxStamina() + ")");
+    }
+
+    @Test
+    @DisplayName("Il Mage ha piu' agilita' del Warrior")
+    void testMageHasHigherAgilityThanWarrior() {
+        assertTrue(mage.getAgility() > warrior.getAgility(),
+            "Mage agilita' (" + mage.getAgility() + ") deve essere > Warrior agilita' (" + warrior.getAgility() + ")");
     }
 
     @Test
@@ -47,8 +63,29 @@ class MageTest {
     }
 
     @Test
-    @DisplayName("Il Mage è vivo all'inizio")
+    @DisplayName("Il Mage inizia con stamina piena")
+    void testInitialStaminaFull() {
+        assertEquals(mage.getMaxStamina(), mage.getCurrentStamina());
+    }
+
+    @Test
+    @DisplayName("Il Mage e' vivo all'inizio")
     void testIsAlive() {
         assertTrue(mage.isAlive());
+    }
+
+    @Test
+    @DisplayName("Lo scudo magico e' inattivo all'inizio")
+    void testMagicShieldInactiveAtStart() {
+        assertFalse(mage.isMagicShieldActive());
+    }
+
+    @Test
+    @DisplayName("applyPassiveBonus attiva lo scudo magico e ricarica 2 stamina")
+    void testApplyPassiveBonusActivatesShield() {
+        mage.consumeStaminaForAttack(); // stamina 10 -> 9
+        mage.applyPassiveBonus();
+        assertTrue(mage.isMagicShieldActive());
+        assertEquals(mage.getMaxStamina(), mage.getCurrentStamina()); // 9 + 2 = 10 (capped)
     }
 }
