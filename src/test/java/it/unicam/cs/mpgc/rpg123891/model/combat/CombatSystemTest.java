@@ -26,25 +26,20 @@ class CombatSystemTest {
      * Random che restituisce sempre il valore massimo (0.9999...):
      * - nessun critico (serve nextDouble < critChance)
      * - nessun blocco Warrior (serve nextDouble < blockChance)
-     * Usato nei test dove l'RNG non deve interferire.
      */
     private static final Random NO_RNG = new Random() {
-        @Override
-        public double nextDouble() { return 0.9999999999; }
+        @Override public double nextDouble() { return 0.9999999999; }
     };
 
     /**
      * Random che restituisce sempre 0.0:
      * - critico garantito
      * - blocco Warrior garantito
-     * Usato nei test che verificano questi comportamenti.
      */
     private static final Random ALWAYS_RNG = new Random() {
-        @Override
-        public double nextDouble() { return 0.0; }
+        @Override public double nextDouble() { return 0.0; }
     };
 
-    private CombatSystem combatSystem;
     private CombatSystem combatSystemNoRng;
     private Warrior warrior;
     private Mage mage;
@@ -53,12 +48,10 @@ class CombatSystemTest {
 
     @BeforeEach
     void setUp() {
-        combatSystem      = new CombatSystem();          // produzione (non deterministico)
-        combatSystemNoRng = new CombatSystem(NO_RNG);    // test: nessun critico/blocco casuale
+        combatSystemNoRng = new CombatSystem(NO_RNG);
         warrior = new Warrior("Eroe");
         mage    = new Mage("Gandalf");
         thief   = new Thief("Ombra");
-        // ricreato ad ogni test per evitare stato residuo
         goblin  = new Enemy("Goblin", 30, 10, 2, AttackType.PHYSICAL, 0.0);
     }
 
@@ -73,7 +66,8 @@ class CombatSystemTest {
     @Test
     @DisplayName("Un attacco non porta mai gli HP sotto zero")
     void testHpNeverNegativeAfterAttack() {
-        for (int i = 0; i < 20; i++) {
+        // Attacca finche' il goblin e' vivo E il warrior ha stamina disponibile
+        while (goblin.isAlive() && warrior.canAttack()) {
             combatSystemNoRng.executeAttack(warrior, goblin, AttackType.PHYSICAL, 0);
         }
         assertTrue(goblin.getCurrentHp() >= 0);
@@ -89,7 +83,7 @@ class CombatSystemTest {
     }
 
     // -------------------------------------------------------------------------
-    // Thief – stealth bonus
+    // Thief - stealth bonus
     // -------------------------------------------------------------------------
 
     @Test
@@ -103,14 +97,13 @@ class CombatSystemTest {
     @DisplayName("Il Thief con stealth bonus infligge sempre un critico (danno doppio)")
     void testThiefStealthFirstAttackIsCritical() {
         thief.applyPassiveBonus();
-        int baseDamage = thief.getAttack();   // 20
-        int defense    = goblin.getDefense(); // 2
-        int hpBefore   = goblin.getCurrentHp(); // 30
+        int baseDamage = thief.getAttack();
+        int defense    = goblin.getDefense();
+        int hpBefore   = goblin.getCurrentHp();
 
         combatSystemNoRng.executeAttack(thief, goblin, AttackType.PHYSICAL, 0);
 
-        int actualDamage = hpBefore - goblin.getCurrentHp();
-        // Il danno lordo e' baseDamage*2 - defense, ma cappato agli HP disponibili
+        int actualDamage   = hpBefore - goblin.getCurrentHp();
         int expectedDamage = Math.min(hpBefore, Math.max(0, (baseDamage * 2) - defense));
         assertEquals(expectedDamage, actualDamage);
     }
@@ -125,7 +118,7 @@ class CombatSystemTest {
     }
 
     // -------------------------------------------------------------------------
-    // Warrior – block
+    // Warrior - block
     // -------------------------------------------------------------------------
 
     @Test
@@ -140,8 +133,6 @@ class CombatSystemTest {
     @Test
     @DisplayName("Il Warrior non blocca attacchi magici")
     void testWarriorDoesNotBlockMagicAttack() {
-        // Usiamo un nemico con attacco alto (50) per bucare la difesa del Warrior (10)
-        // danno netto atteso = 50 - 10 = 40, certamente > 0
         Enemy strongEnemy = new Enemy("Troll", 100, 50, 0, AttackType.MAGICAL, 0.0);
         CombatSystem alwaysBlock = new CombatSystem(ALWAYS_RNG);
         int hpBefore = warrior.getCurrentHp();
@@ -150,7 +141,7 @@ class CombatSystemTest {
     }
 
     // -------------------------------------------------------------------------
-    // Mage – shield e vulnerabilita' magica
+    // Mage - shield e vulnerabilita' magica
     // -------------------------------------------------------------------------
 
     @Test
@@ -166,7 +157,7 @@ class CombatSystemTest {
     @Test
     @DisplayName("Il Mage subisce danno aumentato da attacchi magici (+30%)")
     void testMageVulnerableToMagicAttack() {
-        int hpBefore = mage.getCurrentHp();
+        int hpBefore    = mage.getCurrentHp();
         combatSystemNoRng.executeAttack(goblin, mage, AttackType.MAGICAL, 0);
         int damage      = hpBefore - mage.getCurrentHp();
         int expectedDmg = Math.max(0, (int)(goblin.getAttack() * 1.30) - mage.getDefense());
