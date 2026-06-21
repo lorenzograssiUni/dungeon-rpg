@@ -41,6 +41,7 @@ public class GameUI extends Application implements UIInterface {
     private Label hpTextLabel;
     private Rectangle hpBarFill;
     private Label staminaLabel;
+    private Label agilityLabel;
     private ListView<String> inventoryList;
 
     // --- Pannello stanza (destra) ---
@@ -105,7 +106,8 @@ public class GameUI extends Application implements UIInterface {
         hpBarContainer.getChildren().addAll(hpBarBg, hpBarFill);
         hpBarContainer.setAlignment(Pos.CENTER_LEFT);
 
-        staminaLabel = styledLabel("Stamina: --/--", "-fx-text-fill: #a8a8b3; -fx-font-size: 11;");
+        staminaLabel  = styledLabel("Stamina: --/--",  "-fx-text-fill: #a8a8b3; -fx-font-size: 11;");
+        agilityLabel  = styledLabel("Agilita': --",    "-fx-text-fill: #a8a8b3; -fx-font-size: 11;");
 
         Label invTitle = styledLabel("INVENTARIO", "-fx-font-weight: bold; -fx-text-fill: #e94560; -fx-font-size: 12;");
         VBox.setMargin(invTitle, new Insets(10, 0, 0, 0));
@@ -118,7 +120,8 @@ public class GameUI extends Application implements UIInterface {
 
         panel.getChildren().addAll(
                 title, playerNameLabel, playerClassLabel,
-                hpTextLabel, hpBarContainer, staminaLabel,
+                hpTextLabel, hpBarContainer,
+                staminaLabel, agilityLabel,
                 invTitle, inventoryList
         );
         return panel;
@@ -321,7 +324,7 @@ public class GameUI extends Application implements UIInterface {
     // -------------------------
 
     /**
-     * Aggiorna il pannello del personaggio: nome, classe, HP bar, stamina, inventario.
+     * Aggiorna il pannello del personaggio: nome, classe, HP bar, stamina, agilita', inventario.
      * Chiamato dopo ogni azione che modifica lo stato del giocatore.
      */
     @Override
@@ -332,15 +335,16 @@ public class GameUI extends Application implements UIInterface {
         playerNameLabel.setText(player.getName());
         playerClassLabel.setText("Classe: " + player.getCharacterClass());
         hpTextLabel.setText("HP: " + player.getCurrentHp() + " / " + player.getMaxHp());
-        staminaLabel.setText("Stamina: " + player.getCurrentStamina() + " / " + player.getStamina());
+        staminaLabel.setText("Stamina: " + player.getCurrentStamina() + " / " + player.getMaxStamina());
+        agilityLabel.setText("Agilita': " + player.getAgility());
 
         // HP bar: calcola larghezza e colore in base alla percentuale
         double hpPct = (double) player.getCurrentHp() / player.getMaxHp();
         double barWidth = Math.max(0, 180 * hpPct);
         hpBarFill.setWidth(barWidth);
-        if (hpPct > 0.60) hpBarFill.setFill(Color.web("#4caf50"));       // verde
+        if (hpPct > 0.60) hpBarFill.setFill(Color.web("#4caf50"));      // verde
         else if (hpPct > 0.30) hpBarFill.setFill(Color.web("#ff9800")); // arancione
-        else hpBarFill.setFill(Color.web("#e94560"));                    // rosso
+        else hpBarFill.setFill(Color.web("#e94560"));                   // rosso
 
         // Inventario: mostra nome di ogni oggetto
         List<Item> inv = player.getInventory();
@@ -351,7 +355,6 @@ public class GameUI extends Application implements UIInterface {
 
     /**
      * Aggiorna il pannello della stanza: nome, descrizione e lista nemici vivi.
-     * Chiamato dopo ogni azione che puo' modificare lo stato della stanza.
      */
     private void refreshRoomPanel() {
         if (controller.getGameState() == null) return;
