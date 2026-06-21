@@ -11,16 +11,15 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Classe astratta base per tutte le armi.
+ * Classe astratta base per tutte le armi e gli equipaggiamenti.
  *
- * Ogni arma concreta:
- *   1. Definisce i bonus stat per classe tramite una Map<CharacterClass, StatModifier>
- *      (bonus diversi per Warrior / Mage / Thief).
- *   2. Implementa getSpecialAttacks() restituendo la lista degli attacchi speciali
- *      specifici di quell'arma.
+ * Ogni sottoclasse concreta definisce:
+ *   - getSlot()           : quale slot occupa (MAIN_HAND / OFF_HAND / BODY)
+ *   - isTwoHanded()       : se occupa anche OFF_HAND (blocca Shield)
+ *   - getSpecialAttacks() : lista attacchi speciali (vuota per item non offensivi)
+ *   - modifiers           : Map<CharacterClass, StatModifier> con bonus per classe
  *
- * Il metodo use() applica automaticamente il StatModifier corretto in base
- * alla classe del personaggio che equipaggia l'arma.
+ * Il metodo use() applica i bonus; il metodo remove() li rimuove (rollback Opzione A).
  */
 public abstract class Weapon implements Item, Serializable {
 
@@ -29,38 +28,68 @@ public abstract class Weapon implements Item, Serializable {
 
     private final String name;
     private final String description;
-    /** Bonus per classe: CharacterClass -> modificatori stat. */
     private final Map<CharacterClass, StatModifier> modifiers;
 
     protected Weapon(String name, String description,
                      Map<CharacterClass, StatModifier> modifiers) {
-        this.name        = name;
+        this.name      = name;
         this.description = description;
-        this.modifiers   = Collections.unmodifiableMap(modifiers);
+        this.modifiers = Collections.unmodifiableMap(modifiers);
     }
 
+    // -------------------------------------------------------------------------
+    // Slot e tipo
+    // -------------------------------------------------------------------------
+
+    /** Slot che questo item occupa quando equipaggiato. */
+    public abstract EquipSlot getSlot();
+
     /**
-     * Applica i bonus dell'arma al personaggio in base alla sua classe.
-     * Se la classe non e' mappata, non applica nulla.
+     * True se l'arma e' a due mani (occupa MAIN_HAND e blocca OFF_HAND).
+     * Default: false. Override in Greatsword e DualDaggers.
+     */
+    public boolean isTwoHanded() { return false; }
+
+    /** Lista attacchi speciali. Vuota per item puramente difensivi. */
+    public abstract List<SpecialAttack> getSpecialAttacks();
+
+    // -------------------------------------------------------------------------
+    // Applicazione e rimozione bonus
+    // -------------------------------------------------------------------------
+
+    /**
+     * Applica i bonus stat al personaggio in base alla sua classe.
+     * Chiamato da EquipmentManager.equip().
      */
     @Override
     public void use(GameCharacter character) {
-        StatModifier mod = modifiers.getOrDefault(
-                character.getCharacterClass(), StatModifier.empty());
-        if (mod.attackDelta()     != 0) character.increaseAttack(mod.attackDelta());
-        if (mod.defenseDelta()    != 0) character.increaseDefense(mod.defenseDelta());
-        if (mod.agilityDelta()    != 0) character.increaseAgility(mod.agilityDelta());
-        if (mod.maxHpDelta()      != 0) character.increaseMaxHp(mod.maxHpDelta());
-        if (mod.maxStaminaDelta() != 0) character.increaseMaxStamina(mod.maxStaminaDelta());
-        if (mod.critDelta()       != 0) character.increaseCritChance(mod.critDelta());
+        applyMod(character, getModifierFor(character.getCharacterClass()), +1);
     }
 
-    /** Lista degli attacchi speciali disponibili con questa arma. */
-    public abstract List<SpecialAttack> getSpecialAttacks();
+    /**
+     * Rimuove i bonus stat (rollback). Chiamato da EquipmentManager.unequip().
+     * Applica il modificatore invertito; le stat non scendono sotto 0.
+     */
+    public void remove(GameCharacter character) {
+        applyMod(character, getModifierFor(character.getCharacterClass()), -1);
+    }
+
+    private void applyMod(GameCharacter character, StatModifier mod, int sign) {
+        if (mod.attackDelta()     != 0) character.increaseAttack(mod.attackDelta()     * sign);
+        if (mod.defenseDelta()    != 0) character.increaseDefense(mod.defenseDelta()   * sign);
+        if (mod.agilityDelta()    != 0) character.increaseAgility(mod.agilityDelta()   * sign);
+        if (mod.maxHpDelta()      != 0) character.increaseMaxHp(mod.maxHpDelta()       * sign);
+        if (mod.maxStaminaDelta() != 0) character.increaseMaxStamina(mod.maxStaminaDelta() * sign);
+        if (mod.critDelta()       != 0) character.increaseCritChance(mod.critDelta()   * sign);
+    }
 
     public StatModifier getModifierFor(CharacterClass cls) {
         return modifiers.getOrDefault(cls, StatModifier.empty());
     }
+
+    // -------------------------------------------------------------------------
+    // Getter e utility
+    // -------------------------------------------------------------------------
 
     @Override public String getName()        { return name; }
     @Override public String getDescription() { return description; }
