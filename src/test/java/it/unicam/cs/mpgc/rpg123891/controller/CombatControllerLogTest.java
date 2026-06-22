@@ -4,10 +4,9 @@ import it.unicam.cs.mpgc.rpg123891.model.character.*;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
 import it.unicam.cs.mpgc.rpg123891.model.world.*;
+import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,7 +27,7 @@ public class CombatControllerLogTest {
     void setUp() {
         Warrior player = new Warrior("G");
         player.applyPassiveBonus();
-        gc = new GameController();
+        gc = new GameController(new JsonPersistenceManager());
         gc.startNewGame(player);
         DungeonMap map = gc.getGameState().getDungeonMap();
         cc = new CombatController(gc, map);
@@ -67,7 +66,6 @@ public class CombatControllerLogTest {
 
     @Test
     void usePotion_whenEmpty_logContainsNessuna() {
-        // Consuma tutte le pozioni
         while (gc.countPotions() > 0) gc.useFirstPotion();
         CombatController.TurnResult result = cc.playerUsePotion();
         assertTrue(result.log().stream().anyMatch(l -> l.contains("Nessuna")));
@@ -75,10 +73,7 @@ public class CombatControllerLogTest {
 
     @Test
     void enemyTurn_log_containsDamageDetails() {
-        // Forziamo un attacco nemico eseguendo un turno
-        // Il goblin attacca nel handleEnemyTurns -> log deve contenere "lordo"
         CombatController.TurnResult result = cc.playerNormalAttack(goblin);
-        // Se il goblin e' ancora vivo attacca, altrimenti wave cleared
         if (!result.waveCleared()) {
             boolean hasEnemyLog = result.log().stream()
                     .anyMatch(l -> l.contains("[ENEMY]") && l.contains("lordo"));
