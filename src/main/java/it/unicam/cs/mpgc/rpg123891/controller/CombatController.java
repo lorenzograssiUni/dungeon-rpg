@@ -103,7 +103,6 @@ public class CombatController implements Serializable {
                 player.getName(), target.getName(), dmg));
 
         checkUovoDeath(target, log);
-        checkCaricaOnAttack();
 
         // --- Turno nemici ---
         enemyTurns(log);
@@ -242,58 +241,39 @@ public class CombatController implements Serializable {
     // Turno dei nemici
     // =========================================================================
 
-    /**
-     * Esegue il turno di tutti i nemici vivi dell'ondata corrente.
-     * Ogni nemico:
-     *   1. Se stordito: rimuove lo stordimento e salta il turno
-     *   2. Se ha un'abilita' speciale: la usa con probabilita' 30%
-     *      (sempre al primo turno per il Re Goblin, gestito da ReGoblinThrowAbility)
-     *   3. Altrimenti: attacco normale
-     */
     private void enemyTurns(List<String> log) {
         Wave wave = gameController.getCurrentRoom().getCurrentWave();
         if (wave == null) return;
 
         GameCharacter player = asGC(gameController.getPlayer());
-
-        // Copia la lista per gestire eventuali aggiunte (evocazioni Strega)
         List<Enemy> enemies = new ArrayList<>(wave.getEnemies());
 
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) continue;
             if (!player.isAlive()) break;
 
-            // 1. Stordimento
             if (enemy.isStunned()) {
                 enemy.clearStun();
                 log.add(enemy.getName() + " e' stordito e salta il turno.");
                 continue;
             }
 
-            // 2. Abilita' speciale (30% probabilita')
             if (enemy.hasAbility() && random.nextDouble() < 0.30) {
                 EnemyAbility.AbilityResult result = enemy.getAbility().use(enemy, player);
                 log.add(result.message());
 
-                // Gestisci evocazioni (Strega)
                 if (!result.summonedEnemies().isEmpty()) {
                     handleSummons(result.summonedEnemies(), wave, log);
                 }
-
-                // Gestisci bruciatura (Drago)
                 if (result.burnEffect() != null) {
                     activeBurn = result.burnEffect();
                 }
-
-                // La WitchSummonAbility imposta immune sulla Strega
                 if (enemy.getName().equals("Strega") && !result.summonedEnemies().isEmpty()) {
                     enemy.setImmune(true);
                     log.add("La Strega e' immune finche' gli scheletri sono in vita!");
                 }
 
             } else {
-                // 3. Attacco normale
-                // L'Uovo ha ATK 1 che ignora la difesa
                 int dmg;
                 if (enemy.getName().equals("Uovo")) {
                     player.applyBurnDamage(1);
@@ -306,7 +286,6 @@ public class CombatController implements Serializable {
                         enemy.getName(), player.getName(), dmg));
             }
 
-            // Aggiorna immunità Strega (rimuovi se tutti gli scheletri evocati morti)
             checkWitchImmunity(wave, log);
         }
     }
@@ -315,10 +294,6 @@ public class CombatController implements Serializable {
     // Meccaniche speciali
     // =========================================================================
 
-    /**
-     * Aggiunge i nemici evocati all'ondata corrente.
-     * Attiva il buff passivo del Drago se la Sala del Tesoro era stata liberata.
-     */
     private void handleSummons(List<Enemy> summoned, Wave wave, List<String> log) {
         for (Enemy s : summoned) {
             wave.getEnemies().add(s);
@@ -326,48 +301,30 @@ public class CombatController implements Serializable {
         }
     }
 
-    /**
-     * Rimuove l'immunità della Strega se tutti i nemici evocati sono morti.
-     * Considera "evocati" tutti i nemici nell'ondata tranne la Strega stessa.
-     */
     private void checkWitchImmunity(Wave wave, List<String> log) {
         Enemy witch = wave.getEnemies().stream()
                 .filter(e -> e.getName().equals("Strega") && e.isImmune())
                 .findFirst().orElse(null);
         if (witch == null) return;
 
-        boolean anyScheletrAlive = wave.getEnemies().stream()
+        boolean anyAlive = wave.getEnemies().stream()
                 .filter(e -> !e.getName().equals("Strega"))
                 .anyMatch(Enemy::isAlive);
 
-        if (!anyScheletrAlive) {
+        if (!anyAlive) {
             witch.setImmune(false);
             log.add("Tutti gli scheletri sono caduti! La Strega non e' piu' immune.");
         }
     }
 
-    /**
-     * Gestisce la morte di un Uovo:
-     *   - Se l'Uovo muore prima di 3 turni: scompare (nessuna trasformazione)
-     *   - Se sopravvive 3 turni: si trasforma in Cucciolo di Drago
-     *
-     * Chiamato dopo ogni attacco su un nemico.
-     */
     private void checkUovoDeath(Enemy enemy, List<String> log) {
         if (!enemy.getName().equals("Uovo")) return;
         if (!enemy.isAlive()) {
             eggTurnCounter.remove(enemy);
             log.add("L'Uovo e' stato distrutto prima di schiudersi!");
-            // 50% drop Carne (per i cuccioli, spec dice drop solo dai cuccioli;
-            // le uova non droppano — nessun drop qui)
         }
     }
 
-    /**
-     * Avanza il contatore di turni per ogni Uovo vivo.
-     * Se un Uovo raggiunge 3 turni, si trasforma in Cucciolo di Drago.
-     * Chiamato a fine di ogni round completo.
-     */
     private void tickEggCounters(Wave wave, List<String> log) {
         List<Enemy> eggs = wave.getEnemies().stream()
                 .filter(e -> e.getName().equals("Uovo") && e.isAlive())
@@ -376,11 +333,9 @@ public class CombatController implements Serializable {
         for (Enemy egg : eggs) {
             int turns = eggTurnCounter.getOrDefault(egg, 0) + 1;
             if (turns >= 3) {
-                // Trasformazione in Cucciolo
                 eggTurnCounter.remove(egg);
                 Enemy cucciolo = EnemyFactory.createCuccioloDrago();
                 int idx = wave.getEnemies().indexOf(egg);
-                // Segniamo l'uovo come morto (HP a 0 tramite danno diretto)
                 egg.applyBurnDamage(egg.getCurrentHp());
                 wave.getEnemies().add(idx >= 0 ? idx : wave.getEnemies().size(), cucciolo);
                 log.add("Un Uovo si e' schiuso! Nasce un Cucciolo di Drago!");
@@ -391,7 +346,6 @@ public class CombatController implements Serializable {
         }
     }
 
-    /** Tick del BurnEffect attivo. Applicato a fine turno nemico. */
     private void burnTick(GameCharacter player, List<String> log) {
         if (activeBurn == null || activeBurn.isExpired()) {
             activeBurn = null;
@@ -410,11 +364,6 @@ public class CombatController implements Serializable {
     // Buff passivo Drago
     // =========================================================================
 
-    /**
-     * Controlla e attiva il buff passivo del Drago prima del combattimento.
-     * Chiamare PRIMA di iniziare il loop di combattimento con il Boss.
-     * Se la Sala del Tesoro (r4) e' stata liberata, il Drago ottiene +20% ATK.
-     */
     public void checkAndActivateDragonBuff(Enemy dragon) {
         if (dungeonMap.isTreasureRoomCleaned() && dragon.getPassiveBuff() != null) {
             dragon.applyPassiveBonus();
@@ -427,7 +376,6 @@ public class CombatController implements Serializable {
     // =========================================================================
 
     private TurnResult buildResult(List<String> log) {
-        // Tick uova a fine round
         Wave wave = gameController.getCurrentRoom().getCurrentWave();
         if (wave != null) tickEggCounters(wave, log);
 
@@ -445,14 +393,6 @@ public class CombatController implements Serializable {
     // TurnResult
     // =========================================================================
 
-    /**
-     * Risultato di un turno di combattimento.
-     *
-     * @param log         lista di messaggi da mostrare nella UI
-     * @param playerDead  true se il giocatore e' morto
-     * @param waveCleared true se l'ondata e' stata completata
-     * @param fleeSuccess true se il giocatore e' fuggito con successo
-     */
     public record TurnResult(
             List<String> log,
             boolean playerDead,
@@ -472,10 +412,6 @@ public class CombatController implements Serializable {
     // CombatListener
     // =========================================================================
 
-    /**
-     * Interfaccia per notificare la UI degli eventi di combattimento.
-     * Implementazione di default NOOP per chi non vuole registrarsi.
-     */
     public interface CombatListener {
         void onEvent(String message);
         void onTurnEnd(List<String> log, boolean playerDead, boolean waveCleared);
