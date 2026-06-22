@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MageTest {
 
-    // nextDouble() = 1.0 → mai critico, mai blocco
     private static final Random NEVER_LUCK = new Random(0) {
         @Override public double nextDouble() { return 1.0; }
     };
@@ -29,7 +28,6 @@ public class MageTest {
     @Test
     void mage_magicShield_activeAtStart() {
         Mage m = new Mage("Mago");
-        // lo scudo si attiva tramite applyPassiveBonus() (chiamato a inizio stanza)
         m.applyPassiveBonus();
         assertTrue(m.isMagicShieldActive());
     }
@@ -37,7 +35,7 @@ public class MageTest {
     @Test
     void mage_magicShield_absorbsFirstPhysicalAttack() {
         Mage m = new Mage("Mago");
-        m.applyPassiveBonus(); // attiva lo scudo
+        m.applyPassiveBonus();
         int hpBefore = m.getCurrentHp();
         CombatSystem cs = new CombatSystem(NEVER_LUCK);
         Enemy goblin = EnemyFactory.createGoblin();
@@ -60,14 +58,15 @@ public class MageTest {
 
     @Test
     void mage_magicVulnerability_increasesMagicalDamage() {
-        Mage m = new Mage("Mago");
+        Mage m = new Mage("Mago"); // DEF=4
         m.setMagicShieldActive(false);
         int hpBefore = m.getCurrentHp();
         CombatSystem cs = new CombatSystem(NEVER_LUCK);
         Enemy goblin = EnemyFactory.createGoblin(); // ATK=12
         cs.executeAttack(goblin, m, AttackType.MAGICAL, 0);
-        // danno = (12 - 4) * 1.30 = 10 (int troncato)
-        int expected = (int)((Math.max(0, goblin.getAttack() - m.getDefense())) * 1.30);
+        // flusso: damage=12, *1.30=15 (int), takeDamage(15) -> 15-4=11 netto
+        int amplified = (int)(goblin.getAttack() * 1.30);
+        int expected  = Math.max(0, amplified - m.getDefense());
         assertEquals(hpBefore - expected, m.getCurrentHp());
     }
 
