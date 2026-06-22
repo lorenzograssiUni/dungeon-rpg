@@ -56,29 +56,18 @@ public abstract class GameCharacter implements Combatable, Serializable {
 
     public boolean isAlive() { return currentHp > 0; }
 
-    /**
-     * Restituisce true se il personaggio ha almeno 1 stamina disponibile
-     * e puo' quindi eseguire un attacco normale (costo 1).
-     */
     public boolean canAttack() { return currentStamina > 0; }
 
-    /**
-     * Restituisce true se il personaggio ha stamina sufficiente per
-     * l'attacco speciale richiesto.
-     */
     public boolean canUseSpecial(int staminaCost) { return currentStamina >= staminaCost; }
 
-    /** Consuma stamina per un attacco normale (costo fisso 1). */
     public void consumeStaminaForAttack() {
         currentStamina = Math.max(0, currentStamina - 1);
     }
 
-    /** Consuma stamina per un attacco speciale. */
     public void consumeStaminaForSpecial(int cost) {
         currentStamina = Math.max(0, currentStamina - cost);
     }
 
-    /** Ricarica stamina (usato a fine stanza o con la Carne). */
     public void restoreStamina(int amount) {
         currentStamina = Math.min(maxStamina, currentStamina + amount);
     }
@@ -90,6 +79,18 @@ public abstract class GameCharacter implements Combatable, Serializable {
     public void takeDamage(int damage) {
         int reduced = Math.max(0, damage - defense);
         currentHp = Math.max(0, currentHp - reduced);
+    }
+
+    /**
+     * Applica danno diretto ignorando completamente la difesa.
+     * Usato da:
+     *   - BurnEffect (bruciatura del Drago)
+     *   - ReGoblinThrowAbility (3 lanci)
+     *   - Uovo (ATK 1, danno sicuro)
+     * HP non scendono sotto 0.
+     */
+    public void applyBurnDamage(int damage) {
+        currentHp = Math.max(0, currentHp - damage);
     }
 
     // -------------------------------------------------------------------------
