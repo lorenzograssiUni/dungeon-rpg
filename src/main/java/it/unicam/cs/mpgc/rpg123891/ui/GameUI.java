@@ -1,388 +1,472 @@
 package it.unicam.cs.mpgc.rpg123891.ui;
 
+import it.unicam.cs.mpgc.rpg123891.controller.CombatController;
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
-import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
-import it.unicam.cs.mpgc.rpg123891.model.character.PlayerCharacter;
-import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
-import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
+import it.unicam.cs.mpgc.rpg123891.model.character.*;
+import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
+import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyAbility;
 import it.unicam.cs.mpgc.rpg123891.model.item.Item;
+import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
+import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
+import it.unicam.cs.mpgc.rpg123891.model.world.Room;
+import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
 import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import javafx.stage.Stage;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Scanner;
 
 /**
- * Implementazione della UI tramite JavaFX.
- * Fornisce una interfaccia grafica suddivisa in:
- * - pannello sinistro: statistiche giocatore con HP bar e inventario
- * - centro: log di gioco
- * - pannello destro: informazioni sulla stanza corrente e nemici
- * - basso: barra dei pulsanti di azione
+ * UI testuale a console per Dungeon RPG.
+ *
+ * Flusso:
+ *   main menu -> scelta classe -> loop stanze -> per ogni stanza: loop ondate
+ *     -> per ogni ondata: loop turni combattimento
+ *       -> per ogni turno: scelta azione (attacca, speciale, pozione, fuggi)
+ *
+ * Mostra sempre lo stato del giocatore (HP, stamina, agilita') prima di ogni
+ * azione, e la lista nemici vivi con HP.
  */
-public class GameUI extends Application implements UIInterface {
+public class GameUI {
 
-    private GameController controller;
+    private static final String LINE  = "=" .repeat(60);
+    private static final String DLINE = "-" .repeat(60);
 
-    // --- Log ---
-    private TextArea logArea;
+    private final GameController    gameController;
+    private CombatController        combatController;
+    private final Scanner           scanner;
 
-    // --- Pannello giocatore (sinistra) ---
-    private Label playerNameLabel;
-    private Label playerClassLabel;
-    private Label hpTextLabel;
-    private Rectangle hpBarFill;
-    private Label staminaLabel;
-    private Label agilityLabel;
-    private ListView<String> inventoryList;
-
-    // --- Pannello stanza (destra) ---
-    private Label roomNameLabel;
-    private Label roomDescLabel;
-    private ListView<String> enemyList;
-
-    // --- Pulsanti azione ---
-    private Button attackBtn;
-    private Button advanceBtn;
-    private Button saveBtn;
-    private Button potionBtn;
-
-    @Override
-    public void start(Stage primaryStage) {
-        this.controller = new GameController(new JsonPersistenceManager());
-
-        BorderPane root = new BorderPane();
-        root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: #1a1a2e;");
-
-        root.setLeft(buildPlayerPanel());
-        root.setCenter(buildLogPanel());
-        root.setRight(buildRoomPanel());
-        root.setBottom(buildButtonBar());
-
-        setGameButtonsDisabled(true);
-
-        Scene scene = new Scene(root, 980, 560);
-        primaryStage.setTitle("Dungeon RPG");
-        primaryStage.setScene(scene);
-        primaryStage.show();
-
-        showMessage("=== Dungeon RPG ===");
-        showMessage("Clicca 'Nuovo Gioco' per iniziare o 'Carica' per riprendere.");
+    public GameUI(GameController gameController) {
+        this.gameController = gameController;
+        this.scanner        = new Scanner(System.in);
     }
 
-    // -------------------------
-    // Costruzione pannelli
-    // -------------------------
+    // =========================================================================
+    // Entry point
+    // =========================================================================
 
-    private VBox buildPlayerPanel() {
-        VBox panel = new VBox(8);
-        panel.setPadding(new Insets(10));
-        panel.setPrefWidth(200);
-        panel.setStyle("-fx-background-color: #16213e; -fx-background-radius: 8;");
-
-        Label title = styledLabel("PERSONAGGIO", "-fx-font-weight: bold; -fx-text-fill: #e94560; -fx-font-size: 13;");
-
-        playerNameLabel = styledLabel("---", "-fx-text-fill: #eaeaea; -fx-font-size: 14; -fx-font-weight: bold;");
-        playerClassLabel = styledLabel("", "-fx-text-fill: #a8a8b3; -fx-font-size: 11;");
-
-        // HP bar
-        hpTextLabel = styledLabel("HP: --/--", "-fx-text-fill: #eaeaea; -fx-font-size: 11;");
-        StackPane hpBarContainer = new StackPane();
-        Rectangle hpBarBg = new Rectangle(180, 16);
-        hpBarBg.setFill(Color.web("#0f3460"));
-        hpBarBg.setArcWidth(8); hpBarBg.setArcHeight(8);
-        hpBarFill = new Rectangle(180, 16);
-        hpBarFill.setFill(Color.web("#4caf50"));
-        hpBarFill.setArcWidth(8); hpBarFill.setArcHeight(8);
-        hpBarContainer.getChildren().addAll(hpBarBg, hpBarFill);
-        hpBarContainer.setAlignment(Pos.CENTER_LEFT);
-
-        staminaLabel  = styledLabel("Stamina: --/--",  "-fx-text-fill: #a8a8b3; -fx-font-size: 11;");
-        agilityLabel  = styledLabel("Agilita': --",    "-fx-text-fill: #a8a8b3; -fx-font-size: 11;");
-
-        Label invTitle = styledLabel("INVENTARIO", "-fx-font-weight: bold; -fx-text-fill: #e94560; -fx-font-size: 12;");
-        VBox.setMargin(invTitle, new Insets(10, 0, 0, 0));
-
-        inventoryList = new ListView<>();
-        inventoryList.setPrefHeight(160);
-        inventoryList.setStyle("-fx-background-color: #0f3460; -fx-control-inner-background: #0f3460;"
-                + "-fx-text-fill: #eaeaea;");
-        inventoryList.setPlaceholder(new Label("Inventario vuoto"));
-
-        panel.getChildren().addAll(
-                title, playerNameLabel, playerClassLabel,
-                hpTextLabel, hpBarContainer,
-                staminaLabel, agilityLabel,
-                invTitle, inventoryList
-        );
-        return panel;
+    public void run() {
+        printBanner();
+        mainMenu();
     }
 
-    private VBox buildLogPanel() {
-        VBox panel = new VBox(6);
-        panel.setPadding(new Insets(0, 10, 0, 10));
+    // =========================================================================
+    // Menu principale
+    // =========================================================================
 
-        Label title = styledLabel("LOG DI GIOCO",
-                "-fx-font-weight: bold; -fx-text-fill: #e94560; -fx-font-size: 13;");
-
-        logArea = new TextArea();
-        logArea.setEditable(false);
-        logArea.setWrapText(true);
-        logArea.setPrefHeight(420);
-        logArea.setStyle("-fx-control-inner-background: #0f3460; -fx-text-fill: #eaeaea;"
-                + "-fx-font-family: monospace; -fx-font-size: 12;");
-        VBox.setVgrow(logArea, Priority.ALWAYS);
-
-        panel.getChildren().addAll(title, logArea);
-        return panel;
+    private void mainMenu() {
+        while (true) {
+            println(LINE);
+            println("  MENU PRINCIPALE");
+            println(LINE);
+            println("  1. Nuova Partita");
+            println("  2. Carica Partita");
+            println("  0. Esci");
+            print("  Scelta: ");
+            String choice = scanner.nextLine().trim();
+            switch (choice) {
+                case "1" -> startNewGame();
+                case "2" -> loadGame();
+                case "0" -> { println("Arrivederci!"); return; }
+                default  -> println("[!] Scelta non valida.");
+            }
+        }
     }
 
-    private VBox buildRoomPanel() {
-        VBox panel = new VBox(8);
-        panel.setPadding(new Insets(10));
-        panel.setPrefWidth(200);
-        panel.setStyle("-fx-background-color: #16213e; -fx-background-radius: 8;");
-
-        Label title = styledLabel("STANZA",
-                "-fx-font-weight: bold; -fx-text-fill: #e94560; -fx-font-size: 13;");
-
-        roomNameLabel = styledLabel("---",
-                "-fx-text-fill: #eaeaea; -fx-font-weight: bold; -fx-font-size: 12;");
-        roomNameLabel.setWrapText(true);
-
-        roomDescLabel = styledLabel("",
-                "-fx-text-fill: #a8a8b3; -fx-font-size: 10;");
-        roomDescLabel.setWrapText(true);
-
-        Label enemyTitle = styledLabel("NEMICI",
-                "-fx-font-weight: bold; -fx-text-fill: #e94560; -fx-font-size: 12;");
-        VBox.setMargin(enemyTitle, new Insets(10, 0, 0, 0));
-
-        enemyList = new ListView<>();
-        enemyList.setPrefHeight(200);
-        enemyList.setStyle("-fx-background-color: #0f3460; -fx-control-inner-background: #0f3460;"
-                + "-fx-text-fill: #eaeaea;");
-        enemyList.setPlaceholder(new Label("Nessun nemico"));
-
-        panel.getChildren().addAll(title, roomNameLabel, roomDescLabel, enemyTitle, enemyList);
-        return panel;
-    }
-
-    private HBox buildButtonBar() {
-        HBox bar = new HBox(10);
-        bar.setPadding(new Insets(12, 0, 0, 0));
-        bar.setAlignment(Pos.CENTER);
-
-        Button newGameBtn = actionButton("Nuovo Gioco", "#4caf50");
-        newGameBtn.setOnAction(e -> startNewGame());
-
-        Button loadBtn = actionButton("Carica", "#2196f3");
-        loadBtn.setOnAction(e -> handleLoad());
-
-        attackBtn = actionButton("Attacca", "#e94560");
-        attackBtn.setOnAction(e -> handleAttack());
-
-        advanceBtn = actionButton("Avanza >>>", "#ff9800");
-        advanceBtn.setOnAction(e -> handleAdvance());
-
-        potionBtn = actionButton("Usa Pozione", "#9c27b0");
-        potionBtn.setOnAction(e -> handlePotion());
-
-        saveBtn = actionButton("Salva", "#607d8b");
-        saveBtn.setOnAction(e -> handleSave());
-
-        bar.getChildren().addAll(newGameBtn, loadBtn, attackBtn, advanceBtn, potionBtn, saveBtn);
-        return bar;
-    }
-
-    // -------------------------
-    // Helpers stile
-    // -------------------------
-
-    private Label styledLabel(String text, String style) {
-        Label l = new Label(text);
-        l.setStyle(style);
-        return l;
-    }
-
-    private Button actionButton(String text, String color) {
-        Button btn = new Button(text);
-        btn.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white;"
-                + "-fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 8 16;");
-        return btn;
-    }
-
-    // -------------------------
-    // Logica azioni
-    // -------------------------
+    // =========================================================================
+    // Nuova partita
+    // =========================================================================
 
     private void startNewGame() {
-        Optional<PlayerCharacter> choice = showClassChoiceDialog();
-        if (choice.isEmpty()) return;
-        controller.startNewGame(choice.get());
-        setGameButtonsDisabled(false);
-        showMessage("\n--- Nuova partita iniziata con " + controller.getPlayer().getCharacterClass() + "! ---");
-        showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
-        refreshRoomPanel();
-        updateGameView();
+        println(LINE);
+        println("  SCEGLI LA TUA CLASSE");
+        println(LINE);
+        println("  1. Guerriero  (HP:120 ATK:22 DEF:8  AGI:4  STA:8  CRIT:5%)");
+        println("     Passive: blocco 20% fisici, +5DEF +20MaxHP a ogni stanza");
+        println("  2. Mago       (HP:75  ATK:15 DEF:4  AGI:6  STA:10 CRIT:5%)");
+        println("     Passive: scudo magico assorbe 1 fisico, +30% danno magico subito");
+        println("  3. Ladro      (HP:90  ATK:18 DEF:6  AGI:8  STA:12 CRIT:25%)");
+        println("     Passive: 1° attacco sempre critico, +2% crit per attacco (max 50%)");
+        print("  Scelta: ");
+        String choice = scanner.nextLine().trim();
+
+        String name = askName();
+        PlayerCharacter player = switch (choice) {
+            case "2" -> new Mage(name);
+            case "3" -> new Thief(name);
+            default  -> new Warrior(name);
+        };
+
+        gameController.startNewGame(player);
+        this.combatController = new CombatController(
+                gameController, gameController.getGameState().getDungeonMap());
+        combatController.setListener(new LogListener());
+
+        println("\nBenvenuto, " + name + " (" + player.getCharacterClass() + ")!");
+        gameLoop();
     }
 
-    private Optional<PlayerCharacter> showClassChoiceDialog() {
-        ChoiceDialog<String> dialog = new ChoiceDialog<>("Guerriero", "Guerriero", "Mago", "Ladro");
-        dialog.setTitle("Scelta Classe");
-        dialog.setHeaderText("Scegli la classe del tuo personaggio");
-        dialog.setContentText("Classe:");
-        Optional<String> result = dialog.showAndWait();
-        if (result.isEmpty()) return Optional.empty();
-        return switch (result.get()) {
-            case "Mago"  -> Optional.of(new Mage("Eroe"));
-            case "Ladro" -> Optional.of(new Thief("Eroe"));
-            default      -> Optional.of(new Warrior("Eroe"));
+    private String askName() {
+        print("  Nome personaggio (invio = Eroe): ");
+        String n = scanner.nextLine().trim();
+        return n.isEmpty() ? "Eroe" : n;
+    }
+
+    // =========================================================================
+    // Carica partita
+    // =========================================================================
+
+    private void loadGame() {
+        if (!gameController.hasSavedGame()) {
+            println("[!] Nessun salvataggio trovato.");
+            return;
+        }
+        gameController.loadGame();
+        this.combatController = new CombatController(
+                gameController, gameController.getGameState().getDungeonMap());
+        combatController.setListener(new LogListener());
+        println("\n[SAVE] Partita caricata!");
+        gameLoop();
+    }
+
+    // =========================================================================
+    // Game loop principale (stanze)
+    // =========================================================================
+
+    private void gameLoop() {
+        while (!gameController.getGameState().isGameOver()) {
+            Room room = gameController.getCurrentRoom();
+            printRoomHeader(room);
+
+            // Mostra entry loot se presente (gia' raccolto da advanceRoom)
+            // Il loot viene distribuito automaticamente da GameController
+
+            // Loop ondate
+            roomLoop(room);
+
+            if (gameController.getGameState().isGameOver()) break;
+
+            // Stanza liberata: chiedi se avanzare
+            if (room.isCleared()) {
+                if (!gameController.getGameState().getDungeonMap().hasNextRoom()) {
+                    printVictory();
+                    return;
+                }
+                println(DLINE);
+                println("  Stanza liberata! Premi INVIO per avanzare...");
+                scanner.nextLine();
+                gameController.advanceRoom();
+            }
+        }
+
+        if (gameController.getGameState().isVictory()) {
+            printVictory();
+        } else {
+            printGameOver();
+        }
+    }
+
+    // =========================================================================
+    // Room loop (ondate)
+    // =========================================================================
+
+    private void roomLoop(Room room) {
+        while (!room.isCleared() && !gameController.getGameState().isGameOver()) {
+            Wave wave = room.getCurrentWave();
+            if (wave == null) break;
+
+            println(DLINE);
+            println("  " + wave.getLabel().toUpperCase());
+            println(DLINE);
+
+            // Buff passivo Drago (solo boss)
+            if (room.getId().equals("r5")) {
+                Enemy dragon = wave.getEnemies().stream().findFirst().orElse(null);
+                if (dragon != null) combatController.checkAndActivateDragonBuff(dragon);
+            }
+
+            // Loop combattimento per questa ondata
+            combatLoop(wave);
+
+            if (gameController.getGameState().isGameOver()) return;
+        }
+    }
+
+    // =========================================================================
+    // Combat loop (turni)
+    // =========================================================================
+
+    private void combatLoop(Wave wave) {
+        while (!wave.isCleared() && !gameController.getGameState().isGameOver()) {
+            printCombatStatus(wave);
+            String action = askCombatAction(wave);
+            CombatController.TurnResult result = executeCombatAction(action, wave);
+
+            if (result == null) continue;
+
+            // Stampa log del turno
+            println("");
+            result.log().forEach(line -> println("  " + line));
+
+            if (result.isCombatOver()) {
+                if (result.playerDead()) {
+                    printGameOver();
+                    return;
+                }
+                if (result.fleeSuccess()) {
+                    println("  Sei fuggito!");
+                    return;
+                }
+                if (result.waveCleared()) {
+                    println("  [WAVE CLEARED] Ondata completata!");
+                    // Drop probabilistici 50% Carne per nemici che lo prevedono
+                    rollDrops(wave);
+                    return;
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // Azioni combattimento
+    // =========================================================================
+
+    private String askCombatAction(Wave wave) {
+        println("");
+        println("  AZIONI:");
+        println("  1. Attacco normale");
+        println("  2. Attacco speciale");
+        println("  3. Usa Pozione  (x" + gameController.countPotions() + ")");
+        if (gameController.canFlee()) println("  4. Fuggi");
+        println("  5. Inventario / Equipaggiamento");
+        println("  S. Salva");
+        print("  Scelta: ");
+        return scanner.nextLine().trim().toUpperCase();
+    }
+
+    private CombatController.TurnResult executeCombatAction(String action, Wave wave) {
+        return switch (action) {
+            case "1" -> doNormalAttack(wave);
+            case "2" -> doSpecialAttack(wave);
+            case "3" -> combatController.playerUsePotion();
+            case "4" -> {
+                if (!gameController.canFlee()) {
+                    println("  [!] Non puoi fuggire!"); yield null;
+                }
+                yield combatController.playerFlee();
+            }
+            case "5" -> { showInventory(); yield null; }
+            case "S" -> { gameController.saveGame(); println("  [SAVE] Partita salvata."); yield null; }
+            default  -> { println("  [!] Scelta non valida."); yield null; }
         };
     }
 
-    private void handleLoad() {
-        if (!controller.hasSavedGame()) { showMessage("Nessun salvataggio trovato!"); return; }
-        controller.loadGame();
-        setGameButtonsDisabled(false);
-        showMessage("\n--- Partita caricata! ---");
-        showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
-        refreshRoomPanel();
-        updateGameView();
+    private CombatController.TurnResult doNormalAttack(Wave wave) {
+        Enemy target = selectTarget(wave);
+        if (target == null) return null;
+        return combatController.playerNormalAttack(target);
     }
 
-    private void handleAttack() {
-        if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
-        if (controller.getGameState().isGameOver()) { showMessage("La partita e' terminata."); return; }
-        var aliveEnemies = controller.getCurrentRoom().getEnemies().stream()
-                .filter(e -> e.isAlive()).toList();
-        if (aliveEnemies.isEmpty()) { showMessage("Nessun nemico vivo. Avanza!"); return; }
-        var enemy = aliveEnemies.get(0);
-        int dmg = controller.playerAttack(enemy);
-        showMessage("[ATK] Attacchi " + enemy.getName() + " per " + dmg + " danni!");
-        if (!enemy.isAlive()) {
-            showMessage("[KILL] " + enemy.getName() + " sconfitto!");
-            controller.checkRoomCleared();
-            if (controller.getGameState().isVictory()) {
-                showMessage("\n*** HAI VINTO! Dungeon completato! ***");
-                setGameButtonsDisabled(true);
-            }
-        } else {
-            int enmDmg = controller.enemyAttack(enemy);
-            showMessage("[DMG] " + enemy.getName() + " ti colpisce per " + enmDmg + " danni!");
-            if (controller.checkPlayerDead()) {
-                showMessage("\n*** SEI MORTO! Game Over. ***");
-                setGameButtonsDisabled(true);
-            }
+    private CombatController.TurnResult doSpecialAttack(Wave wave) {
+        GameCharacter player = (GameCharacter) gameController.getPlayer();
+        List<SpecialAttack> specials = getEquippedSpecials(player);
+
+        if (specials.isEmpty()) {
+            println("  [!] Nessun attacco speciale disponibile (equipa un'arma).");
+            return null;
         }
-        refreshRoomPanel();
-        updateGameView();
-    }
 
-    private void handleAdvance() {
-        if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
-        boolean advanced = controller.advanceRoom();
-        if (advanced) {
-            showMessage("\n[>>>] Avanzi nella prossima stanza...");
-            showMessage(controller.getCurrentRoom().getName() + ": " + controller.getCurrentRoom().getDescription());
-        } else {
-            showMessage("[!] Non puoi avanzare. Sconfiggi tutti i nemici prima!");
+        println("  Attacchi speciali:");
+        for (int i = 0; i < specials.size(); i++) {
+            SpecialAttack s = specials.get(i);
+            String affordable = player.canUseSpecial(s.getStaminaCost()) ? "" : " [STAMINA INSUFFICIENTE]";
+            println(String.format("  %d. %s (costo: %d STA) - %s%s",
+                    i + 1, s.getName(), s.getStaminaCost(), s.getDescription(), affordable));
         }
-        refreshRoomPanel();
-        updateGameView();
-    }
+        println("  0. Annulla");
+        print("  Scelta: ");
+        String input = scanner.nextLine().trim();
+        if (input.equals("0")) return null;
 
-    private void handlePotion() {
-        if (controller.getGameState() == null) { showMessage("Avvia una nuova partita!"); return; }
-        boolean used = controller.useFirstPotion();
-        if (used) {
-            showMessage("[HEAL] Pozione usata! HP: " + controller.getPlayer().getCurrentHp()
-                    + "/" + controller.getPlayer().getMaxHp());
-        } else {
-            showMessage("[!] Nessuna pozione nell'inventario!");
+        int idx;
+        try { idx = Integer.parseInt(input) - 1; } catch (NumberFormatException e) { return null; }
+        if (idx < 0 || idx >= specials.size()) return null;
+
+        SpecialAttack chosen = specials.get(idx);
+        if (!player.canUseSpecial(chosen.getStaminaCost())) {
+            println("  [!] Stamina insufficiente!");
+            return null;
         }
-        updateGameView();
+
+        // AOE: Onda Magica, Spazzatutto
+        if (isAoe(chosen)) {
+            return combatController.playerAoeAttack(chosen);
+        }
+
+        // Single target
+        Enemy target = selectTarget(wave);
+        if (target == null) return null;
+        return combatController.playerSpecialAttack(chosen, target);
     }
 
-    private void handleSave() {
-        if (controller.getGameState() == null) { showMessage("Nessuna partita da salvare!"); return; }
-        controller.saveGame();
-        showMessage("[SAVE] Partita salvata!");
+    /** Onda Magica e Spazzatutto sono AOE. */
+    private boolean isAoe(SpecialAttack s) {
+        return s.getName().equals("Onda Magica") || s.getName().equals("Spazzatutto");
     }
 
-    // -------------------------
-    // Aggiornamento UI
-    // -------------------------
+    private Enemy selectTarget(Wave wave) {
+        List<Enemy> alive = wave.getEnemies().stream()
+                .filter(e -> e.isAlive() && !e.isImmune()).toList();
+        if (alive.isEmpty()) {
+            println("  [!] Nessun bersaglio valido.");
+            return null;
+        }
+        if (alive.size() == 1) return alive.get(0);
 
-    /**
-     * Aggiorna il pannello del personaggio: nome, classe, HP bar, stamina, agilita', inventario.
-     * Chiamato dopo ogni azione che modifica lo stato del giocatore.
-     */
-    @Override
-    public void updateGameView() {
-        if (controller.getGameState() == null) return;
-        var player = controller.getPlayer();
-
-        playerNameLabel.setText(player.getName());
-        playerClassLabel.setText("Classe: " + player.getCharacterClass());
-        hpTextLabel.setText("HP: " + player.getCurrentHp() + " / " + player.getMaxHp());
-        staminaLabel.setText("Stamina: " + player.getCurrentStamina() + " / " + player.getMaxStamina());
-        agilityLabel.setText("Agilita': " + player.getAgility());
-
-        // HP bar: calcola larghezza e colore in base alla percentuale
-        double hpPct = (double) player.getCurrentHp() / player.getMaxHp();
-        double barWidth = Math.max(0, 180 * hpPct);
-        hpBarFill.setWidth(barWidth);
-        if (hpPct > 0.60) hpBarFill.setFill(Color.web("#4caf50"));      // verde
-        else if (hpPct > 0.30) hpBarFill.setFill(Color.web("#ff9800")); // arancione
-        else hpBarFill.setFill(Color.web("#e94560"));                   // rosso
-
-        // Inventario: mostra nome di ogni oggetto
-        List<Item> inv = player.getInventory();
-        inventoryList.getItems().setAll(
-                inv.stream().map(Item::getName).toList()
-        );
+        println("  Scegli bersaglio:");
+        for (int i = 0; i < alive.size(); i++) {
+            Enemy e = alive.get(i);
+            println(String.format("  %d. %s (HP: %d/%d)",
+                    i + 1, e.getName(), e.getCurrentHp(), e.getMaxHp()));
+        }
+        print("  Scelta: ");
+        try {
+            int idx = Integer.parseInt(scanner.nextLine().trim()) - 1;
+            if (idx >= 0 && idx < alive.size()) return alive.get(idx);
+        } catch (NumberFormatException ignored) {}
+        return alive.get(0);
     }
 
-    /**
-     * Aggiorna il pannello della stanza: nome, descrizione e lista nemici vivi.
-     */
-    private void refreshRoomPanel() {
-        if (controller.getGameState() == null) return;
-        var room = controller.getCurrentRoom();
-        roomNameLabel.setText(room.getName());
-        roomDescLabel.setText(room.getDescription());
-        enemyList.getItems().setAll(
-                room.getEnemies().stream()
-                        .filter(e -> e.isAlive())
-                        .map(e -> e.getName() + " (HP: " + e.getCurrentHp() + ")")
-                        .toList()
-        );
+    // =========================================================================
+    // Drop 50% Carne
+    // =========================================================================
+
+    private void rollDrops(Wave wave) {
+        wave.getEnemies().stream()
+                .filter(e -> !e.isAlive() && dropsMeat(e))
+                .forEach(e -> {
+                    if (Math.random() < 0.50) {
+                        ((GameCharacter) gameController.getPlayer()).addItem(new it.unicam.cs.mpgc.rpg123891.model.item.Meat());
+                        println("  [DROP] " + e.getName() + " ha lasciato Carne!");
+                    }
+                });
     }
 
-    private void setGameButtonsDisabled(boolean disabled) {
-        attackBtn.setDisable(disabled);
-        advanceBtn.setDisable(disabled);
-        potionBtn.setDisable(disabled);
-        saveBtn.setDisable(disabled);
+    /** Nemici che possono droppare Carne al 50%. */
+    private boolean dropsMeat(Enemy e) {
+        return switch (e.getName()) {
+            case "Cinghiale", "Lupo", "Cucciolo di Drago" -> true;
+            default -> false;
+        };
     }
 
-    @Override
-    public void start(GameController controller) {
-        this.controller = controller;
+    // =========================================================================
+    // Display
+    // =========================================================================
+
+    private void printBanner() {
+        println(LINE);
+        println("         DUNGEON RPG");
+        println(LINE);
     }
 
-    @Override
-    public void showMessage(String message) {
-        if (logArea != null) logArea.appendText(message + "\n");
+    private void printRoomHeader(Room room) {
+        println("\n" + LINE);
+        println("  STANZA: " + room.getName().toUpperCase());
+        println("  " + room.getDescription());
+        println(LINE);
+    }
+
+    private void printCombatStatus(Wave wave) {
+        println(DLINE);
+        // Giocatore
+        GameCharacter p = (GameCharacter) gameController.getPlayer();
+        println(String.format("  %s  HP: %s  STA: %d/%d  AGI: %d  CRIT: %.0f%%",
+                p.getName(),
+                hpBar(p.getCurrentHp(), p.getMaxHp()),
+                p.getCurrentStamina(), p.getMaxStamina(),
+                p.getAgility(),
+                p.getCritChance() * 100));
+
+        // Indicatori passive attive
+        if (p instanceof Warrior w && w.getBlockChance() > 0)
+            print("  [BLOCCO:20%]");
+        if (p instanceof Mage m && m.isMagicShieldActive())
+            print("  [SCUDO MAGICO ATTIVO]");
+        if (p instanceof Thief t && t.isStealthBonusActive())
+            print("  [STEALTH: prossimo attacco critico]");
+
+        // BurnEffect attivo
+        if (combatController.getActiveBurn() != null) {
+            println(String.format("  [BRUCIATURA: %d dmg/turno, %d turni rimasti]",
+                    combatController.getActiveBurn().getDamagePerTurn(),
+                    combatController.getActiveBurn().getTurnsRemaining()));
+        }
+        println("");
+
+        // Nemici
+        println("  NEMICI:");
+        wave.getEnemies().stream().filter(Enemy::isAlive).forEach(e -> {
+            String immune  = e.isImmune()  ? " [IMMUNE]"  : "";
+            String stunned = e.isStunned() ? " [STORDITO]" : "";
+            String boss    = e.isBoss()    ? " [BOSS]"     : "";
+            println(String.format("    - %s%s%s%s  HP: %s",
+                    e.getName(), boss, immune, stunned,
+                    hpBar(e.getCurrentHp(), e.getMaxHp())));
+        });
+    }
+
+    private String hpBar(int current, int max) {
+        int bars = max > 0 ? (int)(10.0 * current / max) : 0;
+        String filled = "#".repeat(Math.max(0, bars));
+        String empty  = ".".repeat(Math.max(0, 10 - bars));
+        return String.format("[%s%s] %d/%d", filled, empty, current, max);
+    }
+
+    private void showInventory() {
+        println(DLINE);
+        println("  INVENTARIO:");
+        List<Item> inv = gameController.getPlayer().getInventory();
+        if (inv.isEmpty()) { println("  (vuoto)"); return; }
+        inv.forEach(item -> println("  - " + item.getName() + ": " + item.getDescription()));
+    }
+
+    private List<SpecialAttack> getEquippedSpecials(GameCharacter player) {
+        // Raccoglie tutti gli speciali dalle armi nell'inventario
+        // (semplificazione: include tutte le armi, non solo quelle equipaggiate)
+        return player.getInventory().stream()
+                .filter(i -> i instanceof Weapon)
+                .flatMap(i -> ((Weapon) i).getSpecialAttacks().stream())
+                .toList();
+    }
+
+    private void printVictory() {
+        println("\n" + LINE);
+        println("  *** HAI VINTO! L'Ultimo Drago e' stato sconfitto! ***");
+        println("  Il dungeon e' stato liberato. Sei un eroe leggendario!");
+        println(LINE);
+    }
+
+    private void printGameOver() {
+        println("\n" + LINE);
+        println("  *** SEI MORTO. GAME OVER. ***");
+        println(LINE);
+    }
+
+    // =========================================================================
+    // Helpers I/O
+    // =========================================================================
+
+    private void println(String s) { System.out.println(s); }
+    private void print(String s)   { System.out.print(s); System.out.flush(); }
+
+    // =========================================================================
+    // CombatListener per log inline
+    // =========================================================================
+
+    private class LogListener implements CombatController.CombatListener {
+        @Override
+        public void onEvent(String message) { println("  " + message); }
+        @Override
+        public void onTurnEnd(List<String> log, boolean playerDead, boolean waveCleared) {}
     }
 }
