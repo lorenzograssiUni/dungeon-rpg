@@ -24,20 +24,10 @@ import java.util.Map;
  */
 public class CombatController {
 
-    // -------------------------------------------------------------------------
-    // Interfaccia listener (per la UI)
-    // -------------------------------------------------------------------------
-
     public interface CombatListener {
         void onEvent(String msg);
         void onTurnEnd(List<String> log, boolean playerDead, boolean waveCleared);
     }
-
-    // -------------------------------------------------------------------------
-    // Record risultato turno
-    // isCombatOver() = true quando il turno e' definitivamente concluso
-    // (giocatore morto, fuga riuscita, ondata cleared)
-    // -------------------------------------------------------------------------
 
     public record TurnResult(
             List<String> log,
@@ -50,10 +40,6 @@ public class CombatController {
             return playerDead || waveCleared || fleeSuccess;
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Stato
-    // -------------------------------------------------------------------------
 
     private final GameController gc;
     private final DungeonMap     dungeonMap;
@@ -73,7 +59,6 @@ public class CombatController {
     // Azioni del giocatore
     // =========================================================================
 
-    /** Attacco normale del giocatore su un singolo nemico. */
     public TurnResult playerNormalAttack(Enemy target) {
         List<String> log = new ArrayList<>();
         GameCharacter player = player();
@@ -93,7 +78,6 @@ public class CombatController {
         return new TurnResult(log, playerDead, waveCleared, false);
     }
 
-    /** Attacco speciale single-target. */
     public TurnResult playerSpecialAttack(SpecialAttack special, Enemy target) {
         List<String> log = new ArrayList<>();
         GameCharacter player = player();
@@ -112,7 +96,6 @@ public class CombatController {
         return new TurnResult(log, playerDead, waveCleared, false);
     }
 
-    /** Attacco AOE (Onda Magica, Spazzatutto). */
     public TurnResult playerAoeAttack(SpecialAttack special) {
         List<String> log = new ArrayList<>();
         GameCharacter player = player();
@@ -136,16 +119,11 @@ public class CombatController {
     public TurnResult playerUsePotion() {
         List<String> log = new ArrayList<>();
         boolean used = gc.useFirstPotion();
-        if (used) {
-            log.add("[ITEM] Hai usato una Pozione! Stamina +3.");
-        } else {
-            log.add("[!] Nessuna pozione disponibile.");
-        }
-        // Usare una pozione non fa rispondere i nemici
+        log.add(used ? "[ITEM] Hai usato una Pozione! Stamina +3."
+                     : "[!] Nessuna pozione disponibile.");
         return new TurnResult(log, false, false, false);
     }
 
-    /** Tentativo di fuga. */
     public TurnResult playerFlee() {
         List<String> log = new ArrayList<>();
         if (!gc.canFlee()) {
@@ -163,12 +141,11 @@ public class CombatController {
 
     /**
      * Controlla se la Sala del Tesoro e' stata ripulita e, in caso affermativo,
-     * attiva il buff passivo del Drago (+20% danno).
-     * Chiamato da GameUI prima di iniziare il combattimento con il boss.
+     * attiva il buff passivo del Drago (+20% danno) tramite applyPassiveBonus().
      */
     public void checkAndActivateDragonBuff(Enemy dragon) {
         if (!dungeonMap.isTreasureRoomCleaned()) return;
-        dragon.activatePassiveBuff();
+        dragon.applyPassiveBonus();
     }
 
     // =========================================================================
@@ -218,7 +195,6 @@ public class CombatController {
             log.add("[ENEMY] " + enemy.getName() + " attacca per " + dmg + " danni.");
         }
 
-        // Bruciatura a fine turno: usa applyTo() che chiama applyBurnDamage()
         if (activeBurn != null) {
             int burnDmg = activeBurn.applyTo(player());
             log.add("[BURN] La bruciatura ti infligge " + burnDmg + " danni!"
@@ -238,7 +214,6 @@ public class CombatController {
         return false;
     }
 
-    /** Imposta una bruciatura attiva (da Soffio del Drago). */
     public void applyBurn(BurnEffect burn) { this.activeBurn = burn; }
 
     private GameCharacter player() {
