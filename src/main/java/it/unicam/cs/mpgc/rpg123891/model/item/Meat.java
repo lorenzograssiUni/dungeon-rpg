@@ -7,14 +7,14 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Carne: ripristina 2 punti stamina al personaggio.
- * Usata per recuperare stamina durante il combattimento o tra stanze.
+ * Carne: ripristina 10 HP e 2 stamina al personaggio.
  */
 public class Meat implements Item, Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    private static final int HP_RESTORE      = 10;
     private static final int STAMINA_RESTORE = 2;
 
     private final String name;
@@ -22,11 +22,12 @@ public class Meat implements Item, Serializable {
 
     public Meat() {
         this.name        = "Carne";
-        this.description = "Ripristina " + STAMINA_RESTORE + " stamina";
+        this.description = "Ripristina " + HP_RESTORE + " HP e " + STAMINA_RESTORE + " stamina";
     }
 
     @Override
     public void use(GameCharacter character) {
+        character.heal(HP_RESTORE);
         character.restoreStamina(STAMINA_RESTORE);
     }
 

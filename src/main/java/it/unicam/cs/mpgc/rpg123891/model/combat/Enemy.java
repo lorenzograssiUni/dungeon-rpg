@@ -8,13 +8,9 @@ import java.io.Serial;
 /**
  * Rappresenta un nemico generico del gioco.
  *
- * Campi speciali:
- *   - ability           : abilità speciale (null se il nemico non ne ha)
- *   - dragonPassiveBuff : buff passivo del boss finale (null per tutti gli altri)
- *   - immune            : flag impostato dalla WitchSummonAbility
- *   - stunned           : flag impostato da Spazzatutto (Spadone);
- *                         il controller fa saltare il turno al nemico stordito
- *                         e chiama clearStun() a fine turno.
+ * turnsToHatch: se > 0, questo nemico e' un Uovo che si schiude dopo N turni.
+ * hatchCounter: conta i turni passati; quando raggiunge turnsToHatch
+ *               il CombatController sostituisce questo Enemy con un CuccioloDrago.
  */
 public class Enemy extends GameCharacter {
 
@@ -28,15 +24,12 @@ public class Enemy extends GameCharacter {
     private EnemyAbility ability;
     private DragonPassiveBuff passiveBuff;
     private boolean immune  = false;
-
-    /**
-     * Indica se il nemico è stordito (Spazzatutto).
-     * Quando true il controller salta il turno di questo nemico
-     * e chiama clearStun() a fine round.
-     */
     private boolean stunned = false;
 
-    /** Costruttore completo usato da EnemyFactory. */
+    /** -1 = non e' un uovo. Se >= 1 si schiude dopo questo numero di turni. */
+    private int turnsToHatch = -1;
+    private int hatchCounter  = 0;
+
     public Enemy(String name, int maxHp, int attack, int defense,
                  int agility, double critChance, AttackType attackType,
                  double critModifierOnPlayer, boolean isBoss) {
@@ -46,7 +39,6 @@ public class Enemy extends GameCharacter {
         this.isBoss               = isBoss;
     }
 
-    /** Costruttore semplificato per i test. */
     public Enemy(String name, int maxHp, int attack, int defense,
                  AttackType attackType, double critChance) {
         this(name, maxHp, attack, defense, 0, critChance, attackType, 0.0, false);
@@ -67,13 +59,27 @@ public class Enemy extends GameCharacter {
     // Stordimento
     // -------------------------------------------------------------------------
 
-    /** Stordisce il nemico per 1 turno. */
     public void stun()      { this.stunned = true; }
-
-    /** Rimuove lo stordimento (chiamato dal controller a fine round). */
     public void clearStun() { this.stunned = false; }
-
     public boolean isStunned() { return stunned; }
+
+    // -------------------------------------------------------------------------
+    // Uovo / schiusa
+    // -------------------------------------------------------------------------
+
+    public void setTurnsToHatch(int turns) { this.turnsToHatch = turns; }
+    public int  getTurnsToHatch()          { return turnsToHatch; }
+    public boolean isEgg()                 { return turnsToHatch > 0; }
+
+    /**
+     * Incrementa il contatore di turni.
+     * @return true se l'uovo e' pronto a schiudersi (hatchCounter >= turnsToHatch)
+     */
+    public boolean tickHatch() {
+        if (!isEgg() || !isAlive()) return false;
+        hatchCounter++;
+        return hatchCounter >= turnsToHatch;
+    }
 
     // -------------------------------------------------------------------------
     // Getter / Setter

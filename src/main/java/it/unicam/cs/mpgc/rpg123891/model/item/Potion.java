@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * Pozione: ripristina HP e Stamina al personaggio.
- * Valori standard: +40 HP, +5 Stamina.
+ * Valori standard: +10 HP, +5 Stamina.
  */
 public class Potion implements Item, Serializable {
 
@@ -31,14 +31,13 @@ public class Potion implements Item, Serializable {
         this(name, "Ripristina " + healAmount + " HP e " + staminaAmount + " Stamina", healAmount, staminaAmount);
     }
 
-    /** Costruttore retrocompatibile: staminaAmount = 5 di default. */
     public Potion(String name, int healAmount) {
         this(name, healAmount, 5);
     }
 
-    /** Costruttore standard: +40 HP, +5 Stamina. */
+    /** Costruttore standard: +10 HP, +5 Stamina. */
     public Potion() {
-        this("Pozione", 40, 5);
+        this("Pozione", 10, 5);
     }
 
     @Override

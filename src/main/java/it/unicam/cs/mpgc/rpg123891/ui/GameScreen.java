@@ -2,11 +2,14 @@ package it.unicam.cs.mpgc.rpg123891.ui;
 
 import it.unicam.cs.mpgc.rpg123891.controller.CombatController;
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
+import it.unicam.cs.mpgc.rpg123891.model.character.CharacterClass;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
 import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.item.*;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.MagicAmulet;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.MagicStaff;
 import it.unicam.cs.mpgc.rpg123891.model.world.Room;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
 import javafx.application.Platform;
@@ -18,7 +21,9 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class GameScreen {
@@ -38,6 +43,8 @@ public class GameScreen {
                                               "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
     private static final String BTN_GREEN  = "-fx-background-color:#1e4e2a;-fx-text-fill:#55e077;" +
                                               "-fx-font-size:14px;-fx-font-weight:bold;-fx-cursor:hand;-fx-padding:8 18;";
+    private static final String BTN_GRAY   = "-fx-background-color:#2e2e2e;-fx-text-fill:#888888;" +
+                                              "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
 
     private final BorderPane root;
     private final GameController gc;
@@ -127,10 +134,8 @@ public class GameScreen {
         appendLog("=====================================================");
         appendLog(room.getDescription());
         appendLog("");
-        switch (room.getId()) {
-            case "r1" -> appendLog("[\u2605] Raccogli il Bastone Magico. Senti il potere scorrere tra le dita.");
-            case "r3" -> {} // lo Spadone e' nella wave narrativa Sala della Statua
-        }
+        if (room.getId().equals("r1"))
+            appendLog("[\u2605] Raccogli il Bastone Magico. Senti il potere scorrere tra le dita.");
     }
 
     private void logCurrentWaveIfNew() {
@@ -147,11 +152,9 @@ public class GameScreen {
             appendLog("");
         }
 
-        // Wave senza nemici (es. Sala della Statua): auto-complete
         if (wave.getEnemies().isEmpty()) {
             wave.setCleared(true);
             gc.checkWaveCleared();
-            // Dopo auto-complete aggiorna UI senza rientrare nel log
             showScheda();
             refreshRight();
             buildBottomBar();
@@ -159,7 +162,7 @@ public class GameScreen {
     }
 
     // =========================================================================
-    // Pannello LEFT
+    // Pannello LEFT — Scheda
     // =========================================================================
 
     private void showScheda() {
@@ -194,6 +197,10 @@ public class GameScreen {
                 "[BRUCIATURA " + combatController.getActiveBurn().getDamagePerTurn() + "/t]", TEXT_RED));
     }
 
+    // =========================================================================
+    // Pannello LEFT — Inventario (raggruppato)
+    // =========================================================================
+
     private void showInventario() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("INVENTARIO", 14));
@@ -203,32 +210,58 @@ public class GameScreen {
         if (inv.isEmpty()) {
             leftPanel.getChildren().add(lbl("(vuoto)"));
         } else {
+            // Raggruppa consumabili per nome (Carne x4, Pozione x3...)
+            // Le armi rimangono singole (per equipaggiarle)
+            LinkedHashMap<String, Long> consumabili = new LinkedHashMap<>();
             for (Item item : inv) {
-                Button b = itemBtn(item.getName());
+                if (!(item instanceof Weapon)) {
+                    consumabili.merge(item.getName(), 1L, Long::sum);
+                }
+            }
+
+            // Bottoni consumabili raggruppati
+            consumabili.forEach((nome, count) -> {
+                String label = count > 1 ? nome + " (x" + count + ")" : nome;
+                Button b = itemBtn(label);
                 b.setOnAction(e -> {
-                    if (item instanceof Potion) {
-                        boolean used = gc.useFirstPotion();
-                        if (used) {
-                            appendLog("[ITEM] Hai usato una Pozione! +40 HP, +5 Stamina.");
-                            showInventario(); showScheda();
-                        }
-                    } else if (item instanceof Meat meat) {
+                    // Trova la prima istanza nell'inventario con quel nome
+                    Item found = inv.stream()
+                            .filter(i -> !(i instanceof Weapon) && i.getName().equals(nome))
+                            .findFirst().orElse(null);
+                    if (found == null) return;
+
+                    if (found instanceof Potion) {
+                        gc.useFirstPotion();
+                        appendLog("[ITEM] Hai usato una Pozione! +10 HP, +5 Stamina.");
+                    } else if (found instanceof Meat meat) {
                         meat.use(player());
-                        gc.getPlayer().getInventory().remove(meat);
-                        appendLog("[ITEM] Hai mangiato Carne! +40 HP.");
-                        showInventario(); showScheda();
-                    } else if (item instanceof Weapon w) {
-                        showEquipPreview(w);
+                        player().getInventory().remove(meat);
+                        appendLog("[ITEM] Hai mangiato Carne! +10 HP, +2 Stamina.");
                     }
+                    showInventario(); showScheda();
                 });
                 leftPanel.getChildren().add(b);
+            });
+
+            // Bottoni armi (singoli, per equipaggiarle)
+            for (Item item : inv) {
+                if (item instanceof Weapon w) {
+                    Button b = itemBtn("\u2694 " + w.getName());
+                    b.setOnAction(e -> showEquipPreview(w));
+                    leftPanel.getChildren().add(b);
+                }
             }
         }
+
         leftPanel.getChildren().add(sep());
         Button back = btn("Indietro");
         back.setOnAction(e -> showScheda());
         leftPanel.getChildren().add(back);
     }
+
+    // =========================================================================
+    // Pannello LEFT — Equipaggiamento
+    // =========================================================================
 
     private void showEquip() {
         leftPanel.getChildren().clear();
@@ -311,18 +344,48 @@ public class GameScreen {
         leftPanel.getChildren().add(row);
     }
 
+    // =========================================================================
+    // Pannello LEFT — Speciali
+    // Fix: blocca speciali del Bastone Magico se non Mago e senza Pendente
+    // =========================================================================
+
     private void showSpecialAtk() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("ATTACCHI SPECIALI", 13));
         leftPanel.getChildren().add(sep());
+
         List<SpecialAttack> specials = equipmentManager.getEquippedSpecials();
+
+        // Controlla se il Bastone Magico è equipaggiato
+        boolean staffEquipped = equipmentManager.getEquipped(EquipSlot.MAIN_HAND)
+                .map(w -> w instanceof MagicStaff).orElse(false);
+        // Il Pendente Magico è nel slot BODY
+        boolean amuletEquipped = equipmentManager.getEquipped(EquipSlot.BODY)
+                .map(w -> w instanceof MagicAmulet).orElse(false);
+        boolean isMage = player().getCharacterClass() == CharacterClass.MAGE;
+        // Blocco speciali bastone: richiede classe Mago OPPURE Pendente equipaggiato
+        boolean staffSpecialsLocked = staffEquipped && !isMage && !amuletEquipped;
+
         if (specials.isEmpty()) {
             leftPanel.getChildren().add(lbl("Nessun attacco speciale.\nEquipa un'arma prima."));
         } else {
+            if (staffSpecialsLocked) {
+                Label warn = lbl("[!] Gli speciali del Bastone Magico\nrichiedono il Pendente Magico\nequipaggiato (o classe Mago).");
+                warn.setStyle(TEXT_RED);
+                leftPanel.getChildren().add(warn);
+            }
             for (SpecialAttack s : specials) {
-                boolean canUse = player().canUseSpecial(s.getStaminaCost());
+                boolean isStaffSpecial = staffEquipped &&
+                        (s.getName().equals("Onda Magica") || s.getName().equals("Colpo Vitale"));
+                boolean locked = isStaffSpecial && staffSpecialsLocked;
+                boolean canUse = !locked && player().canUseSpecial(s.getStaminaCost());
+
                 Button b = btn(s.getName() + "  costo:" + s.getStaminaCost());
-                if (!canUse) {
+                if (locked) {
+                    b.setStyle(BTN_GRAY);
+                    b.setTooltip(new Tooltip("Richiede Pendente Magico o classe Mago"));
+                    b.setDisable(true);
+                } else if (!canUse) {
                     b.setStyle(BTN_DANGER);
                     b.setTooltip(new Tooltip("Stamina insufficiente"));
                     b.setDisable(true);
@@ -362,7 +425,8 @@ public class GameScreen {
             for (Enemy e : alive) {
                 String tags = (e.isBoss()    ? "[BOSS] " : "")
                             + (e.isImmune()  ? "[IMM] "  : "")
-                            + (e.isStunned() ? "[STORD]" : "");
+                            + (e.isStunned() ? "[STORD]" : "")
+                            + (e.isEgg()     ? "[UOVO]"  : "");
                 String label = e.getName() + (tags.isBlank() ? "" : " " + tags.strip())
                              + "\nHP: " + e.getCurrentHp() + "/" + e.getMaxHp();
                 Button eb = enemyBtn(label);
@@ -389,7 +453,7 @@ public class GameScreen {
     }
 
     // =========================================================================
-    // Bottom bar
+    // Bottom bar — con bottone Menu sempre visibile
     // =========================================================================
 
     private void buildBottomBar() {
@@ -397,18 +461,27 @@ public class GameScreen {
         Room room = gc.getCurrentRoom();
         boolean roomCleared = room.isCleared();
 
-        Button btnInv     = btn("Inventario");
-        Button btnEquip   = btn("Equip.");
-        Button btnSave    = btn("Salva");
+        Button btnMenu  = dangerBtn("Menu");
+        Button btnInv   = btn("Inventario");
+        Button btnEquip = btn("Equip.");
+        Button btnSave  = btn("Salva");
 
+        btnMenu.setOnAction(e -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Torna al Menu");
+            alert.setHeaderText("Vuoi tornare al menu principale?");
+            alert.setContentText("I progressi non salvati andranno persi.");
+            alert.showAndWait().ifPresent(resp -> {
+                if (resp == ButtonType.OK) app.showMenu(stage);
+            });
+        });
         btnInv.setOnAction(e   -> showInventario());
         btnEquip.setOnAction(e -> showEquip());
         btnSave.setOnAction(e  -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
 
-        bottomBar.getChildren().addAll(btnInv, btnEquip);
+        bottomBar.getChildren().addAll(btnMenu, btnInv, btnEquip);
 
         if (!roomCleared) {
-            // Pulsanti di combattimento
             Button btnAtk     = btn("ATK");
             Button btnSpecial = btn("Special ATK");
             Button btnPotion  = btn("Pozione (x" + gc.countPotions() + ")");
@@ -422,7 +495,6 @@ public class GameScreen {
             btnFuga.setDisable(!gc.canFlee());
             bottomBar.getChildren().addAll(btnAtk, btnSpecial, btnPotion, btnFuga);
         } else if (gc.getGameState().getDungeonMap().hasNextRoom()) {
-            // Stanza cleared: bottone Avanza anche in bottom bar
             Button btnAdv = new Button("Avanza \u2192");
             btnAdv.setStyle(BTN_GREEN);
             btnAdv.setOnAction(e -> doAdvanceRoom());
@@ -443,6 +515,10 @@ public class GameScreen {
         }
         if (selectedEnemy.isImmune()) {
             appendLog("[!] " + selectedEnemy.getName() + " e' immune agli attacchi!");
+            return;
+        }
+        if (selectedEnemy.isEgg()) {
+            appendLog("[!] Non puoi attaccare un Uovo direttamente — aspetta che si schiuda!");
             return;
         }
         CombatController.TurnResult result = combatController.playerNormalAttack(selectedEnemy);
@@ -481,7 +557,6 @@ public class GameScreen {
         gc.advanceRoom();
         selectedEnemy  = null;
         lastLoggedWave = null;
-        // Controlla dragon buff se stanza r5
         Room newRoom = gc.getCurrentRoom();
         if (newRoom.getId().equals("r5")) {
             Wave w = newRoom.getCurrentWave();
@@ -494,11 +569,6 @@ public class GameScreen {
         refresh();
     }
 
-    /**
-     * Gestisce il risultato di un turno:
-     *   1. checkWaveCleared() PRIMA di refresh() cosi' room.isCleared() e' aggiornato
-     *   2. refresh() mostra correttamente il bottone Avanza se la stanza e' cleared
-     */
     private void handleTurnResult(CombatController.TurnResult result) {
         if (result == null) return;
         result.log().forEach(this::appendLog);
@@ -516,7 +586,6 @@ public class GameScreen {
 
         if (result.waveCleared()) {
             appendLog("[WAVE] Ondata completata!");
-            // checkWaveCleared PRIMA di refresh per aggiornare room.isCleared()
             gc.checkWaveCleared();
             if (gc.getGameState().isVictory()) {
                 showVictory();
