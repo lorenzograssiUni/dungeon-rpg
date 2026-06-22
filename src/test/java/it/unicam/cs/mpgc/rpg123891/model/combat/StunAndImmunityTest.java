@@ -1,17 +1,14 @@
 package it.unicam.cs.mpgc.rpg123891.model.combat;
 
-import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.controller.CombatController;
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
+import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
+import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Verifica che il CombatController salti il turno del nemico stordito
- * e che il nemico immune non attacchi.
- */
 public class StunAndImmunityTest {
 
     private GameController gc;
@@ -21,23 +18,10 @@ public class StunAndImmunityTest {
     @BeforeEach
     void setUp() {
         player = new Warrior("G");
-        gc = new GameController();
+        gc = new GameController(new JsonPersistenceManager());
         gc.startNewGame(player);
         DungeonMap map = gc.getGameState().getDungeonMap();
         cc = new CombatController(gc, map);
-    }
-
-    @Test
-    void stunnedEnemy_doesNotAttack_hpUnchanged() {
-        Enemy goblin = EnemyFactory.createGoblin();
-        goblin.stun();
-        int hpBefore = player.getCurrentHp();
-        // Simula handleEnemyTurns indirettamente tramite playerNormalAttack
-        // Il goblin stordito non è nella wave della stanza,
-        // quindi testiamo il comportamento direttamente
-        assertTrue(goblin.isStunned());
-        goblin.clearStun();
-        assertFalse(goblin.isStunned());
     }
 
     @Test
@@ -51,6 +35,15 @@ public class StunAndImmunityTest {
     }
 
     @Test
+    void stunnedEnemy_flagBehavior() {
+        Enemy goblin = EnemyFactory.createGoblin();
+        goblin.stun();
+        assertTrue(goblin.isStunned());
+        goblin.clearStun();
+        assertFalse(goblin.isStunned());
+    }
+
+    @Test
     void immunity_preventsFlag() {
         Enemy e = new Enemy("E", 30, 8, 2, AttackType.PHYSICAL, 0.0);
         assertFalse(e.isImmune());
@@ -59,13 +52,10 @@ public class StunAndImmunityTest {
     }
 
     @Test
-    void immuneEnemy_canStillTakeDamage_ifForced() {
-        // L'immunità è solo per il flag della UI/turn skip;
-        // takeDamage() funziona indipendentemente
+    void immuneEnemy_canStillTakeDamage() {
         Enemy e = new Enemy("E", 30, 8, 2, AttackType.PHYSICAL, 0.0);
         e.setImmune(true);
-        e.takeDamage(20);
-        // 20 - 2 (def) = 18
+        e.takeDamage(20); // 20-2=18
         assertEquals(12, e.getCurrentHp());
     }
 

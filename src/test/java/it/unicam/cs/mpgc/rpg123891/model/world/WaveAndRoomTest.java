@@ -4,52 +4,43 @@ import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.combat.AttackType;
 import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
 import org.junit.jupiter.api.Test;
-import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Verifica Wave e Room: isCleared, canFlee, addLoot,
- * avanzamento wave nella Room, getAllEnemies.
- */
 public class WaveAndRoomTest {
 
     private Enemy aliveEnemy() {
         return new Enemy("G", 10, 5, 0, AttackType.PHYSICAL, 0.0);
     }
 
-    private Enemy deadEnemy() {
-        Enemy e = new Enemy("G", 10, 5, 0, AttackType.PHYSICAL, 0.0);
-        e.takeDamage(999);
-        return e;
-    }
-
     // ---- Wave ----
 
     @Test
     void wave_notCleared_whenEnemiesAlive() {
-        Wave w = new Wave("W", List.of(aliveEnemy()), List.of(), true);
+        Wave w = new Wave("W", true);
+        w.addEnemy(aliveEnemy());
         assertFalse(w.isCleared());
     }
 
     @Test
     void wave_cleared_whenAllDead() {
         Enemy e = aliveEnemy();
-        Wave w = new Wave("W", List.of(e), List.of(), true);
+        Wave w = new Wave("W", true);
+        w.addEnemy(e);
         e.takeDamage(999);
         assertTrue(w.isCleared());
     }
 
     @Test
     void wave_canFlee_flag() {
-        Wave yes = new Wave("W", List.of(aliveEnemy()), List.of(), true);
-        Wave no  = new Wave("W", List.of(aliveEnemy()), List.of(), false);
+        Wave yes = new Wave("W", true);
+        Wave no  = new Wave("W", false);
         assertTrue(yes.canFlee());
         assertFalse(no.canFlee());
     }
 
     @Test
     void wave_addLoot_appearsInGetLoot() {
-        Wave w = new Wave("W", List.of(aliveEnemy()), List.of(), true);
+        Wave w = new Wave("W", true);
         Potion p = new Potion();
         w.addLoot(p);
         assertTrue(w.getLoot().contains(p));
@@ -57,45 +48,64 @@ public class WaveAndRoomTest {
 
     @Test
     void wave_getName() {
-        Wave w = new Wave("Ondata A", List.of(), List.of(), true);
+        Wave w = new Wave("Ondata A");
         assertEquals("Ondata A", w.getName());
+    }
+
+    @Test
+    void wave_noEnemies_isCleared() {
+        Wave w = new Wave("Vuota", true);
+        assertTrue(w.isCleared());
     }
 
     // ---- Room ----
 
     @Test
     void room_notCleared_whenWaveActive() {
-        Wave w = new Wave("W", List.of(aliveEnemy()), List.of(), true);
-        Room r = new Room("r1", "Test", List.of(w), List.of());
+        Wave w = new Wave("W", true);
+        w.addEnemy(aliveEnemy());
+        Room r = new Room("r1", "Test", "desc");
+        r.addWave(w);
         assertFalse(r.isCleared());
     }
 
     @Test
-    void room_cleared_whenNoMoreWaves() {
+    void room_cleared_whenNoWaves() {
+        Room r = new Room("r1", "Test", "desc");
+        assertTrue(r.isCleared());
+    }
+
+    @Test
+    void room_cleared_afterAllWavesCleared() {
         Enemy e = aliveEnemy();
-        Wave w = new Wave("W", List.of(e), List.of(), true);
-        Room r = new Room("r1", "Test", List.of(w), List.of());
+        Wave w = new Wave("W", true);
+        w.addEnemy(e);
+        Room r = new Room("r1", "Test", "desc");
+        r.addWave(w);
         e.takeDamage(999);
-        r.advanceWave(); // avanza: non ci sono altre wave
         assertTrue(r.isCleared());
     }
 
     @Test
     void room_hasMoreWaves_trueWhenMultiple() {
-        Wave w1 = new Wave("A", List.of(aliveEnemy()), List.of(), true);
-        Wave w2 = new Wave("B", List.of(aliveEnemy()), List.of(), true);
-        Room r = new Room("r1", "Test", List.of(w1, w2), List.of());
+        Wave w1 = new Wave("A", true);
+        w1.addEnemy(aliveEnemy());
+        Wave w2 = new Wave("B", true);
+        w2.addEnemy(aliveEnemy());
+        Room r = new Room("r1", "Test", "desc");
+        r.addWave(w1);
+        r.addWave(w2);
         assertTrue(r.hasMoreWaves());
     }
 
     @Test
     void room_advanceWave_movesToNext() {
-        Wave w1 = new Wave("A", List.of(aliveEnemy()), List.of(), true);
-        Wave w2 = new Wave("B", List.of(aliveEnemy()), List.of(), true);
-        Room r = new Room("r1", "Test", List.of(w1, w2), List.of());
+        Wave w1 = new Wave("A", true);
+        Wave w2 = new Wave("B", true);
+        Room r = new Room("r1", "Test", "desc");
+        r.addWave(w1);
+        r.addWave(w2);
         assertEquals("A", r.getCurrentWave().getName());
-        aliveEnemy().takeDamage(999); // dummy
-        r.getCurrentWave().getEnemies().forEach(en -> en.takeDamage(999));
         r.advanceWave();
         assertEquals("B", r.getCurrentWave().getName());
     }
@@ -104,16 +114,25 @@ public class WaveAndRoomTest {
     void room_getAllEnemies_returnsAll() {
         Enemy e1 = aliveEnemy();
         Enemy e2 = aliveEnemy();
-        Wave w = new Wave("W", List.of(e1, e2), List.of(), true);
-        Room r = new Room("r1", "Test", List.of(w), List.of());
-        assertTrue(r.getAllEnemies().containsAll(List.of(e1, e2)));
+        Wave w = new Wave("W", true);
+        w.addEnemy(e1);
+        w.addEnemy(e2);
+        Room r = new Room("r1", "Test", "desc");
+        r.addWave(w);
+        assertTrue(r.getAllEnemies().containsAll(java.util.List.of(e1, e2)));
     }
 
     @Test
     void room_setVisited() {
-        Room r = new Room("r1", "Test", List.of(), List.of());
+        Room r = new Room("r1", "Test", "desc");
         assertFalse(r.isVisited());
         r.setVisited(true);
         assertTrue(r.isVisited());
+    }
+
+    @Test
+    void room_noCurrentWave_whenEmpty() {
+        Room r = new Room("r1", "Test", "desc");
+        assertNull(r.getCurrentWave());
     }
 }

@@ -5,10 +5,6 @@ import it.unicam.cs.mpgc.rpg123891.model.item.weapons.*;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Verifica Armor, Shield e MagicAmulet:
- * nome, slot, modificatori stat per classe corretta.
- */
 public class ArmorShieldAmuletTest {
 
     // ---- Armor ----
@@ -30,8 +26,7 @@ public class ArmorShieldAmuletTest {
     void armor_modifier_warrior_increasesDefense() {
         Armor a = new Armor();
         StatModifier mod = a.getModifierFor(CharacterClass.WARRIOR);
-        assertTrue(mod.defenseDelta() > 0,
-                "L'Armatura deve aumentare la difesa per il Guerriero");
+        assertTrue(mod.defenseDelta() > 0);
     }
 
     @Test
@@ -59,8 +54,7 @@ public class ArmorShieldAmuletTest {
     void shield_modifier_warrior_increasesDefense() {
         Shield s = new Shield();
         StatModifier mod = s.getModifierFor(CharacterClass.WARRIOR);
-        assertTrue(mod.defenseDelta() > 0,
-                "Lo Scudo deve aumentare la difesa per il Guerriero");
+        assertTrue(mod.defenseDelta() > 0);
     }
 
     @Test
@@ -70,7 +64,7 @@ public class ArmorShieldAmuletTest {
         assertEquals(s1, s2);
     }
 
-    // ---- MagicAmulet ----
+    // ---- MagicAmulet ---- (slot BODY in questo progetto)
 
     @Test
     void amulet_hasName() {
@@ -80,16 +74,15 @@ public class ArmorShieldAmuletTest {
     }
 
     @Test
-    void amulet_slot_isAccessory() {
+    void amulet_slot_isBody() {
         MagicAmulet a = new MagicAmulet();
-        assertEquals(EquipSlot.ACCESSORY, a.getSlot());
+        assertEquals(EquipSlot.BODY, a.getSlot());
     }
 
     @Test
     void amulet_modifier_mage_hasPositiveBonus() {
         MagicAmulet a = new MagicAmulet();
         StatModifier mod = a.getModifierFor(CharacterClass.MAGE);
-        assertTrue(mod.attackDelta() > 0 || mod.maxHpDelta() > 0 || mod.defenseDelta() > 0,
-                "L'Amuleto deve dare almeno un bonus al Mago");
+        assertTrue(mod.attackDelta() > 0 || mod.maxHpDelta() > 0 || mod.defenseDelta() > 0);
     }
 }

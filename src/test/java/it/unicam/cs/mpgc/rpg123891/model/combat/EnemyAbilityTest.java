@@ -5,29 +5,23 @@ import org.junit.jupiter.api.Test;
 import java.util.Random;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Verifica le abilità speciali dei nemici:
- *   - DragonBreathAbility: applica BurnEffect al giocatore
- *   - WitchSummonAbility: evoca nemici e rende la Strega immune
- *   - ReGoblinThrowAbility: infligge danno diretto
- */
 public class EnemyAbilityTest {
 
     @Test
     void dragonBreath_returnsNonNullBurn() {
         DragonBreathAbility ability = new DragonBreathAbility(new Random(42));
-        Enemy dragon = EnemyFactory.createDragon();
+        Enemy dragon = EnemyFactory.createUltimoDrago();
         Warrior player = new Warrior("P");
         EnemyAbility.AbilityResult result = ability.use(dragon, player);
-        assertNotNull(result.burnEffect(), "DragonBreath deve restituire un BurnEffect");
-        assertEquals(0, result.totalDamage(), "Il danno immediato deve essere 0");
+        assertNotNull(result.burnEffect());
+        assertEquals(0, result.totalDamage());
         assertTrue(result.summonedEnemies().isEmpty());
     }
 
     @Test
     void dragonBreath_burnDamageInRange() {
         DragonBreathAbility ability = new DragonBreathAbility(new Random(42));
-        Enemy dragon = EnemyFactory.createDragon();
+        Enemy dragon = EnemyFactory.createUltimoDrago();
         Warrior player = new Warrior("P");
         BurnEffect burn = ability.use(dragon, player).burnEffect();
         assertTrue(burn.getDamagePerTurn() >= 5 && burn.getDamagePerTurn() <= 8);
@@ -37,29 +31,27 @@ public class EnemyAbilityTest {
     @Test
     void dragonBreath_messageContainsBurnInfo() {
         DragonBreathAbility ability = new DragonBreathAbility(new Random(42));
-        Enemy dragon = EnemyFactory.createDragon();
+        Enemy dragon = EnemyFactory.createUltimoDrago();
         Warrior player = new Warrior("Player");
         String msg = ability.use(dragon, player).message();
-        assertTrue(msg.contains("Player") || msg.contains("Drago"),
-                "Il messaggio deve menzionare il giocatore o il Drago");
+        assertTrue(msg.contains("Player") || msg.contains("Drago"));
     }
 
     @Test
     void witchSummon_evokesEnemies() {
-        Enemy witch = EnemyFactory.createWitch();
+        Enemy witch = EnemyFactory.createStrega();
         assertTrue(witch.hasAbility());
         Warrior player = new Warrior("P");
         EnemyAbility.AbilityResult result = witch.getAbility().use(witch, player);
-        assertFalse(result.summonedEnemies().isEmpty(),
-                "La Strega deve evocare almeno un nemico");
+        assertFalse(result.summonedEnemies().isEmpty());
     }
 
     @Test
     void witchSummon_makesWitchImmune() {
-        Enemy witch = EnemyFactory.createWitch();
+        Enemy witch = EnemyFactory.createStrega();
         Warrior player = new Warrior("P");
         witch.getAbility().use(witch, player);
-        assertTrue(witch.isImmune(), "La Strega deve diventare immune dopo l'evocazione");
+        assertTrue(witch.isImmune());
     }
 
     @Test
@@ -69,8 +61,7 @@ public class EnemyAbilityTest {
         Warrior player = new Warrior("P");
         int hpBefore = player.getCurrentHp();
         reGoblin.getAbility().use(reGoblin, player);
-        assertTrue(player.getCurrentHp() < hpBefore,
-                "ReGoblinThrow deve infliggere danno diretto");
+        assertTrue(player.getCurrentHp() < hpBefore);
     }
 
     @Test

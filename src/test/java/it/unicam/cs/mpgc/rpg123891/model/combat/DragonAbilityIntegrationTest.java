@@ -1,18 +1,15 @@
 package it.unicam.cs.mpgc.rpg123891.model.combat;
 
-import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.controller.CombatController;
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
+import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
+import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.Random;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Integrazione: BurnEffect applicato da DragonBreathAbility,
- * tick per turno, scadenza corretta.
- */
 public class DragonAbilityIntegrationTest {
 
     private CombatController cc;
@@ -22,11 +19,11 @@ public class DragonAbilityIntegrationTest {
     @BeforeEach
     void setUp() {
         player = new Warrior("P");
-        GameController gc = new GameController();
+        GameController gc = new GameController(new JsonPersistenceManager());
         gc.startNewGame(player);
         DungeonMap map = gc.getGameState().getDungeonMap();
         cc = new CombatController(gc, map);
-        dragon = EnemyFactory.createDragon();
+        dragon = EnemyFactory.createUltimoDrago();
     }
 
     @Test
@@ -64,7 +61,7 @@ public class DragonAbilityIntegrationTest {
 
     @Test
     void dragonPassiveBuff_increasesAttackOnActivation() {
-        Enemy dragon2 = EnemyFactory.createDragon();
+        Enemy dragon2 = EnemyFactory.createUltimoDrago();
         int atkBefore = dragon2.getAttack();
         dragon2.applyPassiveBonus();
         assertTrue(dragon2.getAttack() >= atkBefore);
@@ -72,10 +69,8 @@ public class DragonAbilityIntegrationTest {
 
     @Test
     void checkAndActivateDragonBuff_doesNotActivateWhenTreasureNotCleaned() {
-        // La dungeon map fresca non ha la Sala del Tesoro cleared
         int atkBefore = dragon.getAttack();
         cc.checkAndActivateDragonBuff(dragon);
-        assertEquals(atkBefore, dragon.getAttack(),
-                "Il buff non deve attivarsi se la Sala del Tesoro non è stata liberata");
+        assertEquals(atkBefore, dragon.getAttack());
     }
 }

@@ -3,16 +3,11 @@ package it.unicam.cs.mpgc.rpg123891.controller;
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
-import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
-import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
+import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test d'integrazione per GameController:
- * avvio partita, inventario iniziale, attacchi, pozioni, game over.
- */
 public class GameControllerTest {
 
     private GameController gc;
@@ -21,7 +16,7 @@ public class GameControllerTest {
     @BeforeEach
     void setUp() {
         player = new Warrior("Guerriero");
-        gc = new GameController();
+        gc = new GameController(new JsonPersistenceManager());
         gc.startNewGame(player);
     }
 
@@ -97,13 +92,11 @@ public class GameControllerTest {
 
     @Test
     void advanceRoom_failsIfCurrentNotCleared() {
-        assertFalse(gc.advanceRoom(),
-                "Non si deve avanzare se la stanza corrente non è liberata");
+        assertFalse(gc.advanceRoom());
     }
 
     @Test
     void collectEntryLoot_emptyAfterCollection() {
-        // La prima stanza ha già avuto il loot raccolto in startNewGame
         assertEquals(0, gc.getCurrentRoom().getEntryLoot().size());
     }
 }

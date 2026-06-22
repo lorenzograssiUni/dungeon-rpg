@@ -3,10 +3,6 @@ package it.unicam.cs.mpgc.rpg123891.model.combat;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Verifica Enemy: stordimento, immunità, passive buff drago,
- * attribiti base e costruttore semplificato.
- */
 public class EnemyTest {
 
     private Enemy makeEnemy() {
@@ -66,23 +62,22 @@ public class EnemyTest {
 
     @Test
     void enemy_setAbility_works() {
-        Enemy dragon = EnemyFactory.createDragon();
+        Enemy dragon = EnemyFactory.createUltimoDrago();
         assertTrue(dragon.hasAbility());
         assertNotNull(dragon.getAbility());
     }
 
     @Test
     void enemy_applyPassiveBonus_withBuff_increasesAttack() {
-        Enemy dragon = EnemyFactory.createDragon();
+        Enemy dragon = EnemyFactory.createUltimoDrago();
         int atkBefore = dragon.getAttack();
         dragon.applyPassiveBonus();
-        assertTrue(dragon.getAttack() >= atkBefore,
-                "Il buff passivo deve aumentare o mantenere l'attacco del Drago");
+        assertTrue(dragon.getAttack() >= atkBefore);
     }
 
     @Test
     void enemy_applyPassiveBonus_noBuff_noChange() {
-        Enemy e = makeEnemy(); // nessun passiveBuff
+        Enemy e = makeEnemy();
         int atkBefore = e.getAttack();
         e.applyPassiveBonus();
         assertEquals(atkBefore, e.getAttack());
@@ -92,13 +87,13 @@ public class EnemyTest {
     void enemy_takeDamage_reducedByDefense() {
         Enemy e = makeEnemy(); // DEF=3
         e.takeDamage(10);
-        assertEquals(43, e.getCurrentHp()); // 50-(10-3)=43
+        assertEquals(43, e.getCurrentHp());
     }
 
     @Test
     void enemy_takeDamage_minimumZero() {
-        Enemy e = makeEnemy(); // DEF=3
-        e.takeDamage(2); // < DEF → 0 danno
+        Enemy e = makeEnemy();
+        e.takeDamage(2);
         assertEquals(50, e.getCurrentHp());
     }
 }
