@@ -9,6 +9,8 @@ import it.unicam.cs.mpgc.rpg123891.model.game.GameState;
 import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
 import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Armor;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Shield;
 import it.unicam.cs.mpgc.rpg123891.model.world.Room;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
 import it.unicam.cs.mpgc.rpg123891.persistence.PersistenceManager;
@@ -40,11 +42,26 @@ public class GameController {
         this.persistenceManager = persistenceManager;
     }
 
-    /** Inizia una nuova partita con il personaggio scelto. */
+    // -------------------------------------------------------------------------
+    // Nuova partita
+    // -------------------------------------------------------------------------
+
+    /**
+     * Inizia una nuova partita con il personaggio scelto.
+     * Secondo GAME_SPEC.md il giocatore parte con 3 Pozioni.
+     */
     public void startNewGame(PlayerCharacter player) {
         this.gameState = new GameState(player);
         getCurrentRoom().setVisited(true);
         asGameCharacter(player).applyPassiveBonus();
+
+        // Inventario iniziale: 3 Pozioni (GAME_SPEC.md)
+        GameCharacter gc = asGameCharacter(player);
+        gc.addItem(new Potion());
+        gc.addItem(new Potion());
+        gc.addItem(new Potion());
+        // Loot entry della prima stanza (Bastone Magico)
+        collectEntryLoot();
     }
 
     // -------------------------------------------------------------------------
@@ -73,15 +90,6 @@ public class GameController {
     // Combattimento — attacchi speciali
     // -------------------------------------------------------------------------
 
-    /**
-     * Esegue un attacco speciale SINGLE-TARGET del giocatore su un nemico.
-     * Consuma la stamina del costo dello speciale.
-     * Rileva automaticamente se lo speciale è "Carica!" e imposta caricaActive.
-     *
-     * @param special l'attacco speciale da eseguire
-     * @param target  il nemico bersaglio
-     * @return danno inflitto al bersaglio
-     */
     public int executeSpecial(SpecialAttack special, Enemy target) {
         GameCharacter player = asGameCharacter(gameState.getPlayer());
         player.consumeStaminaForSpecial(special.getStaminaCost());
@@ -92,19 +100,6 @@ public class GameController {
         return damage;
     }
 
-    /**
-     * Esegue un attacco speciale AOE (Area Of Effect) su tutti i nemici vivi
-     * dell'ondata corrente.
-     *
-     * Usato da:
-     *   - "Onda Magica"  (Bastone Magico): ATK base su ogni nemico vivo
-     *   - "Spazzatutto" (Spadone):         ATK base + stun su ogni nemico vivo
-     *
-     * La stamina viene consumata UNA SOLA VOLTA (non per ogni bersaglio).
-     *
-     * @param special lo speciale AOE da eseguire
-     * @return Map<Enemy, Integer> danno inflitto a ciascun nemico colpito
-     */
     public Map<Enemy, Integer> executeAoeSpecial(SpecialAttack special) {
         GameCharacter player = asGameCharacter(gameState.getPlayer());
         player.consumeStaminaForSpecial(special.getStaminaCost());
@@ -121,11 +116,6 @@ public class GameController {
         return results;
     }
 
-    /**
-     * Rimuove il buff temporaneo di Carica! (+3 DEF).
-     * Chiamare DOPO che il nemico ha attaccato nel turno in cui era attivo.
-     * Se caricaActive è false, non fa nulla.
-     */
     public void rollbackCarica() {
         if (caricaActive) {
             asGameCharacter(gameState.getPlayer()).increaseDefense(-3);
@@ -139,14 +129,6 @@ public class GameController {
     // Fuga
     // -------------------------------------------------------------------------
 
-    /**
-     * Verifica se il giocatore può fuggire dall'ondata corrente.
-     *
-     * Regole (GAME_SPEC.md):
-     *   1. wave.canFlee() == false → fuga impossibile
-     *   2. Negli altri casi: fuga possibile solo se
-     *      agilità giocatore < agilità media nemici vivi
-     */
     public boolean canFlee() {
         Wave wave = getCurrentRoom().getCurrentWave();
         if (wave == null) return false;
@@ -162,10 +144,6 @@ public class GameController {
         return playerAgility < avgEnemyAgility;
     }
 
-    /**
-     * Esegue la fuga. La stanza rimane non cleared.
-     * @return true se la fuga è avvenuta con successo
-     */
     public boolean flee() {
         if (!canFlee()) return false;
         return true;
@@ -226,12 +204,20 @@ public class GameController {
      * Controlla se l'ondata corrente è terminata, raccoglie il loot
      * e avanza alla prossima ondata (o segna la stanza come cleared).
      *
+     * Drop condizionali (GAME_SPEC.md):
+     *   - r2 Ondata B (Goblin Guardie): Spada + Scudo o Armatura (item mancante)
+     *   - r3 Ondata B (Statua Gigante / ScheletroGuardia): Scudo se mancante
+     *   - r3 Ondata C (Scheletri + ScheletroGuardia): Armatura se mancante
+     *
      * @return true se la stanza è stata completamente liberata
      */
     public boolean checkWaveCleared() {
         Room room = getCurrentRoom();
         Wave wave = room.getCurrentWave();
         if (wave == null || !wave.isCleared()) return false;
+
+        // Drop condizionali PRIMA di raccogliere il loot fisso
+        addConditionalLoot(room, wave);
 
         collectWaveLoot(wave);
 
@@ -249,6 +235,42 @@ public class GameController {
             gameState.setGameOver(true);
         }
         return true;
+    }
+
+    /**
+     * Aggiunge al loot della wave gli item condizionali:
+     *   r2 Ondata B → Scudo o Armatura (quello che il giocatore non ha)
+     *   r3 Ondata B → Scudo (se mancante)
+     *   r3 Ondata C → Armatura (se mancante)
+     */
+    private void addConditionalLoot(Room room, Wave wave) {
+        List<Item> inv = gameState.getPlayer().getInventory();
+        boolean hasShield = inv.stream().anyMatch(i -> i instanceof Shield);
+        boolean hasArmor  = inv.stream().anyMatch(i -> i instanceof Armor);
+
+        switch (room.getId()) {
+            case "r2" -> {
+                // Ondata B: nome contiene "B" e ha già la Spada nel loot
+                if (wave.getName().equals("Ondata B")) {
+                    // Aggiunge Scudo o Armatura: quello che manca
+                    if (!hasShield)      wave.addLoot(new Shield());
+                    else if (!hasArmor)  wave.addLoot(new Armor());
+                    // Se il giocatore li ha entrambi: drop comunque Scudo (extra)
+                    else                 wave.addLoot(new Shield());
+                }
+            }
+            case "r3" -> {
+                if (wave.getName().equals("Ondata B")) {
+                    // Statua Gigante: drop Scudo se mancante
+                    if (!hasShield) wave.addLoot(new Shield());
+                }
+                if (wave.getName().equals("Ondata C")) {
+                    // Scheletro Guardia: drop item mancante (Scudo o Armatura)
+                    if (!hasShield)     wave.addLoot(new Shield());
+                    else if (!hasArmor) wave.addLoot(new Armor());
+                }
+            }
+        }
     }
 
     /** Verifica se il giocatore è morto e imposta il game over. */

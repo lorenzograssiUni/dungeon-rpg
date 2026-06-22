@@ -25,10 +25,16 @@ import java.util.Optional;
  * Schermata principale di gioco.
  *
  * Layout 3 colonne:
- *   LEFT  = scheda giocatore (o inventario / equip / special in base al bottone)
+ *   LEFT   = scheda giocatore (o inventario / equip / special in base al bottone)
  *   CENTER = log degli eventi
  *   RIGHT  = stanza corrente + lista nemici cliccabili
  *   BOTTOM = barra azioni
+ *
+ * Drop probabilistici (50% Carne) gestiti qui in rollDrops(),
+ * seguendo esattamente GAME_SPEC.md:
+ *   - Cinghiale, Lupo, Cucciolo di Drago → 50% Carne
+ *   - Uovo → NO drop (diventa Cucciolo, non droppa carne)
+ *   - Goblin, Scheletro, Re Goblin, Strega → drop fissi già in Wave.loot
  */
 public class GameScreen {
 
@@ -48,14 +54,12 @@ public class GameScreen {
     private final Stage stage;
     private final FxApp app;
     private final CombatController combatController;
-
-    // EquipmentManager tenuto qui (non in GameState)
     private final EquipmentManager equipmentManager;
 
-    private final VBox    leftPanel = new VBox(8);
-    private final TextArea logArea  = new TextArea();
-    private final VBox    rightPanel= new VBox(8);
-    private final HBox    bottomBar = new HBox(8);
+    private final VBox     leftPanel = new VBox(8);
+    private final TextArea logArea   = new TextArea();
+    private final VBox     rightPanel= new VBox(8);
+    private final HBox     bottomBar = new HBox(8);
 
     private Enemy selectedEnemy = null;
 
@@ -66,7 +70,6 @@ public class GameScreen {
         this.root  = new BorderPane();
         root.setStyle(DARK);
 
-        // EquipmentManager collegato al personaggio corrente
         this.equipmentManager = new EquipmentManager((GameCharacter) gc.getPlayer());
 
         combatController = new CombatController(
@@ -78,6 +81,13 @@ public class GameScreen {
 
         buildLayout();
         refresh();
+
+        // Log di benvenuto con inventario iniziale
+        appendLog("=== DUNGEON RPG ===");
+        appendLog("Benvenuto, " + gc.getPlayer().getName() + "!");
+        appendLog("Hai ricevuto: 3 Pozioni + Bastone Magico");
+        appendLog("Sei nella " + gc.getCurrentRoom().getName() + ". Buona fortuna!");
+        appendLog("----------------------------------");
     }
 
     public BorderPane getRoot() { return root; }
@@ -123,7 +133,6 @@ public class GameScreen {
     // Pannelli LEFT
     // =========================================================================
 
-    /** Vista default: scheda statistiche del personaggio */
     private void showScheda() {
         leftPanel.getChildren().clear();
         GameCharacter p = player();
@@ -137,15 +146,14 @@ public class GameScreen {
             title, sep(),
             classe, sep(),
             bold("Stats:", 12),
-            statRow("HP",     p.getCurrentHp() + " / " + p.getMaxHp(),            hpColor(p)),
-            statRow("Difesa", String.valueOf(p.getDefense()),                       TEXT_WHITE),
-            statRow("Attacco",String.valueOf(p.getAttack()),                        TEXT_WHITE),
-            statRow("Agil.",  String.valueOf(p.getAgility()),                       TEXT_WHITE),
-            statRow("Stamina",p.getCurrentStamina() + " / " + p.getMaxStamina(),   TEXT_WHITE),
-            statRow("Crit",   String.format("%.0f%%", p.getCritChance() * 100),    TEXT_WHITE)
+            statRow("HP",     p.getCurrentHp() + " / " + p.getMaxHp(),          hpColor(p)),
+            statRow("Difesa", String.valueOf(p.getDefense()),                     TEXT_WHITE),
+            statRow("Attacco",String.valueOf(p.getAttack()),                      TEXT_WHITE),
+            statRow("Agil.",  String.valueOf(p.getAgility()),                     TEXT_WHITE),
+            statRow("Stamina",p.getCurrentStamina() + "/" + p.getMaxStamina(),   TEXT_WHITE),
+            statRow("Crit",   String.format("%.0f%%", p.getCritChance() * 100),  TEXT_WHITE)
         );
 
-        // Badge passive/buff attivi
         if (p instanceof Mage m && m.isMagicShieldActive())
             leftPanel.getChildren().add(badge("[SCUDO MAGICO]", TEXT_GREEN));
         if (p instanceof Thief t && t.isStealthBonusActive())
@@ -157,7 +165,6 @@ public class GameScreen {
                 "[BRUCIATURA " + combatController.getActiveBurn().getDamagePerTurn() + "/t]", TEXT_RED));
     }
 
-    /** Inventario: lista oggetti; clic pozione = usa, clic arma = preview equip */
     private void showInventario() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("INVENTARIO", 14));
@@ -171,12 +178,21 @@ public class GameScreen {
                 Button b = itemBtn(item.getName());
                 b.setOnAction(e -> {
                     if (item instanceof Potion) {
-                        gc.useFirstPotion();
-                        appendLog("Hai usato una Pozione!");
-                        showInventario();
-                        showScheda();
+                        boolean used = gc.useFirstPotion();
+                        if (used) {
+                            appendLog("[ITEM] Hai usato una Pozione! Stamina +3.");
+                            showInventario();
+                            showScheda();
+                        }
                     } else if (item instanceof Weapon w) {
                         showEquipPreview(w);
+                    } else if (item instanceof Meat meat) {
+                        // Usa la Carne: +40 HP
+                        meat.use((GameCharacter) gc.getPlayer());
+                        gc.getPlayer().removeItem(meat);
+                        appendLog("[ITEM] Hai mangiato Carne! +40 HP.");
+                        showInventario();
+                        showScheda();
                     }
                 });
                 leftPanel.getChildren().add(b);
@@ -188,7 +204,6 @@ public class GameScreen {
         leftPanel.getChildren().add(back);
     }
 
-    /** Equipaggiamento: mostra slot con item equipaggiati e bottone Rimuovi */
     private void showEquip() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("EQUIPAGGIAMENTO", 13));
@@ -206,7 +221,7 @@ public class GameScreen {
                 Button unb = smallBtn("Rimuovi");
                 unb.setOnAction(e -> {
                     equipmentManager.unequip(slot);
-                    appendLog("Rimosso: " + w.getName());
+                    appendLog("[EQUIP] Rimosso: " + w.getName());
                     showEquip();
                     showScheda();
                 });
@@ -226,11 +241,6 @@ public class GameScreen {
         leftPanel.getChildren().add(back);
     }
 
-    /**
-     * Preview equip: mostra le stat PRIMA → DOPO.
-     * StatModifier e' un record con campi: attackDelta, defenseDelta,
-     * agilityDelta, maxHpDelta, maxStaminaDelta, critDelta.
-     */
     private void showEquipPreview(Weapon weapon) {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("EQUIPAGGIA", 13));
@@ -240,14 +250,19 @@ public class GameScreen {
         leftPanel.getChildren().add(sep());
 
         GameCharacter p = player();
-        // Recupera il modificatore specifico per la classe del personaggio
         StatModifier mod = weapon.getModifierFor(p.getCharacterClass());
 
-        addStatDeltaRow("Attacco",  p.getAttack(),        mod.attackDelta());
-        addStatDeltaRow("Difesa",   p.getDefense(),       mod.defenseDelta());
-        addStatDeltaRow("Agilit\u00e0",p.getAgility(),    mod.agilityDelta());
-        addStatDeltaRow("HP Max",   p.getMaxHp(),         mod.maxHpDelta());
-        addStatDeltaRow("Stamina",  p.getMaxStamina(),    mod.maxStaminaDelta());
+        addStatDeltaRow("Attacco",  p.getAttack(),      mod.attackDelta());
+        addStatDeltaRow("Difesa",   p.getDefense(),     mod.defenseDelta());
+        addStatDeltaRow("Agilit\u00e0", p.getAgility(), mod.agilityDelta());
+        addStatDeltaRow("HP Max",   p.getMaxHp(),       mod.maxHpDelta());
+        addStatDeltaRow("Stamina",  p.getMaxStamina(),  mod.maxStaminaDelta());
+        if (mod.critDelta() != 0) {
+            Label row = lbl("Crit: " + String.format("%.0f%%", p.getCritChance() * 100)
+                    + " \u2192 " + String.format("%.0f%%", (p.getCritChance() + mod.critDelta()) * 100));
+            row.setStyle(mod.critDelta() > 0 ? TEXT_GREEN : TEXT_RED);
+            leftPanel.getChildren().add(row);
+        }
 
         leftPanel.getChildren().add(sep());
 
@@ -262,7 +277,7 @@ public class GameScreen {
         equipBtn.setDisable(!canEquip.success());
         equipBtn.setOnAction(e -> {
             EquipmentManager.EquipResult r = equipmentManager.equip(weapon);
-            appendLog(r.message());
+            appendLog("[EQUIP] " + r.message());
             showScheda();
         });
 
@@ -271,16 +286,13 @@ public class GameScreen {
         leftPanel.getChildren().addAll(equipBtn, back);
     }
 
-    /** Aggiunge una riga PRIMA -> DOPO solo se il delta != 0 */
     private void addStatDeltaRow(String name, int before, int delta) {
         if (delta == 0) return;
-        int after = before + delta;
-        Label row = lbl(name + ": " + before + " \u2192 " + after);
+        Label row = lbl(name + ": " + before + " \u2192 " + (before + delta));
         row.setStyle(delta > 0 ? TEXT_GREEN : TEXT_RED);
         leftPanel.getChildren().add(row);
     }
 
-    /** Special ATK: mostra speciali di tutte le armi equipaggiate */
     private void showSpecialAtk() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("ATTACCHI SPECIALI", 13));
@@ -332,7 +344,7 @@ public class GameScreen {
                 String tags = (e.isBoss()    ? "[BOSS] " : "")
                             + (e.isImmune()  ? "[IMM] "  : "")
                             + (e.isStunned() ? "[STORD]" : "");
-                String label = e.getName() + (tags.isEmpty() ? "" : " " + tags.strip())
+                String label = e.getName() + (tags.isBlank() ? "" : " " + tags.strip())
                              + "\nHP: " + e.getCurrentHp() + "/" + e.getMaxHp();
                 Button eb = enemyBtn(label);
                 if (e == selectedEnemy)
@@ -350,7 +362,7 @@ public class GameScreen {
                 adv.setOnAction(e -> {
                     gc.advanceRoom();
                     selectedEnemy = null;
-                    appendLog("--- Nuova stanza: " + gc.getCurrentRoom().getName() + " ---");
+                    appendLog("=== Nuova stanza: " + gc.getCurrentRoom().getName() + " ===");
                     refresh();
                 });
                 rightPanel.getChildren().add(adv);
@@ -395,7 +407,7 @@ public class GameScreen {
             return;
         }
         if (selectedEnemy.isImmune()) {
-            appendLog("[!] " + selectedEnemy.getName() + " e' immune!");
+            appendLog("[!] " + selectedEnemy.getName() + " e' immune agli attacchi!");
             return;
         }
         CombatController.TurnResult result = combatController.playerNormalAttack(selectedEnemy);
@@ -428,9 +440,9 @@ public class GameScreen {
         result.log().forEach(this::appendLog);
         refresh();
         if (result.playerDead()) { showGameOver(); return; }
-        if (result.fleeSuccess()) appendLog("Sei fuggito!");
+        if (result.fleeSuccess()) appendLog("[FUGA] Sei fuggito dalla stanza!");
         if (result.waveCleared()) {
-            appendLog("[WAVE CLEARED] Ondata completata!");
+            appendLog("[WAVE] Ondata completata!");
             rollDrops();
             gc.checkWaveCleared();
             if (gc.getGameState().isVictory()) { showVictory(); return; }
@@ -439,19 +451,32 @@ public class GameScreen {
         }
     }
 
+    /**
+     * Drop probabilistici 50% Carne da GAME_SPEC.md:
+     *   Cinghiale, Lupo, Cucciolo di Drago → 50% ciascuno
+     *   Uovo                               → NO drop
+     *   Tutti gli altri                    → drop fissi già in Wave.loot, non qui
+     */
     private void rollDrops() {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave == null) return;
-        wave.getEnemies().stream().filter(e -> !e.isAlive()).forEach(e -> {
-            if (dropsMeat(e) && Math.random() < 0.5) {
-                player().addItem(new Meat());
-                appendLog("[DROP] " + e.getName() + " ha lasciato Carne!");
-            }
-        });
+        wave.getEnemies().stream()
+            .filter(e -> !e.isAlive())
+            .filter(e -> meatDropper(e.getName()))
+            .forEach(e -> {
+                if (Math.random() < 0.5) {
+                    player().addItem(new Meat());
+                    appendLog("[DROP] " + e.getName() + " ha lasciato Carne! (+40 HP se usata)");
+                }
+            });
     }
 
-    private boolean dropsMeat(Enemy e) {
-        return switch (e.getName()) {
+    /**
+     * Solo questi nemici possono droppare Carne con probabilità 50%.
+     * Le Uova NON droppano (si trasformano in Cuccioli).
+     */
+    private boolean meatDropper(String name) {
+        return switch (name) {
             case "Cinghiale", "Lupo", "Cucciolo di Drago" -> true;
             default -> false;
         };
@@ -507,63 +532,47 @@ public class GameScreen {
     }
 
     private Label lbl(String text) {
-        Label l = new Label(text);
-        l.setStyle(TEXT_WHITE);
-        l.setWrapText(true);
-        return l;
+        Label l = new Label(text); l.setStyle(TEXT_WHITE); l.setWrapText(true); return l;
     }
-
     private Label bold(String text, int size) {
         Label l = new Label(text);
         l.setFont(Font.font("System", FontWeight.BOLD, size));
         l.setStyle(TEXT_WHITE);
         return l;
     }
-
     private Label badge(String text, String color) {
         Label l = new Label(text);
         l.setFont(Font.font("System", FontWeight.BOLD, 11));
         l.setStyle(color);
         return l;
     }
-
-    private HBox statRow(String label, String value, String valueColor) {
-        Label k = new Label(label + ": ");
-        k.setStyle(TEXT_WHITE + "-fx-font-size:12px;");
-        Label v = new Label(value);
-        v.setStyle(valueColor + "-fx-font-size:12px;-fx-font-weight:bold;");
+    private HBox statRow(String label, String value, String color) {
+        Label k = new Label(label + ": "); k.setStyle(TEXT_WHITE + "-fx-font-size:12px;");
+        Label v = new Label(value);        v.setStyle(color + "-fx-font-size:12px;-fx-font-weight:bold;");
         return new HBox(4, k, v);
     }
-
     private Separator sep() { return new Separator(); }
-
-    private Button btn(String text) {
-        Button b = new Button(text); b.setStyle(BTN_STYLE); return b;
-    }
-    private Button dangerBtn(String text) {
-        Button b = new Button(text); b.setStyle(BTN_DANGER); return b;
-    }
-    private Button smallBtn(String text) {
-        Button b = new Button(text);
+    private Button btn(String t)       { Button b = new Button(t); b.setStyle(BTN_STYLE);  return b; }
+    private Button dangerBtn(String t) { Button b = new Button(t); b.setStyle(BTN_DANGER); return b; }
+    private Button smallBtn(String t) {
+        Button b = new Button(t);
         b.setStyle("-fx-background-color:#2a2a4e;-fx-text-fill:#e0c46c;-fx-font-size:10px;-fx-cursor:hand;");
         return b;
     }
-    private Button itemBtn(String text) {
-        Button b = new Button(text);
+    private Button itemBtn(String t) {
+        Button b = new Button(t);
         b.setStyle("-fx-background-color:#1e1e3e;-fx-text-fill:#cccccc;" +
                    "-fx-font-size:12px;-fx-cursor:hand;-fx-padding:4 8;");
         b.setMaxWidth(Double.MAX_VALUE);
         return b;
     }
-    private Button enemyBtn(String text) {
-        Button b = new Button(text);
-        b.setWrapText(true);
-        b.setMaxWidth(Double.MAX_VALUE);
+    private Button enemyBtn(String t) {
+        Button b = new Button(t);
+        b.setWrapText(true); b.setMaxWidth(Double.MAX_VALUE);
         b.setStyle("-fx-background-color:#1e1e3e;-fx-text-fill:#e05555;" +
                    "-fx-font-size:11px;-fx-cursor:hand;-fx-padding:4 6;-fx-alignment:left;");
         return b;
     }
-
     private String slotName(EquipSlot slot) {
         return switch (slot) {
             case MAIN_HAND -> "Arma (Mano DX)";
