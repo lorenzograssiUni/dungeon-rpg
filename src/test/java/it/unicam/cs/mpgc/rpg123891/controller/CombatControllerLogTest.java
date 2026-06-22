@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *  - pozione: log contiene HP e Stamina
  *  - turno nemico: log contiene danno lordo e difesa
  *  - attacco normale con stamina 0: non lancia eccezioni
+ *  - fuga su wave canFlee=false: log contiene "Non puoi fuggire"
  */
 public class CombatControllerLogTest {
 
@@ -82,8 +83,23 @@ public class CombatControllerLogTest {
         }
     }
 
+    /**
+     * Verifica che la fuga sia bloccata su una wave con canFlee=false.
+     * Costruisce una wave dedicata con canFlee=false e un nemico vivo,
+     * poi forza la room corrente a usarla.
+     */
     @Test
     void flee_whenNotAllowed_logContainsNonPuoi() {
+        // Crea una wave non fuggibile con un nemico vivo
+        Wave noFleeWave = new Wave("Boss Test", false, "wave di test");
+        noFleeWave.addEnemy(EnemyFactory.createReGoblin());
+
+        // Inietta la wave nella room corrente
+        Room currentRoom = gc.getCurrentRoom();
+        currentRoom.getWaves().clear();
+        currentRoom.getWaves().add(noFleeWave);
+        currentRoom.resetWaveIndex();
+
         CombatController.TurnResult result = cc.playerFlee();
         assertTrue(result.log().stream().anyMatch(l -> l.contains("Non puoi fuggire")));
         assertFalse(result.fleeSuccess());
