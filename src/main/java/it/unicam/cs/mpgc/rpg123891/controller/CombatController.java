@@ -3,7 +3,6 @@ package it.unicam.cs.mpgc.rpg123891.controller;
 import it.unicam.cs.mpgc.rpg123891.model.combat.BurnEffect;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
-import it.unicam.cs.mpgc.rpg123891.model.item.Meat;
 import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
@@ -14,13 +13,12 @@ import java.util.Map;
 
 /**
  * Gestisce il flusso di un turno di combattimento:
- *   1. Il giocatore agisce (attacco normale, speciale, fuga)
+ *   1. Il giocatore agisce (attacco normale, speciale, pozione, fuga)
  *   2. I nemici vivi rispondono
  *   3. Si applica la bruciatura se attiva
  *   4. Si controlla se l'ondata e' finita
  *
- * I drop probabilistici (50% Carne) vengono lanciati QUI al momento
- * dell'uccisione di ciascun nemico, secondo GAME_SPEC.md:
+ * Drop probabilistici (50% Carne) lanciati al momento dell'uccisione:
  *   Cinghiale, Lupo, Cucciolo di Drago -> 50% Carne immediata
  *   Uovo                               -> nessun drop
  */
@@ -36,7 +34,9 @@ public class CombatController {
     }
 
     // -------------------------------------------------------------------------
-    // Record risultato turno (restituito alla UI)
+    // Record risultato turno
+    // isCombatOver() = true quando il turno e' definitivamente concluso
+    // (giocatore morto, fuga riuscita, ondata cleared)
     // -------------------------------------------------------------------------
 
     public record TurnResult(
@@ -44,7 +44,12 @@ public class CombatController {
             boolean playerDead,
             boolean waveCleared,
             boolean fleeSuccess
-    ) {}
+    ) {
+        /** True se il combattimento e' terminato per qualsiasi motivo. */
+        public boolean isCombatOver() {
+            return playerDead || waveCleared || fleeSuccess;
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Stato
@@ -73,18 +78,16 @@ public class CombatController {
         List<String> log = new ArrayList<>();
         GameCharacter player = player();
 
-        // --- Turno giocatore ---
         int dmg = gc.playerAttack(target);
         log.add("[ATK] " + player.getName() + " attacca " + target.getName()
                 + " per " + dmg + " danni."
                 + (dmg == 0 ? " (parato!)" : ""));
 
         if (!target.isAlive()) {
-            log.add("[†] " + target.getName() + " e' stato sconfitto!");
+            log.add("[\u2020] " + target.getName() + " e' stato sconfitto!");
             rollMeatDrop(target, log);
         }
 
-        // --- Risposta nemici ---
         boolean waveCleared = handleEnemyTurns(log);
         boolean playerDead  = checkPlayerDead(log);
         return new TurnResult(log, playerDead, waveCleared, false);
@@ -100,7 +103,7 @@ public class CombatController {
                 + " su " + target.getName() + " per " + dmg + " danni.");
 
         if (!target.isAlive()) {
-            log.add("[†] " + target.getName() + " e' stato sconfitto!");
+            log.add("[\u2020] " + target.getName() + " e' stato sconfitto!");
             rollMeatDrop(target, log);
         }
 
@@ -119,7 +122,7 @@ public class CombatController {
         for (Map.Entry<Enemy, Integer> e : results.entrySet()) {
             log.add("  -> " + e.getKey().getName() + ": " + e.getValue() + " danni.");
             if (!e.getKey().isAlive()) {
-                log.add("  [†] " + e.getKey().getName() + " e' stato sconfitto!");
+                log.add("  [\u2020] " + e.getKey().getName() + " e' stato sconfitto!");
                 rollMeatDrop(e.getKey(), log);
             }
         }
@@ -127,6 +130,19 @@ public class CombatController {
         boolean waveCleared = handleEnemyTurns(log);
         boolean playerDead  = checkPlayerDead(log);
         return new TurnResult(log, playerDead, waveCleared, false);
+    }
+
+    /** Usa la prima pozione disponibile nell'inventario. */
+    public TurnResult playerUsePotion() {
+        List<String> log = new ArrayList<>();
+        boolean used = gc.useFirstPotion();
+        if (used) {
+            log.add("[ITEM] Hai usato una Pozione! Stamina +3.");
+        } else {
+            log.add("[!] Nessuna pozione disponibile.");
+        }
+        // Usare una pozione non fa rispondere i nemici
+        return new TurnResult(log, false, false, false);
     }
 
     /** Tentativo di fuga. */
@@ -142,18 +158,27 @@ public class CombatController {
     }
 
     // =========================================================================
-    // Drop probabilistici Carne (50%)
+    // Dragon PassiveBuff
     // =========================================================================
 
     /**
-     * Se il nemico ucciso e' un dropper di Carne (Cinghiale, Lupo, Cucciolo di Drago),
-     * lancia 50% e aggiunge Carne all'inventario del giocatore.
-     * Le Uova NON droppano carne.
+     * Controlla se la Sala del Tesoro e' stata ripulita e, in caso affermativo,
+     * attiva il buff passivo del Drago (+20% danno).
+     * Chiamato da GameUI prima di iniziare il combattimento con il boss.
      */
+    public void checkAndActivateDragonBuff(Enemy dragon) {
+        if (!dungeonMap.isTreasureRoomCleaned()) return;
+        dragon.activatePassiveBuff();
+    }
+
+    // =========================================================================
+    // Drop probabilistici Carne (50%)
+    // =========================================================================
+
     private void rollMeatDrop(Enemy enemy, List<String> log) {
         if (!isMeatDropper(enemy.getName())) return;
         if (Math.random() < 0.5) {
-            player().addItem(new Meat());
+            player().addItem(new it.unicam.cs.mpgc.rpg123891.model.item.Meat());
             log.add("[DROP] " + enemy.getName() + " ha lasciato della Carne! (+40 HP se usata)");
         }
     }
@@ -169,10 +194,6 @@ public class CombatController {
     // Turni nemici
     // =========================================================================
 
-    /**
-     * Esegue i turni di tutti i nemici vivi (in ordine di agilita' decrescente).
-     * @return true se l'ondata e' ora cleared
-     */
     private boolean handleEnemyTurns(List<String> log) {
         Wave wave = dungeonMap.getCurrentRoom().getCurrentWave();
         if (wave == null) return false;
@@ -197,10 +218,9 @@ public class CombatController {
             log.add("[ENEMY] " + enemy.getName() + " attacca per " + dmg + " danni.");
         }
 
-        // Bruciatura a fine turno
+        // Bruciatura a fine turno: usa applyTo() che chiama applyBurnDamage()
         if (activeBurn != null) {
-            int burnDmg = activeBurn.tick();
-            player().takeDamage(burnDmg);
+            int burnDmg = activeBurn.applyTo(player());
             log.add("[BURN] La bruciatura ti infligge " + burnDmg + " danni!"
                     + (activeBurn.isExpired() ? " (terminata)" : ""));
             if (activeBurn.isExpired()) activeBurn = null;
@@ -212,7 +232,7 @@ public class CombatController {
 
     private boolean checkPlayerDead(List<String> log) {
         if (!player().isAlive()) {
-            log.add("[☠] Sei morto. Game Over.");
+            log.add("[\u2620] Sei morto. Game Over.");
             return true;
         }
         return false;
