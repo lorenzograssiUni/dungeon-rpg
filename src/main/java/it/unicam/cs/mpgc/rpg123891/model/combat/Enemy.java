@@ -8,11 +8,13 @@ import java.io.Serial;
 /**
  * Rappresenta un nemico generico del gioco.
  *
- * Campi aggiunti rispetto alla versione precedente:
+ * Campi speciali:
  *   - ability           : abilità speciale (null se il nemico non ne ha)
  *   - dragonPassiveBuff : buff passivo del boss finale (null per tutti gli altri)
- *   - isImmune          : flag impostato dalla WitchSummonAbility per
- *                         bloccare gli attacchi del giocatore su questo nemico
+ *   - immune            : flag impostato dalla WitchSummonAbility
+ *   - stunned           : flag impostato da Spazzatutto (Spadone);
+ *                         il controller fa saltare il turno al nemico stordito
+ *                         e chiama clearStun() a fine turno.
  */
 public class Enemy extends GameCharacter {
 
@@ -23,14 +25,16 @@ public class Enemy extends GameCharacter {
     private final double critModifierOnPlayer;
     private final boolean isBoss;
 
-    /** Abilità speciale del nemico. null se non ne ha. */
     private EnemyAbility ability;
-
-    /** Buff passivo del drago. null per tutti i nemici tranne L'Ultimo Drago. */
     private DragonPassiveBuff passiveBuff;
+    private boolean immune  = false;
 
-    /** Immunità agli attacchi (usata dalla Strega finché gli scheletri sono vivi). */
-    private boolean immune = false;
+    /**
+     * Indica se il nemico è stordito (Spazzatutto).
+     * Quando true il controller salta il turno di questo nemico
+     * e chiama clearStun() a fine round.
+     */
+    private boolean stunned = false;
 
     /** Costruttore completo usato da EnemyFactory. */
     public Enemy(String name, int maxHp, int attack, int defense,
@@ -51,35 +55,41 @@ public class Enemy extends GameCharacter {
     @Override
     public CharacterClass getCharacterClass() { return CharacterClass.ENEMY; }
 
-    /**
-     * Il buff passivo del Drago viene attivato dal controller
-     * se la condizione della Sala del Tesoro è soddisfatta.
-     * Per tutti gli altri nemici non fa nulla.
-     */
     @Override
     public void applyPassiveBonus() {
         if (passiveBuff != null) {
             passiveBuff.activate();
-            // Applica +20% all'attacco base del boss
             this.attack = (int)(this.attack * passiveBuff.getDamageMultiplier());
         }
     }
 
     // -------------------------------------------------------------------------
+    // Stordimento
+    // -------------------------------------------------------------------------
+
+    /** Stordisce il nemico per 1 turno. */
+    public void stun()      { this.stunned = true; }
+
+    /** Rimuove lo stordimento (chiamato dal controller a fine round). */
+    public void clearStun() { this.stunned = false; }
+
+    public boolean isStunned() { return stunned; }
+
+    // -------------------------------------------------------------------------
     // Getter / Setter
     // -------------------------------------------------------------------------
 
-    public AttackType getAttackType()              { return attackType; }
-    public double getCritModifierOnPlayer()        { return critModifierOnPlayer; }
-    public boolean isBoss()                        { return isBoss; }
+    public AttackType getAttackType()               { return attackType; }
+    public double getCritModifierOnPlayer()         { return critModifierOnPlayer; }
+    public boolean isBoss()                         { return isBoss; }
 
-    public EnemyAbility getAbility()               { return ability; }
-    public void setAbility(EnemyAbility ability)   { this.ability = ability; }
-    public boolean hasAbility()                    { return ability != null; }
+    public EnemyAbility getAbility()                { return ability; }
+    public void setAbility(EnemyAbility ability)    { this.ability = ability; }
+    public boolean hasAbility()                     { return ability != null; }
 
-    public DragonPassiveBuff getPassiveBuff()      { return passiveBuff; }
-    public void setPassiveBuff(DragonPassiveBuff b){ this.passiveBuff = b; }
+    public DragonPassiveBuff getPassiveBuff()       { return passiveBuff; }
+    public void setPassiveBuff(DragonPassiveBuff b) { this.passiveBuff = b; }
 
-    public boolean isImmune()                      { return immune; }
-    public void setImmune(boolean immune)          { this.immune = immune; }
+    public boolean isImmune()                       { return immune; }
+    public void setImmune(boolean immune)           { this.immune = immune; }
 }
