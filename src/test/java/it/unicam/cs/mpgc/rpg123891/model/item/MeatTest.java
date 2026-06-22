@@ -6,25 +6,35 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifica Meat:
- *  - use() aumenta HP di 40 (fino al massimo)
- *  - non supera il maxHp
+ *  - use() ripristina 2 Stamina (NON HP)
+ *  - non supera maxStamina
+ *  - nome = "Carne"
  */
 public class MeatTest {
 
     @Test
-    void use_heals40Hp() {
+    void use_restores2Stamina() {
         Warrior w = new Warrior("Test");
-        w.takeDamage(60); // scende di 60 HP
-        int hpBefore = w.getCurrentHp();
+        // Consuma tutta la stamina
+        while (w.getCurrentStamina() > 0) w.consumeStaminaForAttack();
         new Meat().use(w);
-        assertEquals(Math.min(w.getMaxHp(), hpBefore + 40), w.getCurrentHp());
+        assertEquals(2, w.getCurrentStamina());
     }
 
     @Test
-    void use_doesNotExceedMaxHp() {
-        Warrior w = new Warrior("Test"); // HP pieno
+    void use_doesNotExceedMaxStamina() {
+        Warrior w = new Warrior("Test"); // stamina piena
+        int before = w.getCurrentStamina();
         new Meat().use(w);
-        assertEquals(w.getMaxHp(), w.getCurrentHp());
+        assertEquals(Math.min(w.getMaxStamina(), before + 2), w.getCurrentStamina());
+    }
+
+    @Test
+    void use_doesNotChangeHP() {
+        Warrior w = new Warrior("Test");
+        int hpBefore = w.getCurrentHp();
+        new Meat().use(w);
+        assertEquals(hpBefore, w.getCurrentHp());
     }
 
     @Test

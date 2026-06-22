@@ -8,11 +8,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test per la classe Thief:
- *  - stat base corrette
- *  - critChance base 25%
- *  - passive: primo attacco sempre critico
- *  - stealthBonusActive reset dopo uso
+ * Test per la classe Thief.
+ *
+ * Nota: stealthBonusActive e' FALSE alla creazione e viene attivato
+ * da applyPassiveBonus() (chiamato all'ingresso di ogni stanza).
  */
 public class ThiefTest {
 
@@ -28,30 +27,51 @@ public class ThiefTest {
     }
 
     @Test
-    void thief_stealthBonus_activeAtStart() {
+    void thief_stealthBonus_inactiveAtConstruction() {
+        // Lo stealth parte spento; viene attivato da applyPassiveBonus()
         Thief t = new Thief("Ladro");
+        assertFalse(t.isStealthBonusActive(),
+                "Lo stealth deve essere inattivo alla creazione");
+    }
+
+    @Test
+    void thief_stealthBonus_activeAfterPassiveBonus() {
+        Thief t = new Thief("Ladro");
+        t.applyPassiveBonus();
         assertTrue(t.isStealthBonusActive(),
-                "Il primo attacco del Ladro deve essere critico (stealth attivo)");
+                "Lo stealth deve essere attivo dopo applyPassiveBonus()");
     }
 
     @Test
     void thief_stealthBonus_consumedAfterFirstAttack() {
         Thief t = new Thief("Ladro");
+        t.applyPassiveBonus(); // attiva stealth
         CombatSystem cs = new CombatSystem();
         Enemy goblin = EnemyFactory.createGoblin();
         cs.executeAttack(t, goblin, AttackType.PHYSICAL, 0);
-        // Dopo il primo attacco lo stealth deve essere consumato
-        assertFalse(t.isStealthBonusActive());
+        assertFalse(t.isStealthBonusActive(),
+                "Lo stealth deve essere consumato dopo il primo attacco");
     }
 
     @Test
-    void thief_critChance_increasesWithAttacks() {
+    void thief_critChance_increasesAfterAttack() {
         Thief t = new Thief("Ladro");
+        t.applyPassiveBonus();
         double baseCrit = t.getCritChance();
-        t.applyPassiveBonus(); // simula avanzamento stanza (+2% crit)
-        // applyPassiveBonus nel Thief incrementa crit
-        // verifichiamo che la crit non sia diminuita
+        CombatSystem cs = new CombatSystem();
+        Enemy goblin = EnemyFactory.createGoblin();
+        cs.executeAttack(t, goblin, AttackType.PHYSICAL, 0);
+        // Dopo il primo attacco la crit deve essere >= base
         assertTrue(t.getCritChance() >= baseCrit);
+    }
+
+    @Test
+    void thief_applyPassiveBonus_resetsCrit() {
+        Thief t = new Thief("Ladro");
+        t.incrementCritAfterAttack();
+        t.incrementCritAfterAttack(); // sale oltre 25%
+        t.applyPassiveBonus();        // reset a 25%
+        assertEquals(0.25, t.getCritChance(), 0.001);
     }
 
     @Test
