@@ -1,100 +1,109 @@
 package it.unicam.cs.mpgc.rpg123891.controller;
 
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
-import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
-import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
+import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
+import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
 import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
-import it.unicam.cs.mpgc.rpg123891.model.world.Room;
+import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test di integrazione per GameController:
- *  - startNewGame() fornisce 3 Pozioni e il Bastone Magico
- *  - useFirstPotion() usa e rimuove la pozione
- *  - countPotions() aggiornato
- *  - canFlee() false su wave non fuggibile
- *  - advanceRoom() incrementa stanza
- *  - checkPlayerDead() imposta gameOver
+ * Test d'integrazione per GameController:
+ * avvio partita, inventario iniziale, attacchi, pozioni, game over.
  */
 public class GameControllerTest {
 
     private GameController gc;
+    private Warrior player;
 
     @BeforeEach
-    void setup() {
-        gc = new GameController(new it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager());
-        gc.startNewGame(new Warrior("Eroe"));
+    void setUp() {
+        player = new Warrior("Guerriero");
+        gc = new GameController();
+        gc.startNewGame(player);
     }
 
     @Test
-    void startNewGame_gives3Potions() {
+    void startNewGame_player3Potions() {
         assertEquals(3, gc.countPotions());
     }
 
     @Test
-    void startNewGame_givesEntryLoot_MagicStaff() {
-        boolean hasStaff = gc.getPlayer().getInventory().stream()
-                .anyMatch(i -> i.getName().equals("Bastone Magico"));
-        assertTrue(hasStaff, "Il giocatore deve avere il Bastone Magico all'inizio");
+    void startNewGame_firstRoomVisited() {
+        assertTrue(gc.getCurrentRoom().isVisited());
     }
 
     @Test
-    void useFirstPotion_returnsTrueAndRemovesPotion() {
+    void startNewGame_dungeonMapNotNull() {
+        assertNotNull(gc.getGameState().getDungeonMap());
+    }
+
+    @Test
+    void playerAttack_returnsNonNegativeDamage() {
+        Enemy goblin = EnemyFactory.createGoblin();
+        int dmg = gc.playerAttack(goblin);
+        assertTrue(dmg >= 0);
+    }
+
+    @Test
+    void playerAttack_withZeroStamina_doesNotThrow() {
+        while (player.getCurrentStamina() > 0) player.consumeStaminaForAttack();
+        Enemy goblin = EnemyFactory.createGoblin();
+        assertDoesNotThrow(() -> gc.playerAttack(goblin));
+    }
+
+    @Test
+    void enemyAttack_returnsNonNegativeDamage() {
+        Enemy goblin = EnemyFactory.createGoblin();
+        int dmg = gc.enemyAttack(goblin);
+        assertTrue(dmg >= 0);
+    }
+
+    @Test
+    void useFirstPotion_reducePotionCount() {
         long before = gc.countPotions();
-        boolean used = gc.useFirstPotion();
-        assertTrue(used);
+        gc.useFirstPotion();
         assertEquals(before - 1, gc.countPotions());
     }
 
     @Test
-    void useFirstPotion_returnsFalseWhenNoPotions() {
-        // Rimuovi tutte le pozioni
-        gc.getPlayer().getInventory().removeIf(i -> i instanceof Potion);
+    void useFirstPotion_healsPlayer() {
+        player.takeDamage(50);
+        int hpBefore = player.getCurrentHp();
+        gc.useFirstPotion();
+        assertTrue(player.getCurrentHp() > hpBefore);
+    }
+
+    @Test
+    void useFirstPotion_whenNone_returnsFalse() {
+        while (gc.countPotions() > 0) gc.useFirstPotion();
         assertFalse(gc.useFirstPotion());
     }
 
     @Test
-    void canFlee_falseOnBossWave() {
-        // Boss room = ultima stanza (r5): wave canFlee=false
-        // Avanziamo fino a r5
-        for (int i = 0; i < 4; i++) {
-            // segna la stanza come cleared manualmente
-            Room r = gc.getCurrentRoom();
-            r.getWaves().forEach(w -> w.setCleared(true));
-            gc.advanceRoom();
-        }
-        // r5: wave Boss con canFlee=false
-        assertFalse(gc.canFlee());
+    void checkPlayerDead_alive_returnsFalse() {
+        assertFalse(gc.checkPlayerDead());
     }
 
     @Test
-    void advanceRoom_movesToNextRoom() {
-        Room r = gc.getCurrentRoom();
-        r.getWaves().forEach(w -> w.setCleared(true));
-        boolean advanced = gc.advanceRoom();
-        assertTrue(advanced);
-        assertNotEquals("r1", gc.getCurrentRoom().getId());
-    }
-
-    @Test
-    void checkPlayerDead_setsGameOverWhenDead() {
-        var player = (it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter) gc.getPlayer();
+    void checkPlayerDead_dead_setsGameOver() {
         player.takeDamage(9999);
         assertTrue(gc.checkPlayerDead());
         assertTrue(gc.getGameState().isGameOver());
+        assertFalse(gc.getGameState().isVictory());
     }
 
     @Test
-    void startNewGame_worksWith_Mage() {
-        gc.startNewGame(new Mage("Mago"));
-        assertEquals(3, gc.countPotions());
+    void advanceRoom_failsIfCurrentNotCleared() {
+        assertFalse(gc.advanceRoom(),
+                "Non si deve avanzare se la stanza corrente non è liberata");
     }
 
     @Test
-    void startNewGame_worksWith_Thief() {
-        gc.startNewGame(new Thief("Ladro"));
-        assertEquals(3, gc.countPotions());
+    void collectEntryLoot_emptyAfterCollection() {
+        // La prima stanza ha già avuto il loot raccolto in startNewGame
+        assertEquals(0, gc.getCurrentRoom().getEntryLoot().size());
     }
 }
