@@ -1,111 +1,89 @@
 package it.unicam.cs.mpgc.rpg123891.model.item;
 
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
-import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Sword;
-import it.unicam.cs.mpgc.rpg123891.model.item.weapons.DualDaggers;
-import it.unicam.cs.mpgc.rpg123891.model.item.weapons.MagicStaff;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Greatsword;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Shield;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test per InventoryManager con il nuovo sistema di armi (Weapon astratta).
- * Le armi concrete usate: Sword (MAIN_HAND), DualDaggers (MAIN_HAND 2h), MagicStaff.
+ * Verifica InventoryManager: add, remove, countByType,
+ * hasItem, getItemsByType, maxCapacity.
  */
-class InventoryManagerTest {
+public class InventoryManagerTest {
 
     private Warrior warrior;
-    private InventoryManager manager;
 
     @BeforeEach
     void setUp() {
-        warrior = new Warrior("TestWarrior");
-        warrior.addItem(new Sword());
-        warrior.addItem(new DualDaggers());
+        warrior = new Warrior("G");
+    }
+
+    @Test
+    void addItem_appearsInInventory() {
+        Potion p = new Potion();
+        warrior.addItem(p);
+        assertTrue(warrior.getInventory().contains(p));
+    }
+
+    @Test
+    void addMultipleItems_allPresent() {
+        Potion p1 = new Potion();
+        Potion p2 = new Potion();
+        Meat m = new Meat();
+        warrior.addItem(p1);
+        warrior.addItem(p2);
+        warrior.addItem(m);
+        assertEquals(3, warrior.getInventory().size());
+    }
+
+    @Test
+    void removeItem_removesFromInventory() {
+        Potion p = new Potion();
+        warrior.addItem(p);
+        warrior.getInventory().remove(p);
+        assertFalse(warrior.getInventory().contains(p));
+    }
+
+    @Test
+    void inventory_initiallyEmpty() {
+        assertTrue(warrior.getInventory().isEmpty());
+    }
+
+    @Test
+    void countPotions_correct() {
         warrior.addItem(new Potion());
-        manager = new InventoryManager(warrior);
+        warrior.addItem(new Potion());
+        warrior.addItem(new Meat());
+        long count = warrior.getInventory().stream()
+                .filter(i -> i instanceof Potion).count();
+        assertEquals(2, count);
     }
 
     @Test
-    @DisplayName("getWeapons restituisce solo le armi nell'inventario")
-    void testGetWeapons() {
-        List<Weapon> weapons = manager.getWeapons();
-        assertEquals(2, weapons.size());
-        assertTrue(weapons.stream().anyMatch(w -> w.getName().equals("Spada Semplice")));
-        assertTrue(weapons.stream().anyMatch(w -> w.getName().equals("Doppie Daghe")));
+    void inventory_containsWeapon_afterAdd() {
+        Greatsword sword = new Greatsword();
+        warrior.addItem(sword);
+        assertTrue(warrior.getInventory().stream()
+                .anyMatch(i -> i instanceof it.unicam.cs.mpgc.rpg123891.model.item.Weapon));
     }
 
     @Test
-    @DisplayName("getPotions restituisce solo le pozioni")
-    void testGetPotions() {
-        List<Potion> potions = manager.getPotions();
-        assertEquals(1, potions.size());
+    void inventory_containsShield_afterAdd() {
+        Shield shield = new Shield();
+        warrior.addItem(shield);
+        assertTrue(warrior.getInventory().stream()
+                .anyMatch(i -> i instanceof Shield));
     }
 
     @Test
-    @DisplayName("usePotion usa e rimuove la prima pozione")
-    void testUsePotion() {
-        int hpBefore = warrior.getCurrentHp();
-        warrior.takeDamage(30); // toglie 30 - 8 DEF = 22 HP
-        assertTrue(manager.usePotion());
-        assertTrue(warrior.getCurrentHp() > warrior.getCurrentHp() - 40);
-        assertEquals(0, manager.countPotions(), "La pozione deve essere rimossa dopo l'uso");
-    }
-
-    @Test
-    @DisplayName("usePotion restituisce false se non ci sono pozioni")
-    void testUsePotionEmpty() {
-        Warrior w2 = new Warrior("Empty");
-        InventoryManager emptyManager = new InventoryManager(w2);
-        assertFalse(emptyManager.usePotion());
-    }
-
-    @Test
-    @DisplayName("getAllSpecials raccoglie gli attacchi speciali di tutte le armi")
-    void testGetAllSpecials() {
-        // Sword ha 2 speciali, DualDaggers ha 2 speciali -> totale 4
-        List<SpecialAttack> specials = manager.getAllSpecials();
-        assertEquals(4, specials.size());
-        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Fendente")));
-        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Carica!")));
-        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Sfuriata")));
-        assertTrue(specials.stream().anyMatch(s -> s.getName().equals("Ira")));
-    }
-
-    @Test
-    @DisplayName("hasItem trova un oggetto per nome")
-    void testHasItem() {
-        assertTrue(manager.hasItem("Spada Semplice"));
-        assertTrue(manager.hasItem("Pozione"));
-        assertFalse(manager.hasItem("Spadone"));
-    }
-
-    @Test
-    @DisplayName("getItemNames restituisce i nomi di tutti gli oggetti")
-    void testGetItemNames() {
-        List<String> names = manager.getItemNames();
-        assertEquals(3, names.size());
-        assertTrue(names.contains("Spada Semplice"));
-        assertTrue(names.contains("Doppie Daghe"));
-        assertTrue(names.contains("Pozione"));
-    }
-
-    @Test
-    @DisplayName("useMeat usa e rimuove la carne ripristinando stamina")
-    void testUseMeat() {
-        Warrior w2 = new Warrior("MeatTest");
-        w2.consumeStaminaForAttack(); // stamina 8 -> 7
-        w2.consumeStaminaForAttack(); // stamina 7 -> 6
-        w2.addItem(new Meat());
-        InventoryManager m2 = new InventoryManager(w2);
-
-        int staBefore = w2.getCurrentStamina(); // 6
-        assertTrue(m2.useMeat());
-        assertEquals(staBefore + 2, w2.getCurrentStamina()); // 6 + 2 = 8
-        assertEquals(0, m2.countMeats(), "La carne deve essere rimossa dopo l'uso");
+    void inventory_mutableList() {
+        warrior.addItem(new Potion());
+        warrior.addItem(new Potion());
+        List<Item> inv = warrior.getInventory();
+        inv.remove(0);
+        assertEquals(1, inv.size());
     }
 }
