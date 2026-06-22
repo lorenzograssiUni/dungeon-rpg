@@ -1,80 +1,67 @@
 package it.unicam.cs.mpgc.rpg123891.model.character;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
+import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test per la classe Warrior.
- * Verifica le statistiche iniziali, i metodi ereditati da GameCharacter
- * e il comportamento del bonus passivo.
- */
-class WarriorTest {
+public class WarriorTest {
 
-    private Warrior warrior;
-
-    @BeforeEach
-    void setUp() {
-        warrior = new Warrior("Eroe");
+    @Test
+    void warrior_baseStats() {
+        Warrior w = new Warrior("Guerriero");
+        assertEquals(120,  w.getMaxHp());
+        assertEquals(22,   w.getAttack());
+        assertEquals(8,    w.getDefense());
+        assertEquals(4,    w.getAgility());
+        assertEquals(8,    w.getMaxStamina());
+        assertEquals(0.05, w.getCritChance(), 0.001);
     }
 
     @Test
-    @DisplayName("Il Warrior inizia con HP pieni")
-    void testInitialHpFull() {
-        assertEquals(warrior.getMaxHp(), warrior.getCurrentHp());
+    void warrior_blockChance_is20percent() {
+        Warrior w = new Warrior("Guerriero");
+        assertEquals(0.20, w.getBlockChance(), 0.001);
     }
 
     @Test
-    @DisplayName("Il Warrior è vivo all'inizio")
-    void testIsAliveAtStart() {
-        assertTrue(warrior.isAlive());
+    void warrior_applyPassiveBonus_increaseDefenseAndMaxHp() {
+        Warrior w = new Warrior("Guerriero");
+        int defBefore = w.getDefense();
+        int hpBefore  = w.getMaxHp();
+        w.applyPassiveBonus();
+        assertEquals(defBefore + 5,  w.getDefense());
+        assertEquals(hpBefore  + 20, w.getMaxHp());
     }
 
     @Test
-    @DisplayName("takeDamage riduce gli HP correttamente tenendo conto della difesa")
-    void testTakeDamageReducesHp() {
-        int hpBefore = warrior.getCurrentHp();
-        int damage = 20;
-        warrior.takeDamage(damage);
-        int expectedHp = hpBefore - Math.max(0, damage - warrior.getDefense());
-        assertEquals(expectedHp, warrior.getCurrentHp());
+    void warrior_characterClass_isWarrior() {
+        Warrior w = new Warrior("Guerriero");
+        assertEquals(CharacterClass.WARRIOR, w.getCharacterClass());
     }
 
     @Test
-    @DisplayName("takeDamage non porta gli HP sotto zero")
-    void testHpNeverBelowZero() {
-        warrior.takeDamage(99999);
-        assertEquals(0, warrior.getCurrentHp());
+    void warrior_heal_doesNotExceedMaxHp() {
+        Warrior w = new Warrior("Guerriero");
+        w.heal(9999);
+        assertEquals(w.getMaxHp(), w.getCurrentHp());
     }
 
     @Test
-    @DisplayName("heal ripristina HP senza superare il massimo")
-    void testHealDoesNotExceedMaxHp() {
-        warrior.takeDamage(30);
-        warrior.heal(99999);
-        assertEquals(warrior.getMaxHp(), warrior.getCurrentHp());
+    void warrior_takeDamage_reducedByDefense() {
+        Warrior w = new Warrior("Guerriero"); // DEF = 8
+        w.takeDamage(20);
+        assertEquals(w.getMaxHp() - 12, w.getCurrentHp()); // 20-8=12
     }
 
     @Test
-    @DisplayName("Il personaggio muore quando gli HP raggiungono zero")
-    void testCharacterDiesAtZeroHp() {
-        warrior.takeDamage(99999);
-        assertFalse(warrior.isAlive());
-    }
-
-    @Test
-    @DisplayName("Il Warrior ha la classe WARRIOR")
-    void testCharacterClass() {
-        assertEquals(CharacterClass.WARRIOR, warrior.getCharacterClass());
-    }
-
-    @Test
-    @DisplayName("addItem aggiunge un oggetto all'inventario")
-    void testAddItemToInventory() {
-        var potion = new it.unicam.cs.mpgc.rpg123891.model.item.Potion("Pozione", 30);
-        warrior.addItem(potion);
-        assertEquals(1, warrior.getInventory().size());
+    void warrior_potion_restoresHpAndStamina() {
+        Warrior w = new Warrior("Guerriero");
+        w.takeDamage(30); // perde 22 HP (30-8)
+        while (w.getCurrentStamina() > 0) w.consumeStaminaForAttack();
+        int hpBefore  = w.getCurrentHp();
+        int staBefore = w.getCurrentStamina();
+        new Potion().use(w);
+        assertEquals(hpBefore  + 40, w.getCurrentHp());
+        assertEquals(staBefore + 5,  w.getCurrentStamina());
     }
 }

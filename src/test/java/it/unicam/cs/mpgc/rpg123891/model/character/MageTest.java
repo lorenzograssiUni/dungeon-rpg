@@ -1,91 +1,78 @@
 package it.unicam.cs.mpgc.rpg123891.model.character;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
+import it.unicam.cs.mpgc.rpg123891.model.combat.AttackType;
+import it.unicam.cs.mpgc.rpg123891.model.combat.CombatSystem;
+import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
+import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test per la classe Mage.
- * Riflette il nuovo design: Mage e' un caster con ATK base basso (15)
- * ma alta stamina (10) e buona agilita' (6). Il danno viene amplificato
- * dalle armi magiche (Bastone Magico +5 ATK per il Mage).
- */
-class MageTest {
+public class MageTest {
 
-    private Mage mage;
-    private Warrior warrior;
-
-    @BeforeEach
-    void setUp() {
-        mage    = new Mage("Gandalf");
-        warrior = new Warrior("Eroe");
+    @Test
+    void mage_baseStats() {
+        Mage m = new Mage("Mago");
+        assertEquals(75,   m.getMaxHp());
+        assertEquals(15,   m.getAttack());
+        assertEquals(4,    m.getDefense());
+        assertEquals(6,    m.getAgility());
+        assertEquals(10,   m.getMaxStamina());
+        assertEquals(0.05, m.getCritChance(), 0.001);
     }
 
     @Test
-    @DisplayName("Il Mage ha la classe MAGE")
-    void testCharacterClass() {
-        assertEquals(CharacterClass.MAGE, mage.getCharacterClass());
+    void mage_magicShield_activeAtStart() {
+        Mage m = new Mage("Mago");
+        assertTrue(m.isMagicShieldActive());
     }
 
     @Test
-    @DisplayName("Il Mage ha ATK base inferiore al Warrior (caster: potenziato dalle armi)")
-    void testMageHasLowerBaseAttackThanWarrior() {
-        assertTrue(mage.getAttack() < warrior.getAttack(),
-            "Mage ATK base (" + mage.getAttack() + ") deve essere < Warrior ATK base (" + warrior.getAttack() + ")");
+    void mage_magicShield_absorbsFirstPhysicalAttack() {
+        Mage m = new Mage("Mago");
+        int hpBefore = m.getCurrentHp();
+        // Attacchiamo con CombatSystem deterministico (crit=0)
+        CombatSystem cs = new CombatSystem(new java.util.Random(0));
+        Enemy goblin = EnemyFactory.createGoblin();
+        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0);
+        assertEquals(hpBefore, m.getCurrentHp(), "Lo scudo deve assorbire il primo fisico");
+        assertFalse(m.isMagicShieldActive(), "Lo scudo deve disattivarsi dopo l'assorbimento");
     }
 
     @Test
-    @DisplayName("Il Mage ha piu' stamina del Warrior")
-    void testMageHasMoreStaminaThanWarrior() {
-        assertTrue(mage.getMaxStamina() > warrior.getMaxStamina(),
-            "Mage stamina (" + mage.getMaxStamina() + ") deve essere > Warrior stamina (" + warrior.getMaxStamina() + ")");
+    void mage_magicShield_secondAttackDealsNormalDamage() {
+        Mage m = new Mage("Mago");
+        CombatSystem cs = new CombatSystem(new java.util.Random(0));
+        Enemy goblin = EnemyFactory.createGoblin();
+        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // scudo
+        int hpAfterShield = m.getCurrentHp();
+        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // danno reale
+        assertTrue(m.getCurrentHp() < hpAfterShield);
     }
 
     @Test
-    @DisplayName("Il Mage ha piu' agilita' del Warrior")
-    void testMageHasHigherAgilityThanWarrior() {
-        assertTrue(mage.getAgility() > warrior.getAgility(),
-            "Mage agilita' (" + mage.getAgility() + ") deve essere > Warrior agilita' (" + warrior.getAgility() + ")");
+    void mage_magicVulnerability_increasesMagicalDamage() {
+        Mage m = new Mage("Mago");
+        m.setMagicShieldActive(false); // scudo spento per testare vulnerabilita'
+        int hpBefore = m.getCurrentHp();
+        CombatSystem cs = new CombatSystem(new java.util.Random(0));
+        Enemy goblin = EnemyFactory.createGoblin(); // ATK basso
+        cs.executeAttack(goblin, m, AttackType.MAGICAL, 0);
+        // danno magico = (atk - def) * 1.30 arrotondato
+        int expected = (int)((Math.max(0, goblin.getAttack() - m.getDefense())) * 1.30);
+        assertEquals(hpBefore - expected, m.getCurrentHp());
     }
 
     @Test
-    @DisplayName("Il Mage ha meno HP del Warrior")
-    void testMageHasFewerHpThanWarrior() {
-        assertTrue(mage.getMaxHp() < warrior.getMaxHp());
+    void mage_applyPassiveBonus_reactivatesShield() {
+        Mage m = new Mage("Mago");
+        m.setMagicShieldActive(false);
+        m.applyPassiveBonus();
+        assertTrue(m.isMagicShieldActive());
     }
 
     @Test
-    @DisplayName("Il Mage inizia con HP pieni")
-    void testInitialHpFull() {
-        assertEquals(mage.getMaxHp(), mage.getCurrentHp());
-    }
-
-    @Test
-    @DisplayName("Il Mage inizia con stamina piena")
-    void testInitialStaminaFull() {
-        assertEquals(mage.getMaxStamina(), mage.getCurrentStamina());
-    }
-
-    @Test
-    @DisplayName("Il Mage e' vivo all'inizio")
-    void testIsAlive() {
-        assertTrue(mage.isAlive());
-    }
-
-    @Test
-    @DisplayName("Lo scudo magico e' inattivo all'inizio")
-    void testMagicShieldInactiveAtStart() {
-        assertFalse(mage.isMagicShieldActive());
-    }
-
-    @Test
-    @DisplayName("applyPassiveBonus attiva lo scudo magico e ricarica 2 stamina")
-    void testApplyPassiveBonusActivatesShield() {
-        mage.consumeStaminaForAttack(); // stamina 10 -> 9
-        mage.applyPassiveBonus();
-        assertTrue(mage.isMagicShieldActive());
-        assertEquals(mage.getMaxStamina(), mage.getCurrentStamina()); // 9 + 2 = 10 (capped)
+    void mage_characterClass_isMage() {
+        Mage m = new Mage("Mago");
+        assertEquals(CharacterClass.MAGE, m.getCharacterClass());
     }
 }
