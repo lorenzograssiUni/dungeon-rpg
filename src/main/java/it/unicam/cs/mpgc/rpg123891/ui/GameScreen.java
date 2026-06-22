@@ -21,20 +21,6 @@ import javafx.stage.Stage;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Schermata principale di gioco.
- *
- * Layout 3 colonne:
- *   LEFT   = scheda giocatore / inventario / equip / special
- *   CENTER = log narrativo degli eventi (stesso colore delle altre colonne)
- *   RIGHT  = stanza corrente + lista nemici cliccabili
- *   BOTTOM = barra azioni
- *
- * Il log mostra:
- *   - Descrizione della stanza quando si entra
- *   - Descrizione narrativa di ogni ondata quando inizia
- *   - Drop, attacchi, eventi in tempo reale
- */
 public class GameScreen {
 
     private static final String DARK       = "-fx-background-color:#1a1a2e;";
@@ -50,6 +36,8 @@ public class GameScreen {
                                               "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
     private static final String BTN_DANGER = "-fx-background-color:#4e2a2a;-fx-text-fill:#e06c6c;" +
                                               "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
+    private static final String BTN_GREEN  = "-fx-background-color:#1e4e2a;-fx-text-fill:#55e077;" +
+                                              "-fx-font-size:14px;-fx-font-weight:bold;-fx-cursor:hand;-fx-padding:8 18;";
 
     private final BorderPane root;
     private final GameController gc;
@@ -58,13 +46,12 @@ public class GameScreen {
     private final CombatController combatController;
     private final EquipmentManager equipmentManager;
 
-    private final VBox     leftPanel = new VBox(8);
-    private final TextArea logArea   = new TextArea();
-    private final VBox     rightPanel= new VBox(8);
-    private final HBox     bottomBar = new HBox(8);
+    private final VBox     leftPanel  = new VBox(8);
+    private final TextArea logArea    = new TextArea();
+    private final VBox     rightPanel = new VBox(8);
+    private final HBox     bottomBar  = new HBox(8);
 
-    private Enemy selectedEnemy = null;
-    // Tiene traccia dell'ultima wave loggata per non ripetere la descrizione
+    private Enemy  selectedEnemy  = null;
     private String lastLoggedWave = null;
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
@@ -91,13 +78,12 @@ public class GameScreen {
     public BorderPane getRoot() { return root; }
 
     // =========================================================================
-    // Layout base
+    // Layout
     // =========================================================================
 
     private void buildLayout() {
         logArea.setEditable(false);
         logArea.setWrapText(true);
-        // Stesso colore di sfondo degli altri pannelli
         logArea.setStyle(LOG_STYLE);
         VBox center = new VBox(logArea);
         VBox.setVgrow(logArea, Priority.ALWAYS);
@@ -130,10 +116,9 @@ public class GameScreen {
     }
 
     // =========================================================================
-    // Log narrativo: stanza e ondate
+    // Log narrativo
     // =========================================================================
 
-    /** Logga descrizione stanza + item entryLoot già ricevuti all'ingresso. */
     private void logRoomEntry() {
         Room room = gc.getCurrentRoom();
         appendLog("");
@@ -142,16 +127,12 @@ public class GameScreen {
         appendLog("=====================================================");
         appendLog(room.getDescription());
         appendLog("");
-
-        // Logga eventuali item dell'entryLoot GIA' raccolti da startNewGame/advanceRoom
-        // (entryLoot.clear() e' gia' avvenuto, quindi usiamo un messaggio fisso per stanza)
         switch (room.getId()) {
-            case "r1" -> appendLog("[★] Raccogli il Bastone Magico. Senti il potere scorrere tra le dita.");
+            case "r1" -> appendLog("[\u2605] Raccogli il Bastone Magico. Senti il potere scorrere tra le dita.");
             case "r3" -> {} // lo Spadone e' nella wave narrativa Sala della Statua
         }
     }
 
-    /** Logga la descrizione dell'ondata corrente se non e' ancora stata loggata. */
     private void logCurrentWaveIfNew() {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave == null) return;
@@ -166,15 +147,19 @@ public class GameScreen {
             appendLog("");
         }
 
-        // Wave senza nemici (es. Sala della Statua): auto-complete e raccoglie loot
+        // Wave senza nemici (es. Sala della Statua): auto-complete
         if (wave.getEnemies().isEmpty()) {
             wave.setCleared(true);
             gc.checkWaveCleared();
+            // Dopo auto-complete aggiorna UI senza rientrare nel log
+            showScheda();
+            refreshRight();
+            buildBottomBar();
         }
     }
 
     // =========================================================================
-    // Pannelli LEFT
+    // Pannello LEFT
     // =========================================================================
 
     private void showScheda() {
@@ -224,12 +209,12 @@ public class GameScreen {
                     if (item instanceof Potion) {
                         boolean used = gc.useFirstPotion();
                         if (used) {
-                            appendLog("[ITEM] Hai usato una Pozione! Stamina +3.");
+                            appendLog("[ITEM] Hai usato una Pozione! +40 HP, +5 Stamina.");
                             showInventario(); showScheda();
                         }
                     } else if (item instanceof Meat meat) {
                         meat.use(player());
-                        gc.getPlayer().removeItem(meat);
+                        gc.getPlayer().getInventory().remove(meat);
                         appendLog("[ITEM] Hai mangiato Carne! +40 HP.");
                         showInventario(); showScheda();
                     } else if (item instanceof Weapon w) {
@@ -365,7 +350,9 @@ public class GameScreen {
         rightPanel.getChildren().addAll(stanzaLbl, sep());
 
         Wave wave = room.getCurrentWave();
-        if (wave != null && !wave.getEnemies().isEmpty()) {
+        boolean roomCleared = room.isCleared();
+
+        if (!roomCleared && wave != null && !wave.getEnemies().isEmpty()) {
             Label wLbl = bold(wave.getName(), 11);
             wLbl.setStyle(TEXT_WHITE);
             rightPanel.getChildren().add(wLbl);
@@ -384,20 +371,16 @@ public class GameScreen {
                 eb.setOnAction(ev -> { selectedEnemy = e; refreshRight(); });
                 rightPanel.getChildren().add(eb);
             }
-        } else if (room.isCleared()) {
+        } else if (roomCleared) {
             Label cleared = lbl("Stanza liberata!");
             cleared.setStyle(TEXT_GREEN);
             rightPanel.getChildren().add(cleared);
 
             if (gc.getGameState().getDungeonMap().hasNextRoom()) {
-                Button adv = btn("Avanza \u2192");
-                adv.setOnAction(e -> {
-                    gc.advanceRoom();
-                    selectedEnemy = null;
-                    lastLoggedWave = null;
-                    logRoomEntry();
-                    refresh();
-                });
+                Button adv = new Button("Avanza \u2192");
+                adv.setStyle(BTN_GREEN);
+                adv.setMaxWidth(Double.MAX_VALUE);
+                adv.setOnAction(e -> doAdvanceRoom());
                 rightPanel.getChildren().add(adv);
             } else {
                 showVictory();
@@ -411,26 +394,46 @@ public class GameScreen {
 
     private void buildBottomBar() {
         bottomBar.getChildren().clear();
+        Room room = gc.getCurrentRoom();
+        boolean roomCleared = room.isCleared();
+
         Button btnInv     = btn("Inventario");
         Button btnEquip   = btn("Equip.");
-        Button btnAtk     = btn("ATK");
-        Button btnSpecial = btn("Special ATK");
-        Button btnFuga    = dangerBtn("Fuga");
         Button btnSave    = btn("Salva");
 
-        btnInv.setOnAction(e     -> showInventario());
-        btnEquip.setOnAction(e   -> showEquip());
-        btnAtk.setOnAction(e     -> doNormalAttack());
-        btnSpecial.setOnAction(e -> showSpecialAtk());
-        btnFuga.setOnAction(e    -> doFlee());
-        btnSave.setOnAction(e    -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
+        btnInv.setOnAction(e   -> showInventario());
+        btnEquip.setOnAction(e -> showEquip());
+        btnSave.setOnAction(e  -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
 
-        btnFuga.setDisable(!gc.canFlee());
-        bottomBar.getChildren().addAll(btnInv, btnEquip, btnAtk, btnSpecial, btnFuga, btnSave);
+        bottomBar.getChildren().addAll(btnInv, btnEquip);
+
+        if (!roomCleared) {
+            // Pulsanti di combattimento
+            Button btnAtk     = btn("ATK");
+            Button btnSpecial = btn("Special ATK");
+            Button btnPotion  = btn("Pozione (x" + gc.countPotions() + ")");
+            Button btnFuga    = dangerBtn("Fuga");
+
+            btnAtk.setOnAction(e     -> doNormalAttack());
+            btnSpecial.setOnAction(e -> showSpecialAtk());
+            btnPotion.setOnAction(e  -> doUsePotion());
+            btnFuga.setOnAction(e    -> doFlee());
+
+            btnFuga.setDisable(!gc.canFlee());
+            bottomBar.getChildren().addAll(btnAtk, btnSpecial, btnPotion, btnFuga);
+        } else if (gc.getGameState().getDungeonMap().hasNextRoom()) {
+            // Stanza cleared: bottone Avanza anche in bottom bar
+            Button btnAdv = new Button("Avanza \u2192");
+            btnAdv.setStyle(BTN_GREEN);
+            btnAdv.setOnAction(e -> doAdvanceRoom());
+            bottomBar.getChildren().add(btnAdv);
+        }
+
+        bottomBar.getChildren().add(btnSave);
     }
 
     // =========================================================================
-    // Azioni combattimento
+    // Azioni
     // =========================================================================
 
     private void doNormalAttack() {
@@ -467,20 +470,62 @@ public class GameScreen {
         handleTurnResult(result);
     }
 
+    private void doUsePotion() {
+        CombatController.TurnResult result = combatController.playerUsePotion();
+        result.log().forEach(this::appendLog);
+        showScheda();
+        buildBottomBar();
+    }
+
+    private void doAdvanceRoom() {
+        gc.advanceRoom();
+        selectedEnemy  = null;
+        lastLoggedWave = null;
+        // Controlla dragon buff se stanza r5
+        Room newRoom = gc.getCurrentRoom();
+        if (newRoom.getId().equals("r5")) {
+            Wave w = newRoom.getCurrentWave();
+            if (w != null) {
+                w.getEnemies().stream().findFirst().ifPresent(
+                    d -> combatController.checkAndActivateDragonBuff(d));
+            }
+        }
+        logRoomEntry();
+        refresh();
+    }
+
+    /**
+     * Gestisce il risultato di un turno:
+     *   1. checkWaveCleared() PRIMA di refresh() cosi' room.isCleared() e' aggiornato
+     *   2. refresh() mostra correttamente il bottone Avanza se la stanza e' cleared
+     */
     private void handleTurnResult(CombatController.TurnResult result) {
         if (result == null) return;
         result.log().forEach(this::appendLog);
-        refresh();
-        if (result.playerDead()) { showGameOver(); return; }
+
+        if (result.playerDead()) {
+            showGameOver();
+            return;
+        }
+
+        if (result.fleeSuccess()) {
+            appendLog("[FUGA] Sei fuggito dalla stanza!");
+            refresh();
+            return;
+        }
+
         if (result.waveCleared()) {
             appendLog("[WAVE] Ondata completata!");
+            // checkWaveCleared PRIMA di refresh per aggiornare room.isCleared()
             gc.checkWaveCleared();
-            // Logga loot fissi ricevuti
-            player().getInventory();  // inventario aggiornato
-            if (gc.getGameState().isVictory()) { showVictory(); return; }
+            if (gc.getGameState().isVictory()) {
+                showVictory();
+                return;
+            }
             selectedEnemy = null;
-            refresh(); // triggera logCurrentWaveIfNew per la prossima ondata
         }
+
+        refresh();
     }
 
     // =========================================================================

@@ -7,8 +7,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Pozione di cura: ripristina una quantita' fissa di HP al personaggio.
- * Valore standard: +40 HP.
+ * Pozione: ripristina HP e Stamina al personaggio.
+ * Valori standard: +40 HP, +5 Stamina.
  */
 public class Potion implements Item, Serializable {
 
@@ -18,38 +18,44 @@ public class Potion implements Item, Serializable {
     private final String name;
     private final String description;
     private final int healAmount;
+    private final int staminaAmount;
 
-    public Potion(String name, String description, int healAmount) {
-        this.name        = name;
-        this.description = description;
-        this.healAmount  = healAmount;
+    public Potion(String name, String description, int healAmount, int staminaAmount) {
+        this.name          = name;
+        this.description   = description;
+        this.healAmount    = healAmount;
+        this.staminaAmount = staminaAmount;
     }
 
-    public Potion(String name, int healAmount) {
-        this(name, "Ripristina " + healAmount + " HP", healAmount);
+    public Potion(String name, int healAmount, int staminaAmount) {
+        this(name, "Ripristina " + healAmount + " HP e " + staminaAmount + " Stamina", healAmount, staminaAmount);
     }
 
-    /** Costruttore standard: Pozione da 40 HP. */
+    /** Costruttore standard: +40 HP, +5 Stamina. */
     public Potion() {
-        this("Pozione", 40);
+        this("Pozione", 40, 5);
     }
 
     @Override
     public void use(GameCharacter character) {
         character.heal(healAmount);
+        character.restoreStamina(staminaAmount);
     }
 
     @Override public String getName()        { return name; }
     @Override public String getDescription() { return description; }
     public int getHealAmount()               { return healAmount; }
+    public int getStaminaAmount()            { return staminaAmount; }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Potion other)) return false;
-        return healAmount == other.healAmount && Objects.equals(name, other.name);
+        return healAmount == other.healAmount
+                && staminaAmount == other.staminaAmount
+                && Objects.equals(name, other.name);
     }
 
     @Override
-    public int hashCode() { return Objects.hash(name, healAmount); }
+    public int hashCode() { return Objects.hash(name, healAmount, staminaAmount); }
 }
