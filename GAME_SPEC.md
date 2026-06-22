@@ -22,9 +22,11 @@
 ## Struttura del Dungeon
 
 Il gioco è composto da **5 stanze** (inizio con 3 pozioni) + Boss Finale.
+Ogni turno attacca ogni nemico nell'ordine di agilità (Reminder: bisogna aggiungere delle stats di agilità ad ogni mob).
+Implementare la possibilità di scappare (impossibile contro i miniboss o nemici con drop assicurato).
 
 ### 1. Foresta
-*Ricompensa esplorazione: Bastone Magico*
+*drop prima stanza prima che arrivino i nemici: Bastone Magico*
 
 | Ondata | Nemici | Loot |
 |--------|--------|------|
@@ -34,13 +36,12 @@ Il gioco è composto da **5 stanze** (inizio con 3 pozioni) + Boss Finale.
 ---
 
 ### 2. Villaggio Goblin
-*Ricompensa esplorazione: Doppie Daghe*
 
 | Ondata | Nemici | Loot |
 |--------|--------|------|
-| A | Goblin ×2 | — |
-| B | Goblin Guardie ×3 | Drop **assicurato**: Spada + Scudo/Armatura |
-| Miniboss | Re Goblin | Drop speciale (vedi scheda) |
+| A | Goblin ×2 | Drop **assicurato**: doppie daghe |
+| B | Goblin Guardie ×3 | Drop **assicurato**: Spada + Scudo o Armatura |
+| Miniboss | Re Goblin | --- |
 
 > Il Re Goblin è un miniboss con abilità speciale.
 
@@ -68,6 +69,7 @@ Il gioco è composto da **5 stanze** (inizio con 3 pozioni) + Boss Finale.
 | B | Uova ×2 + Cucciolo di Drago | 50% prob. Carne per ogni mob |
 | C | Cuccioli di Drago ×3 | 50% prob. Carne per ogni mob |
 
+> Le uova non droppano carne, solo i cuccioli.
 ---
 
 ### 5. Boss Finale — L'Ultimo Drago
@@ -95,7 +97,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 
 ### Goblin Guardia
 - **HP:** come Goblin normale
-- **Equipaggiamento:** Spada + Scudo/Armatura
+- **Equipaggiamento:** Spada + Scudo o Armatura
 - **Loot drop assicurato:** Spada + Scudo o Armatura
 
 ### Re Goblin *(Miniboss)*
@@ -117,7 +119,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 ### Strega *(Miniboss)*
 - **HP:** 80
 - **Attacco:** 15–25
-- **Abilità Speciale:** Evoca 3 scheletri — immune agli attacchi durante l'evocazione
+- **Abilità Speciale:** Evoca 3 scheletri — immune agli attacchi durante finchè gli scheletri sono in vita.
 - **Loot drop assicurato:** Pendente Magico + 3 Pozioni
 
 ### Uovo
@@ -134,7 +136,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 ### L'Ultimo Drago *(Boss Finale)*
 - **HP:** 140
 - **Attacco:** 30–60
-- **Buff passivo:** se ha già ucciso tutti i Cuccioli e le Uova nella stanza → +20% danno
+- **Buff passivo:** se ha ucciso tutti i Cuccioli e le Uova nella stanza → +20% danno
 - **Abilità Speciale — Soffio del Drago:** infligge bruciatura — 5–8 HP di danno per turno, dura 3–5 turni
 
 ---
@@ -147,12 +149,12 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 | Stat | Warrior | Mage | Thief |
 |------|---------|------|-------|
 | Attacco | +2 | +2 | +2 |
-| Agilità | +2 | 0 | 0 |
-| Costo Stamina | 0 | -3 | 0 |
+| Agilità | +2 | 0 | +2 |
+| Stamina | 0 | -3 | 0 |
 
 **Attacchi Speciali:**
 - **Fendente** — +25% attacco, +5% Critico. Costo: 2 stamina
-- **Carica!** *(richiede Spada + Scudo)* — equivale al Fendente + 0 danno nel turno corrente. Costo: 4 stamina
+- **Carica!** *(richiede Spada + Scudo)* — equivale al Fendente + ricevi 0 danno nel turno corrente. Costo: 4 stamina
 
 ---
 
@@ -161,11 +163,11 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 |------|---------|------|-------|
 | Attacco | -3 | +5 | 0 |
 | Agilità | 0 | +2 | 0 |
-| Costo Stamina | -3 | +3 | -3 |
+| Stamina | -3 | +3 | -3 |
 
 **Attacchi Speciali:**
-- **Onda Magica** — colpisce tutti i nemici nella stanza; danno = ATK − (3 × numero nemici). Costo: 4 stamina
-- **Colpo Vitale** *(richiede Bastone + Pendente Magico)* — infligge danni pari alla vita attuale del personaggio. Costo: 6 stamina
+- **Onda Magica** — colpisce tutti i nemici nella stanza; danno = ATK + (3 di danno × numero nemici). Costo: 4 stamina
+- **Colpo Vitale** *(richiede Bastone + Pendente Magico)* — infligge danni pari alla vita attuale del personaggio. Malus: perdi metà vita Costo: 6 stamina
 
 ---
 
@@ -174,11 +176,11 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 |------|---------|------|-------|
 | Attacco | 0 | -2 | +5 |
 | Agilità | +2 | +2 | +2 |
-| Costo Stamina | 0 | -1 | +2 |
+| Stamina | 0 | -1 | +2 |
 
 **Attacchi Speciali:**
 - **Sfuriata** — 3 attacchi: 1° 100% danno, 2° 50% danno, 3° 50% danno + 25% prob. Critico. Costo: 5 stamina
-- **Ira** — +25% prob. Critico; attacca tante volte quanti nemici in stamina. Costo: 3 stamina
+- **Ira** — +25% prob. Critico; attacca tante volte quanti nemici nella stanza. Costo: 3 stamina
 
 ---
 
@@ -256,8 +258,8 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 
 ## Note di Implementazione
 
-- Il loot "item mancante" nella stanza Catacombe deve verificare cosa il giocatore **non ha ancora** nello slot BODY o OFF_HAND.
-- L'attacco **Ira** usa la stamina *attuale* come numero di attacchi (ogni attacco costa 1 stamina supplementare).
+- Il loot "item mancante" nella stanza Catacombe deve verificare cosa il giocatore **non ha ancora** nell'inventario.
 - **Colpo Vitale** richiede entrambi gli slot: Bastone Magico in MAIN_HAND e Pendente Magico in BODY.
 - **Carica!** richiede Spada Semplice in MAIN_HAND e Scudo in OFF_HAND.
-- Il **buff passivo del Drago** si attiva solo se nella Sala del Tesoro il giocatore ha lasciato sopravvivere tutti i cuccioli/uova prima di affrontare il Boss.
+- Il **buff passivo del Drago** si attiva solo se nella Sala del Tesoro il giocatore ha ucciso tutti i cuccioli/uova prima di affrontare il Boss.
+- La **fuga** è possibile solo se l'agilità del giocatore è minore a l'agilità media dei nemici all'interno della stanza. Nella stanza finale può fuggire sempre per uova e cuccioli di drago
