@@ -1,433 +1,227 @@
 package it.unicam.cs.mpgc.rpg123891.controller;
 
+import it.unicam.cs.mpgc.rpg123891.model.combat.BurnEffect;
+import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
-import it.unicam.cs.mpgc.rpg123891.model.character.PlayerCharacter;
-import it.unicam.cs.mpgc.rpg123891.model.combat.*;
 import it.unicam.cs.mpgc.rpg123891.model.item.Meat;
 import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 /**
- * Gestisce il loop di un singolo combattimento (una Wave).
+ * Gestisce il flusso di un turno di combattimento:
+ *   1. Il giocatore agisce (attacco normale, speciale, fuga)
+ *   2. I nemici vivi rispondono
+ *   3. Si applica la bruciatura se attiva
+ *   4. Si controlla se l'ondata e' finita
  *
- * Responsabilita':
- *   - Determinare l'iniziativa (chi attacca prima)
- *   - Eseguire il turno del giocatore (attacco normale, speciale, pozione, fuga)
- *   - Eseguire il turno di ogni nemico vivo (normale o abilita' speciale)
- *   - Gestire BurnEffect (tick a fine turno nemico)
- *   - Gestire la trasformazione Uovo -> Cucciolo dopo 3 turni
- *   - Aggiungere i nemici evocati dalla Strega all'ondata corrente
- *   - Attivare il buff passivo del Drago se la Sala del Tesoro e' stata liberata
- *   - Rollback del buff Carica! (+3 DEF) dopo l'attacco nemico
- *   - Comunicare gli eventi alla UI tramite CombatListener
- *
- * NON gestisce:
- *   - La raccolta del loot (GameController.checkWaveCleared)
- *   - L'avanzamento di stanza (GameController.advanceRoom)
- *   - La persistenza (GameController.saveGame)
+ * I drop probabilistici (50% Carne) vengono lanciati QUI al momento
+ * dell'uccisione di ciascun nemico, secondo GAME_SPEC.md:
+ *   Cinghiale, Lupo, Cucciolo di Drago -> 50% Carne immediata
+ *   Uovo                               -> nessun drop
  */
-public class CombatController implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
-    private final GameController gameController;
-    private final CombatSystem   combatSystem;
-    private final Random         random;
-    private final DungeonMap     dungeonMap;
-
-    /** BurnEffect correntemente attivo sul giocatore. null se non bruciato. */
-    private BurnEffect activeBurn = null;
-
-    /** Contatore turni per ogni Uovo (nome -> turni rimasti prima di schiudersi). */
-    private final java.util.Map<Enemy, Integer> eggTurnCounter = new java.util.LinkedHashMap<>();
-
-    /** Flag: il buff Carica! e' attivo questo round. */
-    private boolean caricaActive = false;
-
-    /** Listener per gli eventi di combattimento (UI). */
-    private CombatListener listener = CombatListener.NOOP;
+public class CombatController {
 
     // -------------------------------------------------------------------------
-    // Costruttore
+    // Interfaccia listener (per la UI)
     // -------------------------------------------------------------------------
 
-    public CombatController(GameController gameController, DungeonMap dungeonMap) {
-        this.gameController = gameController;
-        this.combatSystem   = new CombatSystem();
-        this.random         = new Random();
-        this.dungeonMap     = dungeonMap;
+    public interface CombatListener {
+        void onEvent(String msg);
+        void onTurnEnd(List<String> log, boolean playerDead, boolean waveCleared);
     }
 
-    public CombatController(GameController gameController, DungeonMap dungeonMap,
-                            Random random) {
-        this.gameController = gameController;
-        this.combatSystem   = new CombatSystem(random);
-        this.random         = random;
-        this.dungeonMap     = dungeonMap;
-    }
-
-    public void setListener(CombatListener listener) {
-        this.listener = listener != null ? listener : CombatListener.NOOP;
-    }
-
-    // =========================================================================
-    // API pubblica: azioni del giocatore in un turno
-    // =========================================================================
-
-    /**
-     * Esegue un turno completo: attacco normale del giocatore su un nemico,
-     * poi tutti i nemici attaccano il giocatore.
-     *
-     * @param target il nemico scelto dalla UI
-     * @return TurnResult con l'esito del turno
-     */
-    public TurnResult playerNormalAttack(Enemy target) {
-        if (!target.isAlive() || target.isImmune()) {
-            return TurnResult.invalid("Bersaglio non valido o immune.");
-        }
-
-        List<String> log = new ArrayList<>();
-        GameCharacter player = asGC(gameController.getPlayer());
-
-        // --- Turno giocatore ---
-        int dmg = combatSystem.executeAttack(player, target,
-                AttackType.PHYSICAL, target.getCritModifierOnPlayer());
-        log.add(String.format("%s attacca %s: %d danno.",
-                player.getName(), target.getName(), dmg));
-
-        checkUovoDeath(target, log);
-
-        // --- Turno nemici ---
-        enemyTurns(log);
-
-        // --- Tick bruciatura ---
-        burnTick(player, log);
-
-        // --- Rollback Carica! ---
-        if (caricaActive) {
-            player.increaseDefense(-3);
-            caricaActive = false;
-            log.add("Il bonus difensivo di Carica! e' terminato.");
-        }
-
-        return buildResult(log);
-    }
-
-    /**
-     * Esegue un turno con attacco speciale SINGLE-TARGET del giocatore.
-     */
-    public TurnResult playerSpecialAttack(SpecialAttack special, Enemy target) {
-        if (!asGC(gameController.getPlayer()).canUseSpecial(special.getStaminaCost())) {
-            return TurnResult.invalid("Stamina insufficiente per " + special.getName() + ".");
-        }
-        if (!target.isAlive() || target.isImmune()) {
-            return TurnResult.invalid("Bersaglio non valido o immune.");
-        }
-
-        List<String> log = new ArrayList<>();
-        GameCharacter player = asGC(gameController.getPlayer());
-
-        // Attacco speciale
-        int dmg = combatSystem.executeSpecialAttack(player, target, special);
-        log.add(String.format("%s usa %s su %s: %d danno.",
-                player.getName(), special.getName(), target.getName(), dmg));
-
-        // Carica! attiva il buff difensivo
-        if (special.getName().equals("Carica!")) {
-            caricaActive = true;
-            log.add("+3 DEF attivo per questo turno (Carica!).");
-        }
-
-        checkUovoDeath(target, log);
-
-        // --- Turno nemici ---
-        enemyTurns(log);
-        burnTick(player, log);
-
-        if (caricaActive) {
-            player.increaseDefense(-3);
-            caricaActive = false;
-            log.add("Il bonus difensivo di Carica! e' terminato.");
-        }
-
-        return buildResult(log);
-    }
-
-    /**
-     * Esegue un turno con attacco speciale AOE (Onda Magica / Spazzatutto).
-     * Colpisce tutti i nemici vivi dell'ondata corrente.
-     */
-    public TurnResult playerAoeAttack(SpecialAttack special) {
-        GameCharacter player = asGC(gameController.getPlayer());
-        if (!player.canUseSpecial(special.getStaminaCost())) {
-            return TurnResult.invalid("Stamina insufficiente per " + special.getName() + ".");
-        }
-
-        List<String> log = new ArrayList<>();
-        Wave wave = gameController.getCurrentRoom().getCurrentWave();
-        List<Enemy> targets = wave == null ? List.of() :
-                wave.getEnemies().stream().filter(e -> e.isAlive() && !e.isImmune()).toList();
-
-        player.consumeStaminaForSpecial(special.getStaminaCost());
-        log.add(String.format("%s usa %s!", player.getName(), special.getName()));
-
-        for (Enemy enemy : targets) {
-            int dmg = special.execute(player, enemy);
-            log.add(String.format("  -> %s: %d danno.", enemy.getName(), dmg));
-            checkUovoDeath(enemy, log);
-        }
-
-        enemyTurns(log);
-        burnTick(player, log);
-
-        if (caricaActive) {
-            player.increaseDefense(-3);
-            caricaActive = false;
-            log.add("Il bonus difensivo di Carica! e' terminato.");
-        }
-
-        return buildResult(log);
-    }
-
-    /**
-     * Il giocatore usa una pozione nel suo turno.
-     * I nemici attaccano comunque dopo.
-     */
-    public TurnResult playerUsePotion() {
-        List<String> log = new ArrayList<>();
-        GameCharacter player = asGC(gameController.getPlayer());
-
-        if (!gameController.useFirstPotion()) {
-            return TurnResult.invalid("Nessuna pozione nell'inventario!");
-        }
-        log.add(String.format("%s usa una Pozione! HP: %d/%d.",
-                player.getName(), player.getCurrentHp(), player.getMaxHp()));
-
-        enemyTurns(log);
-        burnTick(player, log);
-
-        if (caricaActive) {
-            player.increaseDefense(-3);
-            caricaActive = false;
-        }
-
-        return buildResult(log);
-    }
-
-    /**
-     * Il giocatore tenta la fuga.
-     * @return TurnResult con fleeSuccess=true se la fuga riesce.
-     */
-    public TurnResult playerFlee() {
-        if (!gameController.canFlee()) {
-            return TurnResult.invalid("Non puoi fuggire da questo combattimento!");
-        }
-        activeBurn = null;
-        eggTurnCounter.clear();
-        caricaActive = false;
-        List<String> log = List.of(asGC(gameController.getPlayer()).getName() +
-                " fugge dal combattimento!");
-        return new TurnResult(log, false, false, true);
-    }
-
-    // =========================================================================
-    // Turno dei nemici
-    // =========================================================================
-
-    private void enemyTurns(List<String> log) {
-        Wave wave = gameController.getCurrentRoom().getCurrentWave();
-        if (wave == null) return;
-
-        GameCharacter player = asGC(gameController.getPlayer());
-        List<Enemy> enemies = new ArrayList<>(wave.getEnemies());
-
-        for (Enemy enemy : enemies) {
-            if (!enemy.isAlive()) continue;
-            if (!player.isAlive()) break;
-
-            if (enemy.isStunned()) {
-                enemy.clearStun();
-                log.add(enemy.getName() + " e' stordito e salta il turno.");
-                continue;
-            }
-
-            if (enemy.hasAbility() && random.nextDouble() < 0.30) {
-                EnemyAbility.AbilityResult result = enemy.getAbility().use(enemy, player);
-                log.add(result.message());
-
-                if (!result.summonedEnemies().isEmpty()) {
-                    handleSummons(result.summonedEnemies(), wave, log);
-                }
-                if (result.burnEffect() != null) {
-                    activeBurn = result.burnEffect();
-                }
-                if (enemy.getName().equals("Strega") && !result.summonedEnemies().isEmpty()) {
-                    enemy.setImmune(true);
-                    log.add("La Strega e' immune finche' gli scheletri sono in vita!");
-                }
-
-            } else {
-                int dmg;
-                if (enemy.getName().equals("Uovo")) {
-                    player.applyBurnDamage(1);
-                    dmg = 1;
-                } else {
-                    dmg = combatSystem.executeAttack(enemy, player,
-                            enemy.getAttackType(), 0);
-                }
-                log.add(String.format("%s attacca %s: %d danno.",
-                        enemy.getName(), player.getName(), dmg));
-            }
-
-            checkWitchImmunity(wave, log);
-        }
-    }
-
-    // =========================================================================
-    // Meccaniche speciali
-    // =========================================================================
-
-    private void handleSummons(List<Enemy> summoned, Wave wave, List<String> log) {
-        for (Enemy s : summoned) {
-            wave.getEnemies().add(s);
-            log.add("  -> " + s.getName() + " evocato! (HP: " + s.getCurrentHp() + ")");
-        }
-    }
-
-    private void checkWitchImmunity(Wave wave, List<String> log) {
-        Enemy witch = wave.getEnemies().stream()
-                .filter(e -> e.getName().equals("Strega") && e.isImmune())
-                .findFirst().orElse(null);
-        if (witch == null) return;
-
-        boolean anyAlive = wave.getEnemies().stream()
-                .filter(e -> !e.getName().equals("Strega"))
-                .anyMatch(Enemy::isAlive);
-
-        if (!anyAlive) {
-            witch.setImmune(false);
-            log.add("Tutti gli scheletri sono caduti! La Strega non e' piu' immune.");
-        }
-    }
-
-    private void checkUovoDeath(Enemy enemy, List<String> log) {
-        if (!enemy.getName().equals("Uovo")) return;
-        if (!enemy.isAlive()) {
-            eggTurnCounter.remove(enemy);
-            log.add("L'Uovo e' stato distrutto prima di schiudersi!");
-        }
-    }
-
-    private void tickEggCounters(Wave wave, List<String> log) {
-        List<Enemy> eggs = wave.getEnemies().stream()
-                .filter(e -> e.getName().equals("Uovo") && e.isAlive())
-                .toList();
-
-        for (Enemy egg : eggs) {
-            int turns = eggTurnCounter.getOrDefault(egg, 0) + 1;
-            if (turns >= 3) {
-                eggTurnCounter.remove(egg);
-                Enemy cucciolo = EnemyFactory.createCuccioloDrago();
-                int idx = wave.getEnemies().indexOf(egg);
-                egg.applyBurnDamage(egg.getCurrentHp());
-                wave.getEnemies().add(idx >= 0 ? idx : wave.getEnemies().size(), cucciolo);
-                log.add("Un Uovo si e' schiuso! Nasce un Cucciolo di Drago!");
-            } else {
-                eggTurnCounter.put(egg, turns);
-                log.add(String.format("L'Uovo si sta schiudendo... (%d/3 turni)", turns));
-            }
-        }
-    }
-
-    private void burnTick(GameCharacter player, List<String> log) {
-        if (activeBurn == null || activeBurn.isExpired()) {
-            activeBurn = null;
-            return;
-        }
-        int dmg = activeBurn.applyTo(player);
-        log.add(String.format("%s subisce %d danno da bruciatura! (%d turni rimasti)",
-                player.getName(), dmg, activeBurn.getTurnsRemaining()));
-        if (activeBurn.isExpired()) {
-            activeBurn = null;
-            log.add("La bruciatura e' terminata.");
-        }
-    }
-
-    // =========================================================================
-    // Buff passivo Drago
-    // =========================================================================
-
-    public void checkAndActivateDragonBuff(Enemy dragon) {
-        if (dungeonMap.isTreasureRoomCleaned() && dragon.getPassiveBuff() != null) {
-            dragon.applyPassiveBonus();
-            listener.onEvent("L'Ultimo Drago e' infuriato per la morte dei suoi piccoli! +20% ATK!");
-        }
-    }
-
-    // =========================================================================
-    // Costruzione risultato turno
-    // =========================================================================
-
-    private TurnResult buildResult(List<String> log) {
-        Wave wave = gameController.getCurrentRoom().getCurrentWave();
-        if (wave != null) tickEggCounters(wave, log);
-
-        boolean playerDead  = !asGC(gameController.getPlayer()).isAlive();
-        boolean waveCleared = wave != null && wave.isCleared();
-
-        if (playerDead)  gameController.checkPlayerDead();
-        if (waveCleared) gameController.checkWaveCleared();
-
-        listener.onTurnEnd(log, playerDead, waveCleared);
-        return new TurnResult(log, playerDead, waveCleared, false);
-    }
-
-    // =========================================================================
-    // TurnResult
-    // =========================================================================
+    // -------------------------------------------------------------------------
+    // Record risultato turno (restituito alla UI)
+    // -------------------------------------------------------------------------
 
     public record TurnResult(
             List<String> log,
             boolean playerDead,
             boolean waveCleared,
             boolean fleeSuccess
-    ) {
-        public static TurnResult invalid(String reason) {
-            return new TurnResult(List.of(reason), false, false, false);
+    ) {}
+
+    // -------------------------------------------------------------------------
+    // Stato
+    // -------------------------------------------------------------------------
+
+    private final GameController gc;
+    private final DungeonMap     dungeonMap;
+    private CombatListener       listener;
+    private BurnEffect           activeBurn = null;
+
+    public CombatController(GameController gc, DungeonMap dungeonMap) {
+        this.gc         = gc;
+        this.dungeonMap = dungeonMap;
+    }
+
+    public void setListener(CombatListener l) { this.listener = l; }
+    public boolean isCaricaActive()           { return gc.isCaricaActive(); }
+    public BurnEffect getActiveBurn()         { return activeBurn; }
+
+    // =========================================================================
+    // Azioni del giocatore
+    // =========================================================================
+
+    /** Attacco normale del giocatore su un singolo nemico. */
+    public TurnResult playerNormalAttack(Enemy target) {
+        List<String> log = new ArrayList<>();
+        GameCharacter player = player();
+
+        // --- Turno giocatore ---
+        int dmg = gc.playerAttack(target);
+        log.add("[ATK] " + player.getName() + " attacca " + target.getName()
+                + " per " + dmg + " danni."
+                + (dmg == 0 ? " (parato!)" : ""));
+
+        if (!target.isAlive()) {
+            log.add("[†] " + target.getName() + " e' stato sconfitto!");
+            rollMeatDrop(target, log);
         }
 
-        public boolean isCombatOver() {
-            return playerDead || waveCleared || fleeSuccess;
+        // --- Risposta nemici ---
+        boolean waveCleared = handleEnemyTurns(log);
+        boolean playerDead  = checkPlayerDead(log);
+        return new TurnResult(log, playerDead, waveCleared, false);
+    }
+
+    /** Attacco speciale single-target. */
+    public TurnResult playerSpecialAttack(SpecialAttack special, Enemy target) {
+        List<String> log = new ArrayList<>();
+        GameCharacter player = player();
+
+        int dmg = gc.executeSpecial(special, target);
+        log.add("[SPECIAL] " + player.getName() + " usa " + special.getName()
+                + " su " + target.getName() + " per " + dmg + " danni.");
+
+        if (!target.isAlive()) {
+            log.add("[†] " + target.getName() + " e' stato sconfitto!");
+            rollMeatDrop(target, log);
         }
+
+        boolean waveCleared = handleEnemyTurns(log);
+        boolean playerDead  = checkPlayerDead(log);
+        return new TurnResult(log, playerDead, waveCleared, false);
+    }
+
+    /** Attacco AOE (Onda Magica, Spazzatutto). */
+    public TurnResult playerAoeAttack(SpecialAttack special) {
+        List<String> log = new ArrayList<>();
+        GameCharacter player = player();
+
+        Map<Enemy, Integer> results = gc.executeAoeSpecial(special);
+        log.add("[AOE] " + player.getName() + " usa " + special.getName() + "!");
+        for (Map.Entry<Enemy, Integer> e : results.entrySet()) {
+            log.add("  -> " + e.getKey().getName() + ": " + e.getValue() + " danni.");
+            if (!e.getKey().isAlive()) {
+                log.add("  [†] " + e.getKey().getName() + " e' stato sconfitto!");
+                rollMeatDrop(e.getKey(), log);
+            }
+        }
+
+        boolean waveCleared = handleEnemyTurns(log);
+        boolean playerDead  = checkPlayerDead(log);
+        return new TurnResult(log, playerDead, waveCleared, false);
+    }
+
+    /** Tentativo di fuga. */
+    public TurnResult playerFlee() {
+        List<String> log = new ArrayList<>();
+        if (!gc.canFlee()) {
+            log.add("[FUGA] Non puoi fuggire da qui!");
+            return new TurnResult(log, false, false, false);
+        }
+        gc.flee();
+        log.add("[FUGA] Sei fuggito!");
+        return new TurnResult(log, false, false, true);
     }
 
     // =========================================================================
-    // CombatListener
+    // Drop probabilistici Carne (50%)
     // =========================================================================
 
-    public interface CombatListener {
-        void onEvent(String message);
-        void onTurnEnd(List<String> log, boolean playerDead, boolean waveCleared);
+    /**
+     * Se il nemico ucciso e' un dropper di Carne (Cinghiale, Lupo, Cucciolo di Drago),
+     * lancia 50% e aggiunge Carne all'inventario del giocatore.
+     * Le Uova NON droppano carne.
+     */
+    private void rollMeatDrop(Enemy enemy, List<String> log) {
+        if (!isMeatDropper(enemy.getName())) return;
+        if (Math.random() < 0.5) {
+            player().addItem(new Meat());
+            log.add("[DROP] " + enemy.getName() + " ha lasciato della Carne! (+40 HP se usata)");
+        }
+    }
 
-        CombatListener NOOP = new CombatListener() {
-            public void onEvent(String message) {}
-            public void onTurnEnd(List<String> log, boolean playerDead, boolean waveCleared) {}
+    private boolean isMeatDropper(String name) {
+        return switch (name) {
+            case "Cinghiale", "Lupo", "Cucciolo di Drago" -> true;
+            default -> false;
         };
     }
 
     // =========================================================================
-    // Helper
+    // Turni nemici
     // =========================================================================
 
-    private GameCharacter asGC(PlayerCharacter p) { return (GameCharacter) p; }
+    /**
+     * Esegue i turni di tutti i nemici vivi (in ordine di agilita' decrescente).
+     * @return true se l'ondata e' ora cleared
+     */
+    private boolean handleEnemyTurns(List<String> log) {
+        Wave wave = dungeonMap.getCurrentRoom().getCurrentWave();
+        if (wave == null) return false;
 
-    public BurnEffect getActiveBurn()  { return activeBurn; }
-    public boolean isCaricaActive()    { return caricaActive; }
+        List<Enemy> alive = wave.getEnemies().stream()
+                .filter(Enemy::isAlive)
+                .sorted((a, b) -> b.getAgility() - a.getAgility())
+                .toList();
+
+        for (Enemy enemy : alive) {
+            if (!player().isAlive()) break;
+            if (enemy.isStunned()) {
+                enemy.clearStun();
+                log.add("[STORD] " + enemy.getName() + " e' stordito e salta il turno.");
+                continue;
+            }
+            if (enemy.isImmune()) {
+                log.add("[IMM] " + enemy.getName() + " e' immune: non attacca.");
+                continue;
+            }
+            int dmg = gc.enemyAttack(enemy);
+            log.add("[ENEMY] " + enemy.getName() + " attacca per " + dmg + " danni.");
+        }
+
+        // Bruciatura a fine turno
+        if (activeBurn != null) {
+            int burnDmg = activeBurn.tick();
+            player().takeDamage(burnDmg);
+            log.add("[BURN] La bruciatura ti infligge " + burnDmg + " danni!"
+                    + (activeBurn.isExpired() ? " (terminata)" : ""));
+            if (activeBurn.isExpired()) activeBurn = null;
+        }
+
+        gc.rollbackCarica();
+        return wave.isCleared();
+    }
+
+    private boolean checkPlayerDead(List<String> log) {
+        if (!player().isAlive()) {
+            log.add("[☠] Sei morto. Game Over.");
+            return true;
+        }
+        return false;
+    }
+
+    /** Imposta una bruciatura attiva (da Soffio del Drago). */
+    public void applyBurn(BurnEffect burn) { this.activeBurn = burn; }
+
+    private GameCharacter player() {
+        return (GameCharacter) gc.getPlayer();
+    }
 }

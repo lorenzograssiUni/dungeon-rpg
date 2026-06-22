@@ -25,21 +25,23 @@ import java.util.Optional;
  * Schermata principale di gioco.
  *
  * Layout 3 colonne:
- *   LEFT   = scheda giocatore (o inventario / equip / special in base al bottone)
- *   CENTER = log degli eventi
+ *   LEFT   = scheda giocatore / inventario / equip / special
+ *   CENTER = log narrativo degli eventi (stesso colore delle altre colonne)
  *   RIGHT  = stanza corrente + lista nemici cliccabili
  *   BOTTOM = barra azioni
  *
- * Drop probabilistici (50% Carne) gestiti qui in rollDrops(),
- * seguendo esattamente GAME_SPEC.md:
- *   - Cinghiale, Lupo, Cucciolo di Drago → 50% Carne
- *   - Uovo → NO drop (diventa Cucciolo, non droppa carne)
- *   - Goblin, Scheletro, Re Goblin, Strega → drop fissi già in Wave.loot
+ * Il log mostra:
+ *   - Descrizione della stanza quando si entra
+ *   - Descrizione narrativa di ogni ondata quando inizia
+ *   - Drop, attacchi, eventi in tempo reale
  */
 public class GameScreen {
 
     private static final String DARK       = "-fx-background-color:#1a1a2e;";
     private static final String PANEL_BG   = "-fx-background-color:#16213e;-fx-border-color:#3a3a6e;-fx-border-width:1;";
+    private static final String LOG_STYLE  = "-fx-background-color:#16213e;-fx-border-color:#3a3a6e;-fx-border-width:1;" +
+                                              "-fx-text-fill:#cccccc;-fx-font-size:12px;" +
+                                              "-fx-control-inner-background:#16213e;";
     private static final String TEXT_GOLD  = "-fx-text-fill:#e0c46c;";
     private static final String TEXT_WHITE = "-fx-text-fill:#cccccc;";
     private static final String TEXT_RED   = "-fx-text-fill:#e05555;";
@@ -62,6 +64,8 @@ public class GameScreen {
     private final HBox     bottomBar = new HBox(8);
 
     private Enemy selectedEnemy = null;
+    // Tiene traccia dell'ultima wave loggata per non ripetere la descrizione
+    private String lastLoggedWave = null;
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
         this.gc    = gc;
@@ -81,13 +85,7 @@ public class GameScreen {
 
         buildLayout();
         refresh();
-
-        // Log di benvenuto con inventario iniziale
-        appendLog("=== DUNGEON RPG ===");
-        appendLog("Benvenuto, " + gc.getPlayer().getName() + "!");
-        appendLog("Hai ricevuto: 3 Pozioni + Bastone Magico");
-        appendLog("Sei nella " + gc.getCurrentRoom().getName() + ". Buona fortuna!");
-        appendLog("----------------------------------");
+        logRoomEntry();
     }
 
     public BorderPane getRoot() { return root; }
@@ -99,7 +97,8 @@ public class GameScreen {
     private void buildLayout() {
         logArea.setEditable(false);
         logArea.setWrapText(true);
-        logArea.setStyle(PANEL_BG + "-fx-text-fill:#aaaaaa;-fx-font-size:12px;");
+        // Stesso colore di sfondo degli altri pannelli
+        logArea.setStyle(LOG_STYLE);
         VBox center = new VBox(logArea);
         VBox.setVgrow(logArea, Priority.ALWAYS);
         center.setPadding(new Insets(8));
@@ -127,6 +126,51 @@ public class GameScreen {
         showScheda();
         refreshRight();
         buildBottomBar();
+        logCurrentWaveIfNew();
+    }
+
+    // =========================================================================
+    // Log narrativo: stanza e ondate
+    // =========================================================================
+
+    /** Logga descrizione stanza + item entryLoot già ricevuti all'ingresso. */
+    private void logRoomEntry() {
+        Room room = gc.getCurrentRoom();
+        appendLog("");
+        appendLog("=====================================================");
+        appendLog("  " + room.getName().toUpperCase());
+        appendLog("=====================================================");
+        appendLog(room.getDescription());
+        appendLog("");
+
+        // Logga eventuali item dell'entryLoot GIA' raccolti da startNewGame/advanceRoom
+        // (entryLoot.clear() e' gia' avvenuto, quindi usiamo un messaggio fisso per stanza)
+        switch (room.getId()) {
+            case "r1" -> appendLog("[★] Raccogli il Bastone Magico. Senti il potere scorrere tra le dita.");
+            case "r3" -> {} // lo Spadone e' nella wave narrativa Sala della Statua
+        }
+    }
+
+    /** Logga la descrizione dell'ondata corrente se non e' ancora stata loggata. */
+    private void logCurrentWaveIfNew() {
+        Wave wave = gc.getCurrentRoom().getCurrentWave();
+        if (wave == null) return;
+        String key = gc.getCurrentRoom().getId() + "|" + wave.getName();
+        if (key.equals(lastLoggedWave)) return;
+        lastLoggedWave = key;
+
+        if (!wave.getDescription().isBlank()) {
+            appendLog("");
+            appendLog("--- " + wave.getName() + " ---");
+            appendLog(wave.getDescription());
+            appendLog("");
+        }
+
+        // Wave senza nemici (es. Sala della Statua): auto-complete e raccoglie loot
+        if (wave.getEnemies().isEmpty()) {
+            wave.setCleared(true);
+            gc.checkWaveCleared();
+        }
     }
 
     // =========================================================================
@@ -146,12 +190,12 @@ public class GameScreen {
             title, sep(),
             classe, sep(),
             bold("Stats:", 12),
-            statRow("HP",     p.getCurrentHp() + " / " + p.getMaxHp(),          hpColor(p)),
-            statRow("Difesa", String.valueOf(p.getDefense()),                     TEXT_WHITE),
-            statRow("Attacco",String.valueOf(p.getAttack()),                      TEXT_WHITE),
-            statRow("Agil.",  String.valueOf(p.getAgility()),                     TEXT_WHITE),
-            statRow("Stamina",p.getCurrentStamina() + "/" + p.getMaxStamina(),   TEXT_WHITE),
-            statRow("Crit",   String.format("%.0f%%", p.getCritChance() * 100),  TEXT_WHITE)
+            statRow("HP",     p.getCurrentHp() + " / " + p.getMaxHp(),         hpColor(p)),
+            statRow("Difesa", String.valueOf(p.getDefense()),                    TEXT_WHITE),
+            statRow("Attacco",String.valueOf(p.getAttack()),                     TEXT_WHITE),
+            statRow("Agil.",  String.valueOf(p.getAgility()),                    TEXT_WHITE),
+            statRow("Stamina",p.getCurrentStamina() + "/" + p.getMaxStamina(),  TEXT_WHITE),
+            statRow("Crit",   String.format("%.0f%%", p.getCritChance() * 100), TEXT_WHITE)
         );
 
         if (p instanceof Mage m && m.isMagicShieldActive())
@@ -181,18 +225,15 @@ public class GameScreen {
                         boolean used = gc.useFirstPotion();
                         if (used) {
                             appendLog("[ITEM] Hai usato una Pozione! Stamina +3.");
-                            showInventario();
-                            showScheda();
+                            showInventario(); showScheda();
                         }
-                    } else if (item instanceof Weapon w) {
-                        showEquipPreview(w);
                     } else if (item instanceof Meat meat) {
-                        // Usa la Carne: +40 HP
-                        meat.use((GameCharacter) gc.getPlayer());
+                        meat.use(player());
                         gc.getPlayer().removeItem(meat);
                         appendLog("[ITEM] Hai mangiato Carne! +40 HP.");
-                        showInventario();
-                        showScheda();
+                        showInventario(); showScheda();
+                    } else if (item instanceof Weapon w) {
+                        showEquipPreview(w);
                     }
                 });
                 leftPanel.getChildren().add(b);
@@ -214,7 +255,6 @@ public class GameScreen {
             slotLbl.setStyle(TEXT_GOLD);
             Optional<Weapon> eq = equipmentManager.getEquipped(slot);
             Label itemLbl = lbl(eq.map(Weapon::getName).orElse("(vuoto)"));
-
             HBox row = new HBox(6, slotLbl, itemLbl);
             if (eq.isPresent()) {
                 Weapon w = eq.get();
@@ -222,8 +262,7 @@ public class GameScreen {
                 unb.setOnAction(e -> {
                     equipmentManager.unequip(slot);
                     appendLog("[EQUIP] Rimosso: " + w.getName());
-                    showEquip();
-                    showScheda();
+                    showEquip(); showScheda();
                 });
                 row.getChildren().add(unb);
             }
@@ -235,7 +274,6 @@ public class GameScreen {
         hint.setWrapText(true);
         hint.setStyle(TEXT_WHITE + "-fx-font-size:11px;");
         leftPanel.getChildren().add(hint);
-
         Button back = btn("Indietro");
         back.setOnAction(e -> showScheda());
         leftPanel.getChildren().add(back);
@@ -251,36 +289,31 @@ public class GameScreen {
 
         GameCharacter p = player();
         StatModifier mod = weapon.getModifierFor(p.getCharacterClass());
-
         addStatDeltaRow("Attacco",  p.getAttack(),      mod.attackDelta());
         addStatDeltaRow("Difesa",   p.getDefense(),     mod.defenseDelta());
         addStatDeltaRow("Agilit\u00e0", p.getAgility(), mod.agilityDelta());
         addStatDeltaRow("HP Max",   p.getMaxHp(),       mod.maxHpDelta());
         addStatDeltaRow("Stamina",  p.getMaxStamina(),  mod.maxStaminaDelta());
         if (mod.critDelta() != 0) {
-            Label row = lbl("Crit: " + String.format("%.0f%%", p.getCritChance() * 100)
+            Label r = lbl("Crit: " + String.format("%.0f%%", p.getCritChance() * 100)
                     + " \u2192 " + String.format("%.0f%%", (p.getCritChance() + mod.critDelta()) * 100));
-            row.setStyle(mod.critDelta() > 0 ? TEXT_GREEN : TEXT_RED);
-            leftPanel.getChildren().add(row);
+            r.setStyle(mod.critDelta() > 0 ? TEXT_GREEN : TEXT_RED);
+            leftPanel.getChildren().add(r);
         }
-
         leftPanel.getChildren().add(sep());
 
         EquipmentManager.EquipResult canEquip = equipmentManager.canEquip(weapon);
         if (!canEquip.success()) {
-            Label warn = lbl(canEquip.message());
-            warn.setStyle(TEXT_RED);
+            Label warn = lbl(canEquip.message()); warn.setStyle(TEXT_RED);
             leftPanel.getChildren().add(warn);
         }
-
         Button equipBtn = btn("Equipaggia  [" + slotName(weapon.getSlot()) + "]");
         equipBtn.setDisable(!canEquip.success());
         equipBtn.setOnAction(e -> {
-            EquipmentManager.EquipResult r = equipmentManager.equip(weapon);
-            appendLog("[EQUIP] " + r.message());
+            equipmentManager.equip(weapon);
+            appendLog("[EQUIP] Hai equipaggiato: " + weapon.getName());
             showScheda();
         });
-
         Button back = btn("Indietro");
         back.setOnAction(e -> showInventario());
         leftPanel.getChildren().addAll(equipBtn, back);
@@ -297,14 +330,12 @@ public class GameScreen {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("ATTACCHI SPECIALI", 13));
         leftPanel.getChildren().add(sep());
-
         List<SpecialAttack> specials = equipmentManager.getEquippedSpecials();
         if (specials.isEmpty()) {
             leftPanel.getChildren().add(lbl("Nessun attacco speciale.\nEquipa un'arma prima."));
         } else {
-            GameCharacter p = player();
             for (SpecialAttack s : specials) {
-                boolean canUse = p.canUseSpecial(s.getStaminaCost());
+                boolean canUse = player().canUseSpecial(s.getStaminaCost());
                 Button b = btn(s.getName() + "  costo:" + s.getStaminaCost());
                 if (!canUse) {
                     b.setStyle(BTN_DANGER);
@@ -329,15 +360,16 @@ public class GameScreen {
         rightPanel.getChildren().clear();
         Room room = gc.getCurrentRoom();
 
-        Label stanzaLbl = bold("Stanza:", 12);
+        Label stanzaLbl = bold(room.getName(), 13);
         stanzaLbl.setStyle(TEXT_GOLD);
-        rightPanel.getChildren().addAll(stanzaLbl, lbl(room.getName()), sep());
+        rightPanel.getChildren().addAll(stanzaLbl, sep());
 
         Wave wave = room.getCurrentWave();
-        if (wave != null) {
-            Label nemLbl = bold("Nemici:", 12);
-            nemLbl.setStyle(TEXT_GOLD);
-            rightPanel.getChildren().add(nemLbl);
+        if (wave != null && !wave.getEnemies().isEmpty()) {
+            Label wLbl = bold(wave.getName(), 11);
+            wLbl.setStyle(TEXT_WHITE);
+            rightPanel.getChildren().add(wLbl);
+            rightPanel.getChildren().add(sep());
 
             List<Enemy> alive = wave.getEnemies().stream().filter(Enemy::isAlive).toList();
             for (Enemy e : alive) {
@@ -362,7 +394,8 @@ public class GameScreen {
                 adv.setOnAction(e -> {
                     gc.advanceRoom();
                     selectedEnemy = null;
-                    appendLog("=== Nuova stanza: " + gc.getCurrentRoom().getName() + " ===");
+                    lastLoggedWave = null;
+                    logRoomEntry();
                     refresh();
                 });
                 rightPanel.getChildren().add(adv);
@@ -378,7 +411,6 @@ public class GameScreen {
 
     private void buildBottomBar() {
         bottomBar.getChildren().clear();
-
         Button btnInv     = btn("Inventario");
         Button btnEquip   = btn("Equip.");
         Button btnAtk     = btn("ATK");
@@ -440,46 +472,15 @@ public class GameScreen {
         result.log().forEach(this::appendLog);
         refresh();
         if (result.playerDead()) { showGameOver(); return; }
-        if (result.fleeSuccess()) appendLog("[FUGA] Sei fuggito dalla stanza!");
         if (result.waveCleared()) {
             appendLog("[WAVE] Ondata completata!");
-            rollDrops();
             gc.checkWaveCleared();
+            // Logga loot fissi ricevuti
+            player().getInventory();  // inventario aggiornato
             if (gc.getGameState().isVictory()) { showVictory(); return; }
             selectedEnemy = null;
-            refresh();
+            refresh(); // triggera logCurrentWaveIfNew per la prossima ondata
         }
-    }
-
-    /**
-     * Drop probabilistici 50% Carne da GAME_SPEC.md:
-     *   Cinghiale, Lupo, Cucciolo di Drago → 50% ciascuno
-     *   Uovo                               → NO drop
-     *   Tutti gli altri                    → drop fissi già in Wave.loot, non qui
-     */
-    private void rollDrops() {
-        Wave wave = gc.getCurrentRoom().getCurrentWave();
-        if (wave == null) return;
-        wave.getEnemies().stream()
-            .filter(e -> !e.isAlive())
-            .filter(e -> meatDropper(e.getName()))
-            .forEach(e -> {
-                if (Math.random() < 0.5) {
-                    player().addItem(new Meat());
-                    appendLog("[DROP] " + e.getName() + " ha lasciato Carne! (+40 HP se usata)");
-                }
-            });
-    }
-
-    /**
-     * Solo questi nemici possono droppare Carne con probabilità 50%.
-     * Le Uova NON droppano (si trasformano in Cuccioli).
-     */
-    private boolean meatDropper(String name) {
-        return switch (name) {
-            case "Cinghiale", "Lupo", "Cucciolo di Drago" -> true;
-            default -> false;
-        };
     }
 
     // =========================================================================
@@ -488,32 +489,22 @@ public class GameScreen {
 
     private void showGameOver() {
         VBox vb = new VBox(20);
-        vb.setAlignment(Pos.CENTER);
-        vb.setStyle(DARK);
-        Label l = bold("SEI MORTO.  GAME OVER.", 28);
-        l.setStyle(TEXT_RED);
+        vb.setAlignment(Pos.CENTER); vb.setStyle(DARK);
+        Label l = bold("SEI MORTO.  GAME OVER.", 28); l.setStyle(TEXT_RED);
         Button back = btn("Torna al Menu");
         back.setOnAction(e -> app.showMenu(stage));
         vb.getChildren().addAll(l, back);
-        root.setCenter(vb);
-        root.setLeft(null);
-        root.setRight(null);
-        root.setBottom(null);
+        root.setCenter(vb); root.setLeft(null); root.setRight(null); root.setBottom(null);
     }
 
     private void showVictory() {
         VBox vb = new VBox(20);
-        vb.setAlignment(Pos.CENTER);
-        vb.setStyle(DARK);
-        Label l = bold("HAI VINTO!  L'Ultimo Drago e' stato sconfitto!", 22);
-        l.setStyle(TEXT_GOLD);
+        vb.setAlignment(Pos.CENTER); vb.setStyle(DARK);
+        Label l = bold("HAI VINTO!  L'Ultimo Drago e' stato sconfitto!", 22); l.setStyle(TEXT_GOLD);
         Button back = btn("Torna al Menu");
         back.setOnAction(e -> app.showMenu(stage));
         vb.getChildren().addAll(l, back);
-        root.setCenter(vb);
-        root.setLeft(null);
-        root.setRight(null);
-        root.setBottom(null);
+        root.setCenter(vb); root.setLeft(null); root.setRight(null); root.setBottom(null);
     }
 
     // =========================================================================
@@ -537,14 +528,12 @@ public class GameScreen {
     private Label bold(String text, int size) {
         Label l = new Label(text);
         l.setFont(Font.font("System", FontWeight.BOLD, size));
-        l.setStyle(TEXT_WHITE);
-        return l;
+        l.setStyle(TEXT_WHITE); return l;
     }
     private Label badge(String text, String color) {
         Label l = new Label(text);
         l.setFont(Font.font("System", FontWeight.BOLD, 11));
-        l.setStyle(color);
-        return l;
+        l.setStyle(color); return l;
     }
     private HBox statRow(String label, String value, String color) {
         Label k = new Label(label + ": "); k.setStyle(TEXT_WHITE + "-fx-font-size:12px;");
@@ -563,12 +552,10 @@ public class GameScreen {
         Button b = new Button(t);
         b.setStyle("-fx-background-color:#1e1e3e;-fx-text-fill:#cccccc;" +
                    "-fx-font-size:12px;-fx-cursor:hand;-fx-padding:4 8;");
-        b.setMaxWidth(Double.MAX_VALUE);
-        return b;
+        b.setMaxWidth(Double.MAX_VALUE); return b;
     }
     private Button enemyBtn(String t) {
-        Button b = new Button(t);
-        b.setWrapText(true); b.setMaxWidth(Double.MAX_VALUE);
+        Button b = new Button(t); b.setWrapText(true); b.setMaxWidth(Double.MAX_VALUE);
         b.setStyle("-fx-background-color:#1e1e3e;-fx-text-fill:#e05555;" +
                    "-fx-font-size:11px;-fx-cursor:hand;-fx-padding:4 6;-fx-alignment:left;");
         return b;

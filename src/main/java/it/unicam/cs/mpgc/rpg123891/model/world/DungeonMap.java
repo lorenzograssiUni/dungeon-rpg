@@ -11,44 +11,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Mappa del dungeon: 5 stanze + Boss Finale, costruite esattamente
- * secondo GAME_SPEC.md.
- *
- * Struttura:
- *   r1 - Foresta        : entry drop Bastone Magico
- *                         Ondata A: Cinghiali x3 (50% Carne ciascuno)
- *                         Ondata B: Cinghiali x2 + Lupo (50% Carne ciascuno)
- *
- *   r2 - Villaggio Goblin:
- *                         Ondata A: Goblin x2          (drop assicurato: Doppie Daghe)
- *                         Ondata B: Goblin Guardie x3  (drop assicurato: Spada + Scudo o Armatura)
- *                         Ondata C: Re Goblin          (miniboss, fuga impossibile)
- *
- *   r3 - Catacombe      : entry drop Spadone
- *                         Ondata A: Scheletri x3
- *                         Ondata B: Statua Gigante     (drop: Spadone extra — gia' in entryLoot;
- *                                                        qui drop Scudo se mancante)
- *                         Ondata C: Scheletri x3 + Scheletro Guardia (drop: item mancante)
- *                         Ondata D: Strega             (miniboss, fuga impossibile;
- *                                                        drop: Pendente Magico + 3 Pozioni)
- *
- *   r4 - Sala del Tesoro:
- *                         Ondata A: Uova x3            (50% Carne — solo cuccioli in spec;
- *                                                        uova non droppano)
- *                         Ondata B: Uova x2 + Cucciolo (50% Carne dal cucciolo)
- *                         Ondata C: Cuccioli x3        (50% Carne ciascuno)
- *
- *   r5 - Boss Finale    :
- *                         Boss: L'Ultimo Drago         (fuga impossibile)
- *
- * NOTA sui drop probabilistici (50% Carne):
- *   Non sono pre-generati qui. Il controller, dopo ogni nemico sconfitto
- *   che prevede 50% Carne, lancia Random e aggiunge la Carne all'inventario.
- *
- * NOTA sul drop condizionale (item mancante in Catacombe):
- *   Il loot della Wave C e della Wave B di Catacombe viene costruito
- *   dal controller in base all'inventario del giocatore al momento del drop.
- *   Le Wave relative contengono una flag isMissingItemWave = true.
+ * Mappa del dungeon: 5 stanze + Boss Finale, costruite secondo GAME_SPEC.md.
+ * Ogni Wave ha una description narrativa mostrata nel log centrale.
  */
 public class DungeonMap implements Serializable {
 
@@ -57,8 +21,6 @@ public class DungeonMap implements Serializable {
 
     private final List<Room> rooms = new ArrayList<>();
     private int currentRoomIndex   = 0;
-
-    /** Traccia se nella Sala del Tesoro tutti cuccioli/uova sono stati uccisi. */
     private boolean treasureRoomCleaned = false;
 
     public DungeonMap() {
@@ -80,20 +42,21 @@ public class DungeonMap implements Serializable {
     /** r1 - Foresta */
     private Room buildForest() {
         Room room = new Room("r1", "Foresta",
-                "Alberi contorti ti circondano. Qualcosa si agita tra i cespugli.");
-
-        // Drop prima dei nemici
+                "Alberi contorti ti circondano. Qualcosa si agita tra i cespugli. " +
+                "Un vecchio bastone intagliato è appoggiato a un tronco — " +
+                "sembra aspettarti.");
         room.addEntryLoot(new MagicStaff());
 
-        // Ondata A: Cinghiali x3
-        Wave waveA = new Wave("Ondata A");
+        Wave waveA = new Wave("Ondata A", true,
+                "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
         waveA.addEnemy(EnemyFactory.createCinghiale());
         waveA.addEnemy(EnemyFactory.createCinghiale());
         waveA.addEnemy(EnemyFactory.createCinghiale());
         room.addWave(waveA);
 
-        // Ondata B: Cinghiali x2 + Lupo
-        Wave waveB = new Wave("Ondata B");
+        Wave waveB = new Wave("Ondata B", true,
+                "Non hai fatto in tempo a rifiatare. Due cinghiali e un lupo solitario " +
+                "sbucano dall'ombra, denti scoperti.");
         waveB.addEnemy(EnemyFactory.createCinghiale());
         waveB.addEnemy(EnemyFactory.createCinghiale());
         waveB.addEnemy(EnemyFactory.createLupo());
@@ -105,27 +68,32 @@ public class DungeonMap implements Serializable {
     /** r2 - Villaggio Goblin */
     private Room buildGoblinVillage() {
         Room room = new Room("r2", "Villaggio Goblin",
-                "Capanne di legno bruciate. I Goblin ti fissano con odio.");
+                "Capanne di legno bruciate costeggiano il sentiero. " +
+                "L'aria puzza di fumo e carne bruciata. " +
+                "I goblin ti fissano con odio dagli anfratti.");
 
-        // Ondata A: Goblin x2 — drop assicurato Doppie Daghe
-        Wave waveA = new Wave("Ondata A");
+        Wave waveA = new Wave("Ondata A", true,
+                "Due goblin saltano fuori da dietro una capanna, armati di coltellacci arrugginiti. " +
+                "Uno di essi porta con sé un fodero con doppie daghe lucenti — roba rubata.");
         waveA.addEnemy(EnemyFactory.createGoblin());
         waveA.addEnemy(EnemyFactory.createGoblin());
         waveA.addLoot(new DualDaggers());
         room.addWave(waveA);
 
-        // Ondata B: Goblin Guardie x3 — drop assicurato Spada + (Scudo o Armatura)
-        // Scudo e Armatura: il controller decide quale manca al giocatore
-        Wave waveB = new Wave("Ondata B");
+        Wave waveB = new Wave("Ondata B", true,
+                "Un fischio acuto riecheggia nel villaggio. Tre goblin guardia si fanno avanti, " +
+                "equipaggiati con armature rozze e spade di ferro.");
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addLoot(new Sword());
-        // Scudo/Armatura condizionale: il controller aggiunge l'item mancante
+        // Scudo o Armatura: drop condizionale aggiunto da GameController
         room.addWave(waveB);
 
-        // Ondata C: Re Goblin — miniboss, fuga impossibile
-        Wave waveC = new Wave("Miniboss: Re Goblin", false);
+        Wave waveC = new Wave("Miniboss: Re Goblin", false,
+                "Il terreno trema. Dal palazzo di fango e sterpi emerge il Re Goblin: " +
+                "tozzo, coperto di cicatrici, con una corona storta di ossa. " +
+                "\"INTRUSO! Lo stritolo con le mie stesse mani!\"");
         waveC.addEnemy(EnemyFactory.createReGoblin());
         room.addWave(waveC);
 
@@ -135,41 +103,49 @@ public class DungeonMap implements Serializable {
     /** r3 - Catacombe */
     private Room buildCatacombs() {
         Room room = new Room("r3", "Catacombe",
-                "Tunnel stretti illuminati da torce tremolanti. L'eco dei passi ti segue.");
+                "Tunnel stretti illuminati da torce tremolanti. " +
+                "L'eco dei tuoi passi si moltiplica nell'oscurità. " +
+                "L'odore di pietra umida e morte vecchia appesta l'aria.");
 
-        // Drop esplorazione prima dei nemici
-        room.addEntryLoot(new Greatsword());
-
-        // Ondata A: Scheletri x3
-        Wave waveA = new Wave("Ondata A");
+        Wave waveA = new Wave("Ondata A", true,
+                "Tre scheletri si svegliano dalle nicchie scavate nelle pareti. " +
+                "Le loro orbite vuote brillano di luce bluastra. Le ossa scricchiolano mentre avanzano.");
         waveA.addEnemy(EnemyFactory.createScheletro());
         waveA.addEnemy(EnemyFactory.createScheletro());
         waveA.addEnemy(EnemyFactory.createScheletro());
         room.addWave(waveA);
 
-        // Ondata B: Statua Gigante — usata come Enemy con stat di Scheletro Guardia
-        // drop: Scudo (se il giocatore non ce l'ha gia') — condizionale, gestito dal controller
-        Wave waveB = new Wave("Ondata B");
-        waveB.addEnemy(EnemyFactory.createScheletroGuardia()); // placeholder Statua Gigante
+        // Stanza vuota con Spadone: nessun nemico, Wave cleared automaticamente
+        Wave waveStatua = new Wave("Sala della Statua", true,
+                "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
+                "di un guerriero in armatura piena — alta il doppio di un uomo. " +
+                "Tra le sue mani di pietra stringe uno SPADONE enorme. " +
+                "Lentamente, le dita si aprono. La spada cade ai tuoi piedi con un rimbombo.");
+        // Nessun nemico: la wave si considera cleared immediatamente.
+        waveStatua.addLoot(new Greatsword());
+        // Rimuoviamo l'entryLoot Greatsword: ora e' qui nella wave narrativa
+        room.addWave(waveStatua);
+
+        Wave waveB = new Wave("Ondata B", true,
+                "Dalle pareti emergono altri scheletri, stavolta tre comuni e uno corazzato " +
+                "con scudo e armatura. Si muovono con sincronia innaturale.");
+        waveB.addEnemy(EnemyFactory.createScheletro());
+        waveB.addEnemy(EnemyFactory.createScheletro());
+        waveB.addEnemy(EnemyFactory.createScheletro());
+        waveB.addEnemy(EnemyFactory.createScheletroGuardia());
+        // Drop condizionale (Scudo o Armatura mancante): aggiunto da GameController
         room.addWave(waveB);
 
-        // Ondata C: Scheletri x3 + Scheletro Guardia — drop: item mancante (Scudo o Armatura)
-        Wave waveC = new Wave("Ondata C");
-        waveC.addEnemy(EnemyFactory.createScheletro());
-        waveC.addEnemy(EnemyFactory.createScheletro());
-        waveC.addEnemy(EnemyFactory.createScheletro());
-        waveC.addEnemy(EnemyFactory.createScheletroGuardia());
+        Wave waveC = new Wave("Miniboss: Strega", false,
+                "Una risata acuta echeggia dalle volte. Candele si accendono da sole. " +
+                "La Strega scende lentamente dal soffitto, circondata da un alone verdastro. " +
+                "\"Benvenuto, sciocco eroe. I miei figli ti accoglieranno.\"");
+        waveC.addEnemy(EnemyFactory.createStrega());
+        waveC.addLoot(new MagicAmulet());
+        waveC.addLoot(new Potion());
+        waveC.addLoot(new Potion());
+        waveC.addLoot(new Potion());
         room.addWave(waveC);
-
-        // Ondata D: Strega — miniboss, fuga impossibile
-        // drop assicurato: Pendente Magico + 3 Pozioni (in Wave.loot)
-        Wave waveD = new Wave("Miniboss: Strega", false);
-        waveD.addEnemy(EnemyFactory.createStrega());
-        waveD.addLoot(new MagicAmulet());
-        waveD.addLoot(new Potion());
-        waveD.addLoot(new Potion());
-        waveD.addLoot(new Potion());
-        room.addWave(waveD);
 
         return room;
     }
@@ -177,24 +153,28 @@ public class DungeonMap implements Serializable {
     /** r4 - Sala del Tesoro */
     private Room buildTreasureRoom() {
         Room room = new Room("r4", "Sala del Tesoro",
-                "Oro e gemme scintillano ovunque. Ma qualcosa di enorme si muove nell'ombra.");
+                "Oro e gemme scintillano ovunque, ammassati in pile impossibili. " +
+                "Ma il pavimento trema. Qualcosa di enorme respira nell'ombra in fondo alla sala.");
 
-        // Ondata A: Uova x3 (le uova non droppano Carne — solo i cuccioli)
-        Wave waveA = new Wave("Ondata A");
+        Wave waveA = new Wave("Ondata A", true,
+                "Tra i mucchi d'oro, tre grosse uova di drago pulsano di calore. " +
+                "Crepe compaiono sui gusci — stanno per schiudersi!");
         waveA.addEnemy(EnemyFactory.createUovo());
         waveA.addEnemy(EnemyFactory.createUovo());
         waveA.addEnemy(EnemyFactory.createUovo());
         room.addWave(waveA);
 
-        // Ondata B: Uova x2 + Cucciolo di Drago
-        Wave waveB = new Wave("Ondata B");
+        Wave waveB = new Wave("Ondata B", true,
+                "Altre due uova emergono dall'ombra. Accanto a esse, un cucciolo già schiuso " +
+                "spalanca le fauci e lancia fiammate basse.");
         waveB.addEnemy(EnemyFactory.createUovo());
         waveB.addEnemy(EnemyFactory.createUovo());
         waveB.addEnemy(EnemyFactory.createCuccioloDrago());
         room.addWave(waveB);
 
-        // Ondata C: Cuccioli di Drago x3
-        Wave waveC = new Wave("Ondata C");
+        Wave waveC = new Wave("Ondata C", true,
+                "Tre cuccioli di drago si avventano su di te, artigli lucidi e occhi di brace. " +
+                "Sono più veloci di quanto sembrino.");
         waveC.addEnemy(EnemyFactory.createCuccioloDrago());
         waveC.addEnemy(EnemyFactory.createCuccioloDrago());
         waveC.addEnemy(EnemyFactory.createCuccioloDrago());
@@ -206,9 +186,13 @@ public class DungeonMap implements Serializable {
     /** r5 - Boss Finale */
     private Room buildBossRoom() {
         Room room = new Room("r5", "Sala del Drago",
-                "Il terreno trema. Fiamme lambiscono le pareti. L'Ultimo Drago ti aspetta.");
+                "Il soffitto è altissimo e buio. Le pareti sono annerite dalle fiamme. " +
+                "Al centro della sala, una sagoma immensa apre lentamente un occhio dorato.");
 
-        Wave boss = new Wave("Boss Finale: L'Ultimo Drago", false);
+        Wave boss = new Wave("Boss Finale: L'Ultimo Drago", false,
+                "L'Ultimo Drago si alza in tutta la sua maestosità, le ali scagliate che " +
+                "proiettano ombre enormi sulle pareti. Un ruggito fa tremare le pietre. " +
+                "\"PICCOLO INSETTO... sei venuto a morire?\"");
         boss.addEnemy(EnemyFactory.createUltimoDrago());
         room.addWave(boss);
 
@@ -234,10 +218,6 @@ public class DungeonMap implements Serializable {
         return rooms.stream().filter(Room::isVisited)
                 .map(Room::getName).collect(Collectors.toList());
     }
-
-    // -------------------------------------------------------------------------
-    // Flag Sala del Tesoro (per buff passivo del Drago)
-    // -------------------------------------------------------------------------
 
     public boolean isTreasureRoomCleaned()      { return treasureRoomCleaned; }
     public void setTreasureRoomCleaned(boolean v){ this.treasureRoomCleaned = v; }
