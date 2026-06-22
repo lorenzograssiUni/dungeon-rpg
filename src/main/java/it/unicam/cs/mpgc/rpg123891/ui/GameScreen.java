@@ -5,7 +5,6 @@ import it.unicam.cs.mpgc.rpg123891.controller.GameController;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
 import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
-import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.item.*;
 import it.unicam.cs.mpgc.rpg123891.model.world.Room;
@@ -25,49 +24,40 @@ import java.util.Optional;
 /**
  * Schermata principale di gioco.
  *
- * Layout:
- *   ┌──────────────┬──────────────────────┬──────────────┐
- *   │  LEFT PANEL  │     LOG / CENTER     │  RIGHT PANEL │
- *   │  (scheda /   │  (cosa succede)      │  (stanza +   │
- *   │  inventario/ │                      │   nemici)    │
- *   │  equip /     │                      │              │
- *   │  special)    │                      │              │
- *   ├──────────────┴──────────────────────┴──────────────┤
- *   │  [Inventario] [Equip.] [ATK] [Special ATK] [Fuga]  │
- *   └─────────────────────────────────────────────────────┘
+ * Layout 3 colonne:
+ *   LEFT  = scheda giocatore (o inventario / equip / special in base al bottone)
+ *   CENTER = log degli eventi
+ *   RIGHT  = stanza corrente + lista nemici cliccabili
+ *   BOTTOM = barra azioni
  */
 public class GameScreen {
 
-    private static final String DARK      = "-fx-background-color:#1a1a2e;";
-    private static final String PANEL_BG  = "-fx-background-color:#16213e;-fx-border-color:#3a3a6e;-fx-border-width:1;";
-    private static final String TEXT_GOLD = "-fx-text-fill:#e0c46c;";
-    private static final String TEXT_WHITE= "-fx-text-fill:#cccccc;";
-    private static final String TEXT_RED  = "-fx-text-fill:#e05555;";
-    private static final String TEXT_GREEN= "-fx-text-fill:#55e077;";
-    private static final String BTN_STYLE = "-fx-background-color:#2a2a4e;-fx-text-fill:#e0c46c;" +
-                                             "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
-    private static final String BTN_DANGER= "-fx-background-color:#4e2a2a;-fx-text-fill:#e06c6c;" +
-                                             "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
+    private static final String DARK       = "-fx-background-color:#1a1a2e;";
+    private static final String PANEL_BG   = "-fx-background-color:#16213e;-fx-border-color:#3a3a6e;-fx-border-width:1;";
+    private static final String TEXT_GOLD  = "-fx-text-fill:#e0c46c;";
+    private static final String TEXT_WHITE = "-fx-text-fill:#cccccc;";
+    private static final String TEXT_RED   = "-fx-text-fill:#e05555;";
+    private static final String TEXT_GREEN = "-fx-text-fill:#55e077;";
+    private static final String BTN_STYLE  = "-fx-background-color:#2a2a4e;-fx-text-fill:#e0c46c;" +
+                                              "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
+    private static final String BTN_DANGER = "-fx-background-color:#4e2a2a;-fx-text-fill:#e06c6c;" +
+                                              "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:6 12;";
 
     private final BorderPane root;
     private final GameController gc;
     private final Stage stage;
     private final FxApp app;
-    private CombatController combatController;
+    private final CombatController combatController;
 
-    // --- Colonna sinistra ---
-    private final VBox leftPanel   = new VBox(8);
-    // --- Centro ---
-    private final TextArea logArea = new TextArea();
-    // --- Colonna destra ---
-    private final VBox rightPanel  = new VBox(8);
-    // --- Bottoni inferiori ---
-    private final HBox bottomBar   = new HBox(8);
+    // EquipmentManager tenuto qui (non in GameState)
+    private final EquipmentManager equipmentManager;
 
-    // Nemico selezionato (click nella lista destra)
+    private final VBox    leftPanel = new VBox(8);
+    private final TextArea logArea  = new TextArea();
+    private final VBox    rightPanel= new VBox(8);
+    private final HBox    bottomBar = new HBox(8);
+
     private Enemy selectedEnemy = null;
-    // Item selezionato in inventario per equip
-    private Item  selectedItem  = null;
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
         this.gc    = gc;
@@ -76,10 +66,13 @@ public class GameScreen {
         this.root  = new BorderPane();
         root.setStyle(DARK);
 
+        // EquipmentManager collegato al personaggio corrente
+        this.equipmentManager = new EquipmentManager((GameCharacter) gc.getPlayer());
+
         combatController = new CombatController(
                 gc, gc.getGameState().getDungeonMap());
         combatController.setListener(new CombatController.CombatListener() {
-            public void onEvent(String msg)  { appendLog(msg); }
+            public void onEvent(String msg) { appendLog(msg); }
             public void onTurnEnd(List<String> log, boolean dead, boolean cleared) {}
         });
 
@@ -90,30 +83,26 @@ public class GameScreen {
     public BorderPane getRoot() { return root; }
 
     // =========================================================================
-    // Layout
+    // Layout base
     // =========================================================================
 
     private void buildLayout() {
-        // --- Log centrale ---
         logArea.setEditable(false);
         logArea.setWrapText(true);
         logArea.setStyle(PANEL_BG + "-fx-text-fill:#aaaaaa;-fx-font-size:12px;");
-        logArea.setPrefHeight(9999);
         VBox center = new VBox(logArea);
         VBox.setVgrow(logArea, Priority.ALWAYS);
         center.setPadding(new Insets(8));
         center.setStyle(PANEL_BG);
 
-        // --- Pannelli laterali ---
         leftPanel.setPadding(new Insets(8));
         leftPanel.setStyle(PANEL_BG);
-        leftPanel.setPrefWidth(230);
+        leftPanel.setPrefWidth(235);
 
         rightPanel.setPadding(new Insets(8));
         rightPanel.setStyle(PANEL_BG);
         rightPanel.setPrefWidth(220);
 
-        // --- Barra inferiore ---
         bottomBar.setPadding(new Insets(8));
         bottomBar.setAlignment(Pos.CENTER);
         bottomBar.setStyle("-fx-background-color:#0f0f23;-fx-border-color:#3a3a6e;-fx-border-width:1 0 0 0;");
@@ -124,17 +113,17 @@ public class GameScreen {
         root.setBottom(bottomBar);
     }
 
-    // =========================================================================
-    // Refresh
-    // =========================================================================
-
     private void refresh() {
         showScheda();
         refreshRight();
         buildBottomBar();
     }
 
-    // --- LEFT: Scheda giocatore ---
+    // =========================================================================
+    // Pannelli LEFT
+    // =========================================================================
+
+    /** Vista default: scheda statistiche del personaggio */
     private void showScheda() {
         leftPanel.getChildren().clear();
         GameCharacter p = player();
@@ -148,15 +137,15 @@ public class GameScreen {
             title, sep(),
             classe, sep(),
             bold("Stats:", 12),
-            statRow("HP",     p.getCurrentHp() + " / " + p.getMaxHp(), hpColor(p)),
-            statRow("Difesa", String.valueOf(p.getDefense()),            TEXT_WHITE),
-            statRow("Attacco",String.valueOf(p.getAttack()),             TEXT_WHITE),
-            statRow("Agil.",  String.valueOf(p.getAgility()),            TEXT_WHITE),
-            statRow("Stamina",p.getCurrentStamina()+" / "+p.getMaxStamina(), TEXT_WHITE),
-            statRow("Crit",   String.format("%.0f%%", p.getCritChance()*100), TEXT_WHITE)
+            statRow("HP",     p.getCurrentHp() + " / " + p.getMaxHp(),            hpColor(p)),
+            statRow("Difesa", String.valueOf(p.getDefense()),                       TEXT_WHITE),
+            statRow("Attacco",String.valueOf(p.getAttack()),                        TEXT_WHITE),
+            statRow("Agil.",  String.valueOf(p.getAgility()),                       TEXT_WHITE),
+            statRow("Stamina",p.getCurrentStamina() + " / " + p.getMaxStamina(),   TEXT_WHITE),
+            statRow("Crit",   String.format("%.0f%%", p.getCritChance() * 100),    TEXT_WHITE)
         );
 
-        // Passive badge
+        // Badge passive/buff attivi
         if (p instanceof Mage m && m.isMagicShieldActive())
             leftPanel.getChildren().add(badge("[SCUDO MAGICO]", TEXT_GREEN));
         if (p instanceof Thief t && t.isStealthBonusActive())
@@ -168,7 +157,7 @@ public class GameScreen {
                 "[BRUCIATURA " + combatController.getActiveBurn().getDamagePerTurn() + "/t]", TEXT_RED));
     }
 
-    // --- LEFT: Inventario ---
+    /** Inventario: lista oggetti; clic pozione = usa, clic arma = preview equip */
     private void showInventario() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("INVENTARIO", 14));
@@ -179,63 +168,55 @@ public class GameScreen {
             leftPanel.getChildren().add(lbl("(vuoto)"));
         } else {
             for (Item item : inv) {
-                Button btn = itemBtn(item.getName());
-                btn.setOnAction(e -> {
-                    selectedItem = item;
-                    highlightSelected(btn);
-                    // Se è una Pozione: usala subito
+                Button b = itemBtn(item.getName());
+                b.setOnAction(e -> {
                     if (item instanceof Potion) {
                         gc.useFirstPotion();
                         appendLog("Hai usato una Pozione!");
                         showInventario();
-                        refreshRight();
                         showScheda();
-                    }
-                    // Se è un'arma: mostra panel equip
-                    else if (item instanceof Weapon) {
-                        showEquipPreview((Weapon) item);
+                    } else if (item instanceof Weapon w) {
+                        showEquipPreview(w);
                     }
                 });
-                leftPanel.getChildren().add(btn);
+                leftPanel.getChildren().add(b);
             }
         }
-
         leftPanel.getChildren().add(sep());
         Button back = btn("Indietro");
         back.setOnAction(e -> showScheda());
         leftPanel.getChildren().add(back);
     }
 
-    // --- LEFT: Equipaggiamento ---
+    /** Equipaggiamento: mostra slot con item equipaggiati e bottone Rimuovi */
     private void showEquip() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("EQUIPAGGIAMENTO", 13));
         leftPanel.getChildren().add(sep());
 
-        EquipmentManager em = gc.getGameState().getEquipmentManager();
-
         for (EquipSlot slot : EquipSlot.values()) {
             Label slotLbl = bold(slotName(slot) + ":", 12);
             slotLbl.setStyle(TEXT_GOLD);
-            Optional<Weapon> eq = em.getEquipped(slot);
+            Optional<Weapon> eq = equipmentManager.getEquipped(slot);
             Label itemLbl = lbl(eq.map(Weapon::getName).orElse("(vuoto)"));
 
             HBox row = new HBox(6, slotLbl, itemLbl);
             if (eq.isPresent()) {
-                Button unequipBtn = smallBtn("Rimuovi");
-                unequipBtn.setOnAction(e -> {
-                    em.unequip(slot);
-                    appendLog("Rimosso: " + eq.get().getName());
+                Weapon w = eq.get();
+                Button unb = smallBtn("Rimuovi");
+                unb.setOnAction(e -> {
+                    equipmentManager.unequip(slot);
+                    appendLog("Rimosso: " + w.getName());
                     showEquip();
                     showScheda();
                 });
-                row.getChildren().add(unequipBtn);
+                row.getChildren().add(unb);
             }
             leftPanel.getChildren().add(row);
         }
 
         leftPanel.getChildren().add(sep());
-        Label hint = lbl("Seleziona un'arma dall'Inventario per equipaggiarla.");
+        Label hint = lbl("Apri l'Inventario e clicca un'arma per equipaggiarla.");
         hint.setWrapText(true);
         hint.setStyle(TEXT_WHITE + "-fx-font-size:11px;");
         leftPanel.getChildren().add(hint);
@@ -245,7 +226,11 @@ public class GameScreen {
         leftPanel.getChildren().add(back);
     }
 
-    // --- LEFT: Preview equip arma ---
+    /**
+     * Preview equip: mostra le stat PRIMA → DOPO.
+     * StatModifier e' un record con campi: attackDelta, defenseDelta,
+     * agilityDelta, maxHpDelta, maxStaminaDelta, critDelta.
+     */
     private void showEquipPreview(Weapon weapon) {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("EQUIPAGGIA", 13));
@@ -255,100 +240,104 @@ public class GameScreen {
         leftPanel.getChildren().add(sep());
 
         GameCharacter p = player();
-        EquipmentManager em = gc.getGameState().getEquipmentManager();
-        EquipSlot slot = weapon.getSlot();
+        // Recupera il modificatore specifico per la classe del personaggio
+        StatModifier mod = weapon.getModifierFor(p.getCharacterClass());
 
-        // Mostra stat prima -> dopo
-        for (StatModifier mod : weapon.getStatModifiers()) {
-            int before = getStatValue(p, mod.stat());
-            int after  = before + mod.amount();
-            Label row  = lbl(statLabel(mod.stat()) + ": " + before + " → " + after);
-            row.setStyle(mod.amount() > 0 ? TEXT_GREEN : TEXT_RED);
-            leftPanel.getChildren().add(row);
-        }
+        addStatDeltaRow("Attacco",  p.getAttack(),        mod.attackDelta());
+        addStatDeltaRow("Difesa",   p.getDefense(),       mod.defenseDelta());
+        addStatDeltaRow("Agilit\u00e0",p.getAgility(),    mod.agilityDelta());
+        addStatDeltaRow("HP Max",   p.getMaxHp(),         mod.maxHpDelta());
+        addStatDeltaRow("Stamina",  p.getMaxStamina(),    mod.maxStaminaDelta());
+
         leftPanel.getChildren().add(sep());
 
-        EquipmentManager.EquipResult canEquip = em.canEquip(weapon);
-        Button equipBtn = btn("Equipaggia in " + slotName(slot));
-        equipBtn.setDisable(!canEquip.success());
-        equipBtn.setOnAction(e -> {
-            EquipmentManager.EquipResult r = em.equip(weapon);
-            appendLog(r.message());
-            showScheda();
-        });
-
+        EquipmentManager.EquipResult canEquip = equipmentManager.canEquip(weapon);
         if (!canEquip.success()) {
             Label warn = lbl(canEquip.message());
             warn.setStyle(TEXT_RED);
             leftPanel.getChildren().add(warn);
         }
 
+        Button equipBtn = btn("Equipaggia  [" + slotName(weapon.getSlot()) + "]");
+        equipBtn.setDisable(!canEquip.success());
+        equipBtn.setOnAction(e -> {
+            EquipmentManager.EquipResult r = equipmentManager.equip(weapon);
+            appendLog(r.message());
+            showScheda();
+        });
+
         Button back = btn("Indietro");
         back.setOnAction(e -> showInventario());
         leftPanel.getChildren().addAll(equipBtn, back);
     }
 
-    // --- LEFT: Special ATK ---
+    /** Aggiunge una riga PRIMA -> DOPO solo se il delta != 0 */
+    private void addStatDeltaRow(String name, int before, int delta) {
+        if (delta == 0) return;
+        int after = before + delta;
+        Label row = lbl(name + ": " + before + " \u2192 " + after);
+        row.setStyle(delta > 0 ? TEXT_GREEN : TEXT_RED);
+        leftPanel.getChildren().add(row);
+    }
+
+    /** Special ATK: mostra speciali di tutte le armi equipaggiate */
     private void showSpecialAtk() {
         leftPanel.getChildren().clear();
         leftPanel.getChildren().add(bold("ATTACCHI SPECIALI", 13));
         leftPanel.getChildren().add(sep());
 
-        List<SpecialAttack> specials = gc.getGameState().getEquipmentManager().getEquippedSpecials();
+        List<SpecialAttack> specials = equipmentManager.getEquippedSpecials();
         if (specials.isEmpty()) {
             leftPanel.getChildren().add(lbl("Nessun attacco speciale.\nEquipa un'arma prima."));
         } else {
             GameCharacter p = player();
             for (SpecialAttack s : specials) {
                 boolean canUse = p.canUseSpecial(s.getStaminaCost());
-                String label   = s.getName() + "  costo:" + s.getStaminaCost();
-                Button btn     = btn(label);
+                Button b = btn(s.getName() + "  costo:" + s.getStaminaCost());
                 if (!canUse) {
-                    btn.setStyle(BTN_DANGER);
-                    btn.setTooltip(new Tooltip("Stamina insufficiente"));
+                    b.setStyle(BTN_DANGER);
+                    b.setTooltip(new Tooltip("Stamina insufficiente"));
+                    b.setDisable(true);
                 }
-                btn.setDisable(!canUse);
-                btn.setOnAction(e -> executeSpecial(s));
-                leftPanel.getChildren().add(btn);
+                b.setOnAction(e -> executeSpecial(s));
+                leftPanel.getChildren().add(b);
             }
         }
-
         leftPanel.getChildren().add(sep());
         Button back = btn("Indietro");
         back.setOnAction(e -> showScheda());
         leftPanel.getChildren().add(back);
     }
 
-    // --- RIGHT: Stanza + nemici ---
+    // =========================================================================
+    // Pannello RIGHT
+    // =========================================================================
+
     private void refreshRight() {
         rightPanel.getChildren().clear();
         Room room = gc.getCurrentRoom();
 
         Label stanzaLbl = bold("Stanza:", 12);
         stanzaLbl.setStyle(TEXT_GOLD);
-        Label stanzaName = lbl(room.getName());
-        rightPanel.getChildren().addAll(stanzaLbl, stanzaName, sep());
+        rightPanel.getChildren().addAll(stanzaLbl, lbl(room.getName()), sep());
 
         Wave wave = room.getCurrentWave();
         if (wave != null) {
-            Label nemiciLbl = bold("Nemici:", 12);
-            nemiciLbl.setStyle(TEXT_GOLD);
-            rightPanel.getChildren().add(nemiciLbl);
+            Label nemLbl = bold("Nemici:", 12);
+            nemLbl.setStyle(TEXT_GOLD);
+            rightPanel.getChildren().add(nemLbl);
 
             List<Enemy> alive = wave.getEnemies().stream().filter(Enemy::isAlive).toList();
             for (Enemy e : alive) {
-                String tags = (e.isBoss() ? "[BOSS] " : "") +
-                              (e.isImmune() ? "[IMM] " : "") +
-                              (e.isStunned() ? "[STORD] " : "");
-                Button eb = enemyBtn(e.getName() + " " + tags +
-                                     "\nHP: " + e.getCurrentHp() + "/" + e.getMaxHp());
-                if (e == selectedEnemy) {
+                String tags = (e.isBoss()    ? "[BOSS] " : "")
+                            + (e.isImmune()  ? "[IMM] "  : "")
+                            + (e.isStunned() ? "[STORD]" : "");
+                String label = e.getName() + (tags.isEmpty() ? "" : " " + tags.strip())
+                             + "\nHP: " + e.getCurrentHp() + "/" + e.getMaxHp();
+                Button eb = enemyBtn(label);
+                if (e == selectedEnemy)
                     eb.setStyle(eb.getStyle() + "-fx-border-color:#e0c46c;-fx-border-width:2;");
-                }
-                eb.setOnAction(ev -> {
-                    selectedEnemy = e;
-                    refreshRight();
-                });
+                eb.setOnAction(ev -> { selectedEnemy = e; refreshRight(); });
                 rightPanel.getChildren().add(eb);
             }
         } else if (room.isCleared()) {
@@ -357,21 +346,24 @@ public class GameScreen {
             rightPanel.getChildren().add(cleared);
 
             if (gc.getGameState().getDungeonMap().hasNextRoom()) {
-                Button advBtn = btn("Avanza →");
-                advBtn.setOnAction(e -> {
+                Button adv = btn("Avanza \u2192");
+                adv.setOnAction(e -> {
                     gc.advanceRoom();
                     selectedEnemy = null;
                     appendLog("--- Nuova stanza: " + gc.getCurrentRoom().getName() + " ---");
                     refresh();
                 });
-                rightPanel.getChildren().add(advBtn);
+                rightPanel.getChildren().add(adv);
             } else {
                 showVictory();
             }
         }
     }
 
-    // --- BOTTOM BAR ---
+    // =========================================================================
+    // Bottom bar
+    // =========================================================================
+
     private void buildBottomBar() {
         bottomBar.getChildren().clear();
 
@@ -382,20 +374,19 @@ public class GameScreen {
         Button btnFuga    = dangerBtn("Fuga");
         Button btnSave    = btn("Salva");
 
-        btnInv.setOnAction(e -> showInventario());
-        btnEquip.setOnAction(e -> showEquip());
-        btnAtk.setOnAction(e -> doNormalAttack());
+        btnInv.setOnAction(e     -> showInventario());
+        btnEquip.setOnAction(e   -> showEquip());
+        btnAtk.setOnAction(e     -> doNormalAttack());
         btnSpecial.setOnAction(e -> showSpecialAtk());
-        btnFuga.setOnAction(e -> doFlee());
-        btnSave.setOnAction(e -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
+        btnFuga.setOnAction(e    -> doFlee());
+        btnSave.setOnAction(e    -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
 
         btnFuga.setDisable(!gc.canFlee());
-
         bottomBar.getChildren().addAll(btnInv, btnEquip, btnAtk, btnSpecial, btnFuga, btnSave);
     }
 
     // =========================================================================
-    // Azioni
+    // Azioni combattimento
     // =========================================================================
 
     private void doNormalAttack() {
@@ -412,7 +403,8 @@ public class GameScreen {
     }
 
     private void executeSpecial(SpecialAttack special) {
-        boolean isAoe = special.getName().equals("Onda Magica") || special.getName().equals("Spazzatutto");
+        boolean isAoe = special.getName().equals("Onda Magica") ||
+                        special.getName().equals("Spazzatutto");
         CombatController.TurnResult result;
         if (isAoe) {
             result = combatController.playerAoeAttack(special);
@@ -435,23 +427,13 @@ public class GameScreen {
         if (result == null) return;
         result.log().forEach(this::appendLog);
         refresh();
-
-        if (result.playerDead()) {
-            showGameOver();
-            return;
-        }
-        if (result.fleeSuccess()) {
-            appendLog("Sei fuggito!");
-        }
+        if (result.playerDead()) { showGameOver(); return; }
+        if (result.fleeSuccess()) appendLog("Sei fuggito!");
         if (result.waveCleared()) {
             appendLog("[WAVE CLEARED] Ondata completata!");
             rollDrops();
-            // Controlla se la stanza è completata
             gc.checkWaveCleared();
-            if (gc.getGameState().isVictory()) {
-                showVictory();
-                return;
-            }
+            if (gc.getGameState().isVictory()) { showVictory(); return; }
             selectedEnemy = null;
             refresh();
         }
@@ -461,14 +443,14 @@ public class GameScreen {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave == null) return;
         wave.getEnemies().stream().filter(e -> !e.isAlive()).forEach(e -> {
-            if (dropsMe(e) && Math.random() < 0.5) {
+            if (dropsMeat(e) && Math.random() < 0.5) {
                 player().addItem(new Meat());
                 appendLog("[DROP] " + e.getName() + " ha lasciato Carne!");
             }
         });
     }
 
-    private boolean dropsMe(Enemy e) {
+    private boolean dropsMeat(Enemy e) {
         return switch (e.getName()) {
             case "Cinghiale", "Lupo", "Cucciolo di Drago" -> true;
             default -> false;
@@ -476,11 +458,10 @@ public class GameScreen {
     }
 
     // =========================================================================
-    // Game Over / Victory
+    // Game over / vittoria
     // =========================================================================
 
     private void showGameOver() {
-        root.getChildren().clear();
         VBox vb = new VBox(20);
         vb.setAlignment(Pos.CENTER);
         vb.setStyle(DARK);
@@ -490,10 +471,12 @@ public class GameScreen {
         back.setOnAction(e -> app.showMenu(stage));
         vb.getChildren().addAll(l, back);
         root.setCenter(vb);
+        root.setLeft(null);
+        root.setRight(null);
+        root.setBottom(null);
     }
 
     private void showVictory() {
-        root.getChildren().clear();
         VBox vb = new VBox(20);
         vb.setAlignment(Pos.CENTER);
         vb.setStyle(DARK);
@@ -503,6 +486,9 @@ public class GameScreen {
         back.setOnAction(e -> app.showMenu(stage));
         vb.getChildren().addAll(l, back);
         root.setCenter(vb);
+        root.setLeft(null);
+        root.setRight(null);
+        root.setBottom(null);
     }
 
     // =========================================================================
@@ -510,20 +496,14 @@ public class GameScreen {
     // =========================================================================
 
     private void appendLog(String msg) {
-        Platform.runLater(() -> {
-            logArea.appendText(msg + "\n");
-        });
+        Platform.runLater(() -> logArea.appendText(msg + "\n"));
     }
 
-    private GameCharacter player() {
-        return (GameCharacter) gc.getPlayer();
-    }
+    private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
 
     private String hpColor(GameCharacter p) {
-        double ratio = (double) p.getCurrentHp() / p.getMaxHp();
-        if (ratio > 0.5) return TEXT_GREEN;
-        if (ratio > 0.25) return "-fx-text-fill:#e0a030;";
-        return TEXT_RED;
+        double r = (double) p.getCurrentHp() / p.getMaxHp();
+        return r > 0.5 ? TEXT_GREEN : r > 0.25 ? "-fx-text-fill:#e0a030;" : TEXT_RED;
     }
 
     private Label lbl(String text) {
@@ -558,23 +538,16 @@ public class GameScreen {
     private Separator sep() { return new Separator(); }
 
     private Button btn(String text) {
-        Button b = new Button(text);
-        b.setStyle(BTN_STYLE);
-        return b;
+        Button b = new Button(text); b.setStyle(BTN_STYLE); return b;
     }
-
     private Button dangerBtn(String text) {
-        Button b = new Button(text);
-        b.setStyle(BTN_DANGER);
-        return b;
+        Button b = new Button(text); b.setStyle(BTN_DANGER); return b;
     }
-
     private Button smallBtn(String text) {
         Button b = new Button(text);
         b.setStyle("-fx-background-color:#2a2a4e;-fx-text-fill:#e0c46c;-fx-font-size:10px;-fx-cursor:hand;");
         return b;
     }
-
     private Button itemBtn(String text) {
         Button b = new Button(text);
         b.setStyle("-fx-background-color:#1e1e3e;-fx-text-fill:#cccccc;" +
@@ -582,7 +555,6 @@ public class GameScreen {
         b.setMaxWidth(Double.MAX_VALUE);
         return b;
     }
-
     private Button enemyBtn(String text) {
         Button b = new Button(text);
         b.setWrapText(true);
@@ -592,38 +564,11 @@ public class GameScreen {
         return b;
     }
 
-    private void highlightSelected(Button b) {
-        b.setStyle(b.getStyle() + "-fx-border-color:#e0c46c;-fx-border-width:2;");
-    }
-
     private String slotName(EquipSlot slot) {
         return switch (slot) {
             case MAIN_HAND -> "Arma (Mano DX)";
             case OFF_HAND  -> "Scudo (Mano SX)";
             case BODY      -> "Armatura / Pendente";
-        };
-    }
-
-    private String statLabel(String stat) {
-        return switch (stat.toUpperCase()) {
-            case "ATTACK"   -> "Attacco";
-            case "DEFENSE"  -> "Difesa";
-            case "AGILITY"  -> "Agilità";
-            case "MAX_HP"   -> "HP Max";
-            case "STAMINA"  -> "Stamina";
-            case "CRIT"     -> "Crit%";
-            default         -> stat;
-        };
-    }
-
-    private int getStatValue(GameCharacter p, String stat) {
-        return switch (stat.toUpperCase()) {
-            case "ATTACK"   -> p.getAttack();
-            case "DEFENSE"  -> p.getDefense();
-            case "AGILITY"  -> p.getAgility();
-            case "MAX_HP"   -> p.getMaxHp();
-            case "STAMINA"  -> p.getMaxStamina();
-            default         -> 0;
         };
     }
 }
