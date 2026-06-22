@@ -1,5 +1,8 @@
 package it.unicam.cs.mpgc.rpg123891.controller;
 
+import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
+import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
+import it.unicam.cs.mpgc.rpg123891.model.combat.AttackType;
 import it.unicam.cs.mpgc.rpg123891.model.combat.BurnEffect;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
@@ -17,10 +20,6 @@ import java.util.Map;
  *   2. I nemici vivi rispondono
  *   3. Si applica la bruciatura se attiva
  *   4. Si controlla se l'ondata e' finita
- *
- * Drop probabilistici (50% Carne) lanciati al momento dell'uccisione:
- *   Cinghiale, Lupo, Cucciolo di Drago -> 50% Carne immediata
- *   Uovo                               -> nessun drop
  */
 public class CombatController {
 
@@ -35,7 +34,6 @@ public class CombatController {
             boolean waveCleared,
             boolean fleeSuccess
     ) {
-        /** True se il combattimento e' terminato per qualsiasi motivo. */
         public boolean isCombatOver() {
             return playerDead || waveCleared || fleeSuccess;
         }
@@ -64,9 +62,13 @@ public class CombatController {
         GameCharacter player = player();
 
         int dmg = gc.playerAttack(target);
-        log.add("[ATK] " + player.getName() + " attacca " + target.getName()
-                + " per " + dmg + " danni."
-                + (dmg == 0 ? " (parato!)" : ""));
+        if (dmg == 0) {
+            log.add("[ATK] " + player.getName() + " attacca " + target.getName()
+                    + " — parato!");
+        } else {
+            log.add("[ATK] " + player.getName() + " attacca " + target.getName()
+                    + " per " + dmg + " danni.");
+        }
 
         if (!target.isAlive()) {
             log.add("[\u2020] " + target.getName() + " e' stato sconfitto!");
@@ -115,11 +117,10 @@ public class CombatController {
         return new TurnResult(log, playerDead, waveCleared, false);
     }
 
-    /** Usa la prima pozione disponibile nell'inventario. */
     public TurnResult playerUsePotion() {
         List<String> log = new ArrayList<>();
         boolean used = gc.useFirstPotion();
-        log.add(used ? "[ITEM] Hai usato una Pozione! Stamina +3."
+        log.add(used ? "[ITEM] Hai usato una Pozione! +40 HP, +5 Stamina."
                      : "[!] Nessuna pozione disponibile.");
         return new TurnResult(log, false, false, false);
     }
@@ -139,10 +140,6 @@ public class CombatController {
     // Dragon PassiveBuff
     // =========================================================================
 
-    /**
-     * Controlla se la Sala del Tesoro e' stata ripulita e, in caso affermativo,
-     * attiva il buff passivo del Drago (+20% danno) tramite applyPassiveBonus().
-     */
     public void checkAndActivateDragonBuff(Enemy dragon) {
         if (!dungeonMap.isTreasureRoomCleaned()) return;
         dragon.applyPassiveBonus();
@@ -156,7 +153,7 @@ public class CombatController {
         if (!isMeatDropper(enemy.getName())) return;
         if (Math.random() < 0.5) {
             player().addItem(new it.unicam.cs.mpgc.rpg123891.model.item.Meat());
-            log.add("[DROP] " + enemy.getName() + " ha lasciato della Carne! (+40 HP se usata)");
+            log.add("[DROP] " + enemy.getName() + " ha lasciato della Carne! (+2 Stamina se usata)");
         }
     }
 
@@ -175,13 +172,15 @@ public class CombatController {
         Wave wave = dungeonMap.getCurrentRoom().getCurrentWave();
         if (wave == null) return false;
 
+        GameCharacter player = player();
+
         List<Enemy> alive = wave.getEnemies().stream()
                 .filter(Enemy::isAlive)
                 .sorted((a, b) -> b.getAgility() - a.getAgility())
                 .toList();
 
         for (Enemy enemy : alive) {
-            if (!player().isAlive()) break;
+            if (!player.isAlive()) break;
             if (enemy.isStunned()) {
                 enemy.clearStun();
                 log.add("[STORD] " + enemy.getName() + " e' stordito e salta il turno.");
@@ -191,12 +190,40 @@ public class CombatController {
                 log.add("[IMM] " + enemy.getName() + " e' immune: non attacca.");
                 continue;
             }
-            int dmg = gc.enemyAttack(enemy);
-            log.add("[ENEMY] " + enemy.getName() + " attacca per " + dmg + " danni.");
+
+            int rawDamage = enemy.getAttack();
+            int defense   = player.getDefense();
+
+            // Controlla passive difensive prima di applicare
+            if (player instanceof Warrior warrior) {
+                // Il blocco e' casuale: lo logghiamo solo se il danno risultante e' 0
+                int dmg = gc.enemyAttack(enemy);
+                if (dmg == 0) {
+                    log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage
+                            + " lordo) — BLOCCATO dal Guerriero!");
+                } else {
+                    log.add("[ENEMY] " + enemy.getName() + " attacca per " + rawDamage
+                            + " lordo — " + defense + " difesa = " + dmg + " danni subiti.");
+                }
+            } else if (player instanceof Mage mage && mage.isMagicShieldActive()) {
+                int dmg = gc.enemyAttack(enemy);
+                if (dmg == 0) {
+                    log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage
+                            + " lordo) — ASSORBITO dallo Scudo Magico!");
+                } else {
+                    log.add("[ENEMY] " + enemy.getName() + " attacca per " + rawDamage
+                            + " lordo — " + defense + " difesa = " + dmg + " danni subiti.");
+                }
+            } else {
+                int dmg = gc.enemyAttack(enemy);
+                int netExpected = Math.max(0, rawDamage - defense);
+                log.add("[ENEMY] " + enemy.getName() + " attacca per " + rawDamage
+                        + " lordo — " + defense + " difesa = " + dmg + " danni subiti.");
+            }
         }
 
         if (activeBurn != null) {
-            int burnDmg = activeBurn.applyTo(player());
+            int burnDmg = activeBurn.applyTo(player);
             log.add("[BURN] La bruciatura ti infligge " + burnDmg + " danni!"
                     + (activeBurn.isExpired() ? " (terminata)" : ""));
             if (activeBurn.isExpired()) activeBurn = null;
