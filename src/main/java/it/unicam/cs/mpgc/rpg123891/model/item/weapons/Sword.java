@@ -14,7 +14,13 @@ import java.util.Map;
  * Spada Semplice — MAIN_HAND, 1 mano.
  *
  * Bonus: W: ATK+2 AGI+2 | M: ATK+2 STA-3 | T: ATK+2
- * Speciali: Fendente (costo 2), Carica! (costo 4)
+ *
+ * Speciali:
+ *   Fendente (costo 2) — +25% ATK e +5% crit per questo attacco
+ *   Carica!  (costo 4) — attacco base + +3 DEF per il turno corrente;
+ *                        la DEF temporanea dura fino al prossimo attacco
+ *                        nemico. Il controller chiama removeCaricaBuff()
+ *                        dopo che il nemico ha attaccato.
  */
 public class Sword extends Weapon {
 
@@ -31,14 +37,17 @@ public class Sword extends Weapon {
               ));
     }
 
-    @Override public EquipSlot getSlot()       { return EquipSlot.MAIN_HAND; }
-    @Override public boolean isTwoHanded()     { return false; }
+    @Override public EquipSlot getSlot()   { return EquipSlot.MAIN_HAND; }
+    @Override public boolean isTwoHanded() { return false; }
 
     @Override
     public List<SpecialAttack> getSpecialAttacks() {
         return List.of(
-            new SpecialAttack("Fendente",
-                "+25% ATK e +5% crit per questo attacco", 2,
+
+            new SpecialAttack(
+                "Fendente",
+                "+25% ATK e +5% crit per questo attacco (costo: 2 stamina)",
+                2,
                 (attacker, defender) -> {
                     int boostedAtk = (int)(attacker.getAttack() * 1.25);
                     boolean crit   = Math.random() < attacker.getCritChance() + 0.05;
@@ -47,14 +56,23 @@ public class Sword extends Weapon {
                     defender.takeDamage(damage);
                     return hpBefore - defender.getCurrentHp();
                 }),
-            new SpecialAttack("Carica!",
-                "Attacchi con danno base + difesa temporanea +3 questo turno", 4,
+
+            new SpecialAttack(
+                "Carica!",
+                "Attacchi e guadagni +3 DEF per il turno (rimossa dopo l'attacco nemico)",
+                4,
                 (attacker, defender) -> {
-                    attacker.increaseDefense(3);
+                    // Applica danno normale
                     int hpBefore = defender.getCurrentHp();
                     defender.takeDamage(attacker.getAttack());
-                    attacker.increaseDefense(-3);
-                    return hpBefore - defender.getCurrentHp();
+                    int dealt = hpBefore - defender.getCurrentHp();
+
+                    // Applica buff difensivo temporaneo: dura fino al turno nemico.
+                    // Il controller deve chiamare attacker.increaseDefense(-3)
+                    // dopo che il nemico ha attaccato in questo round.
+                    attacker.increaseDefense(3);
+
+                    return dealt;
                 })
         );
     }

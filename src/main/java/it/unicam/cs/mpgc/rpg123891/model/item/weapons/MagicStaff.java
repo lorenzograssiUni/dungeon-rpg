@@ -14,7 +14,16 @@ import java.util.Map;
  * Bastone Magico — MAIN_HAND, 1 mano.
  *
  * Bonus: M: ATK+5 AGI+2 STA+3 | W: ATK-3 STA-3 | T: STA-3
- * Speciali: Onda Magica (costo 4), Colpo Vitale (costo 6)
+ *
+ * Speciali:
+ *   Onda Magica  (costo 4) — colpisce UN singolo bersaglio con danno ATK base.
+ *                             Il multi-target (tutti i nemici della stanza)
+ *                             e' gestito dal controller, che chiama
+ *                             executeSpecialOnAllEnemies() — vedi punto 7.
+ *                             Il lambda singolo qui e' corretto per design.
+ *
+ *   Colpo Vitale (costo 6) — danno = metà degli HP CORRENTI dell'ATTACCANTE.
+ *                             Bypassa la difesa (danno diretto).
  */
 public class MagicStaff extends Weapon {
 
@@ -37,20 +46,30 @@ public class MagicStaff extends Weapon {
     @Override
     public List<SpecialAttack> getSpecialAttacks() {
         return List.of(
-            new SpecialAttack("Onda Magica",
-                "Colpisce tutti i nemici nella stanza per ATK base", 4,
+
+            new SpecialAttack(
+                "Onda Magica",
+                "Colpisce tutti i nemici della stanza per ATK base (costo: 4 stamina)",
+                4,
                 (attacker, defender) -> {
+                    // Colpisce il singolo bersaglio con danno ATK base.
+                    // Il controller e' responsabile di iterare su tutti i nemici
+                    // vivi dell'ondata e chiamare questo speciale per ciascuno.
                     int hpBefore = defender.getCurrentHp();
                     defender.takeDamage(attacker.getAttack());
                     return hpBefore - defender.getCurrentHp();
                 }),
-            new SpecialAttack("Colpo Vitale",
-                "Danno = meta' degli HP correnti dell'attaccante", 6,
+
+            new SpecialAttack(
+                "Colpo Vitale",
+                "Danno = meta' HP correnti dell'attaccante, ignora difesa (costo: 6 stamina)",
+                6,
                 (attacker, defender) -> {
-                    int damage   = attacker.getCurrentHp() / 2;
-                    int hpBefore = defender.getCurrentHp();
-                    defender.takeDamage(damage);
-                    return hpBefore - defender.getCurrentHp();
+                    // Danno basato sugli HP dell'attaccante, non del bersaglio
+                    // Bypassa la difesa del nemico (danno diretto)
+                    int damage = attacker.getCurrentHp() / 2;
+                    defender.applyBurnDamage(damage);
+                    return damage;
                 })
         );
     }
