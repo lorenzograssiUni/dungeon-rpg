@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifica Sword e Greatsword: nome, slot, speciali,
- * Carica! applica +3 DEF, Spazzatutto stordisce il nemico.
+ * Carica! (in Sword) applica +3 DEF, Spazzatutto (in Greatsword) stordisce.
  */
 public class SwordSpecialTest {
 
@@ -42,6 +42,19 @@ public class SwordSpecialTest {
         assertTrue(mod.attackDelta() > 0 || mod.defenseDelta() > 0);
     }
 
+    @Test
+    void sword_carica_increasesDefenseBy3() {
+        Warrior w = new Warrior("G");
+        Sword sword = new Sword();
+        SpecialAttack carica = sword.getSpecialAttacks().stream()
+                .filter(sa -> sa.getName().equals("Carica!"))
+                .findFirst().orElse(null);
+        assertNotNull(carica, "Sword deve avere Carica!");
+        int defBefore = w.getDefense();
+        carica.execute(w, new Enemy("D", 100, 5, 0, AttackType.PHYSICAL, 0.0));
+        assertEquals(defBefore + 3, w.getDefense());
+    }
+
     // ---- Greatsword ----
 
     @Test
@@ -51,24 +64,9 @@ public class SwordSpecialTest {
     }
 
     @Test
-    void greatsword_carica_increasesDefenseBy3() {
-        Warrior w = new Warrior("G");
-        Greatsword g = new Greatsword();
-        // Trova l'attacco speciale "Carica!"
-        SpecialAttack carica = g.getSpecialAttacks().stream()
-                .filter(sa -> sa.getName().equals("Carica!"))
-                .findFirst().orElse(null);
-        assertNotNull(carica, "Greatsword deve avere Carica!");
-        int defBefore = w.getDefense();
-        w.consumeStaminaForSpecial(0); // non consumare stamina
-        carica.execute(w, new Enemy("D", 100, 5, 0, AttackType.PHYSICAL, 0.0));
-        assertEquals(defBefore + 3, w.getDefense());
-    }
-
-    @Test
     void greatsword_spazzatutto_stunsenemy() {
         Warrior w = new Warrior("G");
-        w.applyPassiveBonus(); // stamina piena
+        w.applyPassiveBonus();
         Greatsword g = new Greatsword();
         SpecialAttack spazza = g.getSpecialAttacks().stream()
                 .filter(sa -> sa.getName().equals("Spazzatutto"))
@@ -91,5 +89,18 @@ public class SwordSpecialTest {
         Enemy e = new Enemy("D", 200, 5, 0, AttackType.PHYSICAL, 0.0);
         int dmg = spazza.execute(w, e);
         assertTrue(dmg > 0);
+    }
+
+    @Test
+    void greatsword_taglioProfonfo_dealsHalfHpDamage() {
+        Warrior w = new Warrior("G");
+        Greatsword g = new Greatsword();
+        SpecialAttack taglio = g.getSpecialAttacks().stream()
+                .filter(sa -> sa.getName().equals("Taglio Profondo"))
+                .findFirst().orElse(null);
+        assertNotNull(taglio, "Greatsword deve avere Taglio Profondo");
+        Enemy e = new Enemy("D", 100, 5, 0, AttackType.PHYSICAL, 0.0);
+        int dmg = taglio.execute(w, e);
+        assertEquals(50, dmg); // metà di 100
     }
 }

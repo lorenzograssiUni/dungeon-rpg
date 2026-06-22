@@ -2,6 +2,7 @@ package it.unicam.cs.mpgc.rpg123891.model.item;
 
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Greatsword;
+import it.unicam.cs.mpgc.rpg123891.model.item.weapons.Shield;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.Optional;
@@ -25,8 +26,7 @@ public class EquipmentManagerTest {
     void equip_weaponAppliesStatModifiers() {
         int atkBefore = warrior.getAttack();
         em.equip(sword);
-        assertTrue(warrior.getAttack() >= atkBefore,
-                "Equipaggiare deve applicare i bonus stat");
+        assertTrue(warrior.getAttack() >= atkBefore);
     }
 
     @Test
@@ -54,17 +54,18 @@ public class EquipmentManagerTest {
 
     @Test
     void canEquip_returnsFalse_whenSlotOccupied() {
+        // Lo Spadone e' 2 mani (MAIN_HAND) → blocca OFF_HAND (Shield)
         em.equip(sword);
-        Greatsword sword2 = new Greatsword();
-        warrior.addItem(sword2);
-        EquipmentManager.EquipResult result = em.canEquip(sword2);
-        assertFalse(result.success());
+        Shield shield = new Shield();
+        warrior.addItem(shield);
+        EquipmentManager.EquipResult result = em.canEquip(shield);
+        assertFalse(result.success(),
+                "canEquip Shield deve fallire se MAIN_HAND ha arma a 2 mani");
     }
 
     @Test
     void getEquippedSpecials_returnsSpecialsOfEquippedWeapons() {
         em.equip(sword);
-        assertFalse(em.getEquippedSpecials().isEmpty(),
-                "Lo Spadone deve avere almeno un attacco speciale");
+        assertFalse(em.getEquippedSpecials().isEmpty());
     }
 }

@@ -5,9 +5,15 @@ import it.unicam.cs.mpgc.rpg123891.model.combat.CombatSystem;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
 import org.junit.jupiter.api.Test;
+import java.util.Random;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MageTest {
+
+    // nextDouble() = 1.0 → mai critico, mai blocco
+    private static final Random NEVER_LUCK = new Random(0) {
+        @Override public double nextDouble() { return 1.0; }
+    };
 
     @Test
     void mage_baseStats() {
@@ -23,15 +29,17 @@ public class MageTest {
     @Test
     void mage_magicShield_activeAtStart() {
         Mage m = new Mage("Mago");
+        // lo scudo si attiva tramite applyPassiveBonus() (chiamato a inizio stanza)
+        m.applyPassiveBonus();
         assertTrue(m.isMagicShieldActive());
     }
 
     @Test
     void mage_magicShield_absorbsFirstPhysicalAttack() {
         Mage m = new Mage("Mago");
+        m.applyPassiveBonus(); // attiva lo scudo
         int hpBefore = m.getCurrentHp();
-        // Attacchiamo con CombatSystem deterministico (crit=0)
-        CombatSystem cs = new CombatSystem(new java.util.Random(0));
+        CombatSystem cs = new CombatSystem(NEVER_LUCK);
         Enemy goblin = EnemyFactory.createGoblin();
         cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0);
         assertEquals(hpBefore, m.getCurrentHp(), "Lo scudo deve assorbire il primo fisico");
@@ -41,7 +49,8 @@ public class MageTest {
     @Test
     void mage_magicShield_secondAttackDealsNormalDamage() {
         Mage m = new Mage("Mago");
-        CombatSystem cs = new CombatSystem(new java.util.Random(0));
+        m.applyPassiveBonus();
+        CombatSystem cs = new CombatSystem(NEVER_LUCK);
         Enemy goblin = EnemyFactory.createGoblin();
         cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // scudo
         int hpAfterShield = m.getCurrentHp();
@@ -52,12 +61,12 @@ public class MageTest {
     @Test
     void mage_magicVulnerability_increasesMagicalDamage() {
         Mage m = new Mage("Mago");
-        m.setMagicShieldActive(false); // scudo spento per testare vulnerabilita'
+        m.setMagicShieldActive(false);
         int hpBefore = m.getCurrentHp();
-        CombatSystem cs = new CombatSystem(new java.util.Random(0));
-        Enemy goblin = EnemyFactory.createGoblin(); // ATK basso
+        CombatSystem cs = new CombatSystem(NEVER_LUCK);
+        Enemy goblin = EnemyFactory.createGoblin(); // ATK=12
         cs.executeAttack(goblin, m, AttackType.MAGICAL, 0);
-        // danno magico = (atk - def) * 1.30 arrotondato
+        // danno = (12 - 4) * 1.30 = 10 (int troncato)
         int expected = (int)((Math.max(0, goblin.getAttack() - m.getDefense())) * 1.30);
         assertEquals(hpBefore - expected, m.getCurrentHp());
     }

@@ -59,9 +59,12 @@ public class WarriorTest {
         w.takeDamage(30); // perde 22 HP (30-8)
         while (w.getCurrentStamina() > 0) w.consumeStaminaForAttack();
         int hpBefore  = w.getCurrentHp();
-        int staBefore = w.getCurrentStamina();
+        int staBefore = w.getCurrentStamina(); // 0
         new Potion().use(w);
-        assertEquals(hpBefore  + 40, w.getCurrentHp());
-        assertEquals(staBefore + 5,  w.getCurrentStamina());
+        // heal(40): hpBefore+40 oppure maxHp se supera
+        int expectedHp  = Math.min(hpBefore + 40, w.getMaxHp());
+        int expectedSta = Math.min(staBefore + 5, w.getMaxStamina());
+        assertEquals(expectedHp,  w.getCurrentHp());
+        assertEquals(expectedSta, w.getCurrentStamina());
     }
 }

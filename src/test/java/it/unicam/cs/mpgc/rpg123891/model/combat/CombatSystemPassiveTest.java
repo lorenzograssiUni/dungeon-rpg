@@ -12,10 +12,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class CombatSystemPassiveTest {
 
-    // Random deterministico: nextDouble() -> sempre 0.0 (critico garantito se crit>0, blocco sempre)
-    // Usiamo seed=Long.MAX_VALUE per nextDouble() -> ~1.0 (nessun critico, nessun blocco)
-    private static final Random NO_LUCK  = new Random(Long.MAX_VALUE);
-    private static final Random ALL_LUCK = new Random(0);
+    // nextDouble() = 1.0 → mai critico, mai blocco
+    private static final Random NO_LUCK = new Random(0) {
+        @Override public double nextDouble() { return 1.0; }
+    };
+    // nextDouble() = 0.0 → critico garantito E blocco garantito
+    private static final Random ALL_LUCK = new Random(0) {
+        @Override public double nextDouble() { return 0.0; }
+    };
 
     @Test
     void normalAttack_doesNotConsumeStamina() {
@@ -23,8 +27,7 @@ public class CombatSystemPassiveTest {
         Enemy goblin = EnemyFactory.createGoblin();
         int staBefore = w.getCurrentStamina();
         new CombatSystem(NO_LUCK).executeAttack(w, goblin, AttackType.PHYSICAL, 0);
-        assertEquals(staBefore, w.getCurrentStamina(),
-                "L'attacco normale non deve consumare stamina");
+        assertEquals(staBefore, w.getCurrentStamina());
     }
 
     @Test
@@ -38,7 +41,7 @@ public class CombatSystemPassiveTest {
 
     @Test
     void warrior_blockChance_preventsAllDamage() {
-        // ALL_LUCK: nextDouble()~0.0 -> blocco garantito
+        // ALL_LUCK: nextDouble()=0.0 → 0.0 < 0.20 (blockChance) → blocco garantito
         Warrior w = new Warrior("G");
         Enemy goblin = EnemyFactory.createGoblin();
         int hpBefore = w.getCurrentHp();
@@ -49,7 +52,7 @@ public class CombatSystemPassiveTest {
     @Test
     void thief_normalAttack_doesNotConsumeStamina() {
         Thief t = new Thief("L");
-        t.applyPassiveBonus(); // stealth on
+        t.applyPassiveBonus();
         Enemy goblin = EnemyFactory.createGoblin();
         int staBefore = t.getCurrentStamina();
         new CombatSystem(NO_LUCK).executeAttack(t, goblin, AttackType.PHYSICAL, 0);
@@ -63,17 +66,17 @@ public class CombatSystemPassiveTest {
         Enemy goblin = EnemyFactory.createGoblin();
         double critBefore = t.getCritChance();
         new CombatSystem(NO_LUCK).executeAttack(t, goblin, AttackType.PHYSICAL, 0);
-        // stealth consumato (no crit bonus da stealth) ma incrementCritAfterAttack chiamato
         assertTrue(t.getCritChance() >= critBefore);
     }
 
     @Test
     void mage_magicShield_absorbsExactlyOnce() {
         Mage m = new Mage("Ma");
+        m.applyPassiveBonus(); // attiva lo scudo
         Enemy goblin = EnemyFactory.createGoblin();
         int hp = m.getCurrentHp();
         CombatSystem cs = new CombatSystem(NO_LUCK);
-        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // assorbito
+        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // assorbito dallo scudo
         assertEquals(hp, m.getCurrentHp());
         cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // danno reale
         assertTrue(m.getCurrentHp() < hp);
@@ -82,8 +85,8 @@ public class CombatSystemPassiveTest {
     @Test
     void damage_reducedByDefense() {
         Warrior w = new Warrior("G"); // DEF=8
-        Enemy goblin = EnemyFactory.createGoblin(); // ATK=10
-        // Usiamo NO_LUCK: nessun critico, nessun blocco (nextDouble()~1.0 > crit e blockChance)
+        Enemy goblin = EnemyFactory.createGoblin(); // ATK=12
+        // NO_LUCK: nessun critico (1.0 > crit), nessun blocco (1.0 > 0.20)
         int dmg = new CombatSystem(NO_LUCK).executeAttack(goblin, w, AttackType.PHYSICAL, 0);
         assertEquals(Math.max(0, goblin.getAttack() - w.getDefense()), dmg);
     }
