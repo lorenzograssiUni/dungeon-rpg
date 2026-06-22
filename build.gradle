@@ -1,7 +1,6 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.openjfx.javafxplugin' version '0.0.14'
 }
 
 group = 'it.unicam.cs.mpgc'
@@ -10,11 +9,6 @@ version = '1.0-SNAPSHOT'
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
-}
-
-javafx {
-    version = '21'
-    modules = ['javafx.controls', 'javafx.fxml']
 }
 
 application {
@@ -29,6 +23,11 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Collega stdin al processo in modo che Scanner possa leggere da console
+run {
+    standardInput = System.in
 }
 
 // Forza encoding UTF-8 per la compilazione (necessario su Windows)
