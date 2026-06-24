@@ -210,6 +210,18 @@ public class GameScreen {
     }
 
     // =========================================================================
+    // Selezione nemico — punto unico, log scritto una sola volta
+    // =========================================================================
+
+    private void selectEnemy(Enemy enemy) {
+        if (enemy == selectedEnemy) return;
+        selectedEnemy = enemy;
+        refreshEncounter();
+        refreshEnemyStats();
+        appendLog("[MIRA] " + enemy.getName() + " selezionato.");
+    }
+
+    // =========================================================================
     // ENCOUNTER PANE
     // =========================================================================
 
@@ -221,9 +233,11 @@ public class GameScreen {
         ImageView bg = loadImage(bgPath, 440, 310, true);
         if (bg != null) encounterPane.getChildren().add(bg);
 
+        // FIX: mouseTransparent=true — i click passano agli sprite sottostanti
         Region overlay = new Region();
         overlay.setStyle("-fx-background-color: rgba(0,0,0,0.15);");
         overlay.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        overlay.setMouseTransparent(true);
         encounterPane.getChildren().add(overlay);
 
         Wave wave = gc.getCurrentRoom().getCurrentWave();
@@ -251,7 +265,6 @@ public class GameScreen {
         VBox card = new VBox(4);
         card.setAlignment(Pos.BOTTOM_CENTER);
 
-        // Lookup diretto per nome esatto — O(1), nessun fuzzy matching
         String spritePath = ENEMY_SPRITE.get(enemy.getName());
 
         ImageView sprite = loadImage(spritePath, 110, 130, false);
@@ -282,12 +295,8 @@ public class GameScreen {
         card.setPadding(new Insets(0, 4, 0, 4));
         card.setCursor(javafx.scene.Cursor.HAND);
 
-        card.setOnMouseClicked(e -> {
-            selectedEnemy = enemy;
-            refreshEncounter();
-            refreshEnemyStats();
-            appendLog("[MIRA] " + enemy.getName() + " selezionato.");
-        });
+        // FIX: usa selectEnemy() — nessun appendLog diretto qui
+        card.setOnMouseClicked(e -> selectEnemy(enemy));
         card.setOnMouseEntered(e -> { if (enemy != selectedEnemy) card.setStyle("-fx-opacity:0.85;"); });
         card.setOnMouseExited(e -> card.setStyle("-fx-opacity:1;"));
 
@@ -415,12 +424,8 @@ public class GameScreen {
             if (!tags.isBlank())
                 card.getChildren().add(pixelLabel(tags.strip(), ORANGE, 6));
 
-            card.setOnMouseClicked(ev -> {
-                selectedEnemy = e;
-                refreshEncounter();
-                refreshEnemyStats();
-                appendLog("[MIRA] " + e.getName() + " selezionato.");
-            });
+            // FIX: usa selectEnemy() — nessun appendLog diretto qui
+            card.setOnMouseClicked(ev -> selectEnemy(e));
 
             enemyStatsPanel.getChildren().add(card);
         }
