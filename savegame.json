@@ -1,0 +1,208 @@
+{
+  "player": {
+    "stealthBonusActive": false,
+    "name": "Eroe",
+    "maxHp": 85,
+    "currentHp": 35,
+    "attack": 12,
+    "defense": 5,
+    "stamina": 100,
+    "currentStamina": 100,
+    "critChance": 0.2,
+    "inventory": [
+      {
+        "name": "Pozione di Cura",
+        "description": "Ripristina 30 HP",
+        "healAmount": 30
+      },
+      {
+        "name": "Spada Arrugginita",
+        "description": "+3 ATK, +2% CRIT",
+        "attackBonus": 3,
+        "critBonus": 0.02
+      },
+      {
+        "name": "Bastone Antico",
+        "description": "+8 ATK, +5% CRIT (Mago)",
+        "attackBonus": 8,
+        "critBonus": 0.05
+      }
+    ]
+  },
+  "dungeonMap": {
+    "rooms": [
+      {
+        "id": "r1",
+        "name": "Entrata del Dungeon",
+        "description": "Un corridoio umido e buio. L\u0027aria sa di muffa e pericolo.",
+        "enemies": [
+          {
+            "attackType": "PHYSICAL",
+            "critModifierOnPlayer": 0.05,
+            "isBoss": false,
+            "name": "Goblin",
+            "maxHp": 30,
+            "currentHp": 0,
+            "attack": 8,
+            "defense": 2,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.1,
+            "inventory": []
+          },
+          {
+            "attackType": "PHYSICAL",
+            "critModifierOnPlayer": 0.05,
+            "isBoss": false,
+            "name": "Goblin",
+            "maxHp": 30,
+            "currentHp": 0,
+            "attack": 8,
+            "defense": 2,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.1,
+            "inventory": []
+          }
+        ],
+        "items": [],
+        "visited": true,
+        "cleared": true
+      },
+      {
+        "id": "r2",
+        "name": "Sala degli Scheletri",
+        "description": "Ossa sparse ovunque. Qualcosa si muove tra le ombre.",
+        "enemies": [
+          {
+            "attackType": "PHYSICAL",
+            "critModifierOnPlayer": 0.0,
+            "isBoss": false,
+            "name": "Scheletro",
+            "maxHp": 45,
+            "currentHp": 0,
+            "attack": 10,
+            "defense": 5,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.08,
+            "inventory": []
+          }
+        ],
+        "items": [],
+        "visited": true,
+        "cleared": true
+      },
+      {
+        "id": "r3",
+        "name": "Biblioteca Maledetta",
+        "description": "Libri polverosi volteggiano nell\u0027aria. Una strega custodisce un segreto.",
+        "enemies": [
+          {
+            "attackType": "MAGICAL",
+            "critModifierOnPlayer": 0.0,
+            "isBoss": false,
+            "name": "Strega",
+            "maxHp": 35,
+            "currentHp": 0,
+            "attack": 14,
+            "defense": 3,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.12,
+            "inventory": []
+          }
+        ],
+        "items": [],
+        "visited": true,
+        "cleared": true
+      },
+      {
+        "id": "r4",
+        "name": "Salone dei Guerrieri",
+        "description": "Statue di antichi guerrieri osservano la tua avanzata.",
+        "enemies": [
+          {
+            "attackType": "PHYSICAL",
+            "critModifierOnPlayer": 0.0,
+            "isBoss": false,
+            "name": "Scheletro",
+            "maxHp": 45,
+            "currentHp": 45,
+            "attack": 10,
+            "defense": 5,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.08,
+            "inventory": []
+          },
+          {
+            "attackType": "PHYSICAL",
+            "critModifierOnPlayer": 0.05,
+            "isBoss": false,
+            "name": "Goblin",
+            "maxHp": 30,
+            "currentHp": 30,
+            "attack": 8,
+            "defense": 2,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.1,
+            "inventory": []
+          },
+          {
+            "attackType": "PHYSICAL",
+            "critModifierOnPlayer": 0.0,
+            "isBoss": false,
+            "name": "Scheletro",
+            "maxHp": 45,
+            "currentHp": 45,
+            "attack": 10,
+            "defense": 5,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.08,
+            "inventory": []
+          }
+        ],
+        "items": [
+          {
+            "name": "Pugnale Affilato",
+            "description": "+5 ATK, +8% CRIT",
+            "attackBonus": 5,
+            "critBonus": 0.08
+          }
+        ],
+        "visited": false,
+        "cleared": false
+      },
+      {
+        "id": "r5",
+        "name": "Sala del Drago",
+        "description": "Il terreno trema. Un ruggito assordante risuona nelle pareti di pietra.",
+        "enemies": [
+          {
+            "attackType": "MIXED",
+            "critModifierOnPlayer": -0.1,
+            "isBoss": true,
+            "name": "Drago Boss",
+            "maxHp": 150,
+            "currentHp": 150,
+            "attack": 20,
+            "defense": 10,
+            "stamina": 0,
+            "currentStamina": 0,
+            "critChance": 0.15,
+            "inventory": []
+          }
+        ],
+        "items": [],
+        "visited": false,
+        "cleared": false
+      }
+    ],
+    "currentRoomIndex": 2
+  },
+  "gameOver": false,
+  "victory": false
+}
