@@ -54,11 +54,11 @@ public class GameScreen {
     private final CombatController combatController;
     private final EquipmentManager equipmentManager;
 
-    private final StackPane  encounterPane   = new StackPane();
-    private final VBox       characterPanel  = new VBox(6);
-    private final VBox       enemyStatsPanel = new VBox(6);
-    private final TextArea   logArea         = new TextArea();
-    private final VBox       actionPanel     = new VBox(6);
+    private final StackPane  encounterPane  = new StackPane();
+    private final VBox       characterPanel = new VBox(6);
+    // enemyStatsPanel ELIMINATO
+    private final TextArea   logArea        = new TextArea();
+    // actionPanel ELIMINATO come colonna — sostituito da combatBar orizzontale
 
     private Enemy  selectedEnemy  = null;
     private String lastLoggedWave = null;
@@ -125,8 +125,16 @@ public class GameScreen {
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 7);
     }
 
+    // =========================================================================
+    // Layout:
+    //   topRow:    [ encounterPane (grow) | characterPanel (fixed) ]
+    //   bottomRow: [ logWrapper (grow) ]
+    //   combatBar: [ Fight | Skills | Items | Equip | Run ]  — HBox orizzontale
+    //   sysBar:    crediti
+    //   Save/Menu: in fondo a characterPanel
+    // =========================================================================
     private void buildLayout() {
-        encounterPane.setPrefSize(440, 320);
+        encounterPane.setPrefSize(500, 320);
         encounterPane.setMinHeight(280);
         encounterPane.setStyle(panelStyle());
 
@@ -135,12 +143,7 @@ public class GameScreen {
         characterPanel.setMinWidth(200);
         characterPanel.setStyle(panelStyle());
 
-        enemyStatsPanel.setPadding(new Insets(10));
-        enemyStatsPanel.setPrefWidth(220);
-        enemyStatsPanel.setMinWidth(180);
-        enemyStatsPanel.setStyle(panelStyle());
-
-        HBox topRow = new HBox(4, encounterPane, characterPanel, enemyStatsPanel);
+        HBox topRow = new HBox(4, encounterPane, characterPanel);
         HBox.setHgrow(encounterPane, Priority.ALWAYS);
         topRow.setPadding(new Insets(6));
 
@@ -159,15 +162,20 @@ public class GameScreen {
         logWrapper.setPadding(new Insets(8));
         HBox.setHgrow(logWrapper, Priority.ALWAYS);
 
-        actionPanel.setPadding(new Insets(10));
-        actionPanel.setPrefWidth(200);
-        actionPanel.setMinWidth(170);
-        actionPanel.setStyle(panelStyle());
-        actionPanel.setAlignment(Pos.TOP_LEFT);
+        HBox bottomRow = new HBox(4, logWrapper);
+        bottomRow.setPadding(new Insets(0, 6, 2, 6));
+        bottomRow.setPrefHeight(160);
 
-        HBox bottomRow = new HBox(4, logWrapper, actionPanel);
-        bottomRow.setPadding(new Insets(0, 6, 6, 6));
-        bottomRow.setPrefHeight(180);
+        // combatBar — id usato da getCombatBar() per aggiornamento dinamico
+        HBox combatBar = new HBox(6);
+        combatBar.setId("combatBar");
+        combatBar.setPadding(new Insets(6, 6, 6, 6));
+        combatBar.setStyle(
+            "-fx-background-color:" + BG_PANEL + ";" +
+            "-fx-border-color:" + BORDER_COL + ";" +
+            "-fx-border-width:2 0 0 0;"
+        );
+        combatBar.setAlignment(Pos.CENTER_LEFT);
 
         Label sysInfo = new Label("DUNGEON RPG  v1.0  -  by Lorenzo Grassi");
         sysInfo.setFont(pixelFontSmall);
@@ -176,25 +184,73 @@ public class GameScreen {
         sysBar.setAlignment(Pos.CENTER);
         sysBar.setStyle("-fx-background-color:#08081a;-fx-border-color:" + BORDER_COL + ";-fx-border-width:1 0 0 0;");
 
-        VBox main = new VBox(0, topRow, bottomRow, sysBar);
+        VBox main = new VBox(0, topRow, bottomRow, combatBar, sysBar);
         VBox.setVgrow(topRow, Priority.ALWAYS);
         root.setCenter(main);
+    }
+
+    /** Recupera la combatBar dal VBox principale tramite id. */
+    private HBox getCombatBar() {
+        VBox main = (VBox) root.getCenter();
+        return (HBox) main.getChildren().stream()
+            .filter(n -> "combatBar".equals(n.getId()))
+            .findFirst().orElseThrow();
     }
 
     private void refresh() {
         refreshEncounter();
         refreshCharacterPanel();
-        refreshEnemyStats();
-        refreshActionPanel();
+        refreshCombatBar();
         logCurrentWaveIfNew();
     }
 
-    // Punto unico di selezione nemico — log scritto una sola volta
+    // =========================================================================
+    // refreshCombatBar — Fight/Skills/Items/Equip/Run in HBox orizzontale.
+    // Save/Menu sono gestiti da refreshCharacterPanel() in fondo al panel.
+    // =========================================================================
+    private void refreshCombatBar() {
+        HBox bar = getCombatBar();
+        bar.getChildren().clear();
+        boolean cleared = gc.getCurrentRoom().isCleared();
+
+        if (!cleared) {
+            Button btnAtk     = pixelButton("> Fight",  WHITE, "#1a1a3a");
+            Button btnSpecial = pixelButton("> Skills", WHITE, "#1a1a3a");
+            Button btnInv     = pixelButton("> Items",  WHITE, "#1a1a3a");
+            Button btnEquip   = pixelButton("> Equip",  WHITE, "#1a1a3a");
+            Button btnFuga    = pixelButton("> Run",    RED,   "#2a0a0a");
+
+            btnAtk.setOnAction(e     -> doNormalAttack());
+            btnSpecial.setOnAction(e -> showSpecialAtk());
+            btnInv.setOnAction(e     -> showInventario());
+            btnEquip.setOnAction(e   -> showEquip());
+            btnFuga.setOnAction(e    -> doFlee());
+
+            btnFuga.setDisable(!gc.canFlee());
+            if (!gc.canFlee()) btnFuga.setStyle(pixelBtnStyle("#555", "#2a0a0a"));
+
+            // In HBox orizzontale non serve maxWidth=MAX
+            for (Button b : new Button[]{btnAtk, btnSpecial, btnInv, btnEquip, btnFuga}) {
+                b.setMaxWidth(Region.USE_PREF_SIZE);
+            }
+            bar.getChildren().addAll(btnAtk, btnSpecial, btnInv, btnEquip, btnFuga);
+        } else {
+            if (gc.getGameState().getDungeonMap().hasNextRoom()) {
+                Button adv = pixelButton("> Avanza nella stanza successiva", GREEN, "#0a2a0a");
+                adv.setMaxWidth(Region.USE_PREF_SIZE);
+                adv.setOnAction(e -> doAdvanceRoom());
+                bar.getChildren().add(adv);
+            } else {
+                showVictory();
+            }
+        }
+    }
+
+    /** Punto unico di selezione nemico — log scritto una sola volta. */
     private void selectEnemy(Enemy enemy) {
         if (enemy == selectedEnemy) return;
         selectedEnemy = enemy;
         refreshEncounter();
-        refreshEnemyStats();
         appendLog("[MIRA] " + enemy.getName() + " selezionato.");
     }
 
@@ -203,7 +259,7 @@ public class GameScreen {
 
         String bgPath = ROOM_BG.getOrDefault(gc.getCurrentRoom().getId(),
                                              "/assets/backgrounds/foresta.png");
-        ImageView bg = loadImage(bgPath, 440, 310, true);
+        ImageView bg = loadImage(bgPath, 500, 310, true);
         if (bg != null) encounterPane.getChildren().add(bg);
 
         Region overlay = new Region();
@@ -239,8 +295,6 @@ public class GameScreen {
 
         String spritePath = ENEMY_SPRITE.get(enemy.getName());
 
-        // FIX: loadSprite usa solo fitHeight=130 con preserveRatio=true
-        // evita il collasso dello sprite quando il PNG non e' esattamente 110x130
         ImageView sprite = loadSprite(spritePath, 130);
         if (sprite == null) {
             Label ph = new Label("[" + enemy.getName().substring(0, Math.min(4, enemy.getName().length())) + "]");
@@ -276,6 +330,9 @@ public class GameScreen {
         return card;
     }
 
+    // =========================================================================
+    // refreshCharacterPanel — aggiunge Save/Menu in fondo con spacer elastico
+    // =========================================================================
     private void refreshCharacterPanel() {
         characterPanel.getChildren().clear();
         GameCharacter p = player();
@@ -339,104 +396,18 @@ public class GameScreen {
             String val = eq.map(Weapon::getName).orElse("-");
             characterPanel.getChildren().add(statRowPixel(prefix, val, eq.isPresent() ? GOLD : "#555577"));
         }
-    }
 
-    private void refreshEnemyStats() {
-        enemyStatsPanel.getChildren().clear();
-        Wave wave = gc.getCurrentRoom().getCurrentWave();
+        // Spacer elastico + Save/Menu in fondo
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        characterPanel.getChildren().add(spacer);
+        characterPanel.getChildren().add(pixelSep());
 
-        if (wave == null || gc.getCurrentRoom().isCleared()) {
-            enemyStatsPanel.getChildren().add(pixelLabel("Stanza\nliberata!", GREEN, 8));
-            if (gc.getGameState().getDungeonMap().hasNextRoom()) {
-                Button adv = pixelButton("Avanza >", GREEN, BG_PANEL);
-                adv.setMaxWidth(Double.MAX_VALUE);
-                adv.setOnAction(e -> doAdvanceRoom());
-                enemyStatsPanel.getChildren().add(adv);
-            }
-            return;
-        }
-
-        List<Enemy> alive = wave.getEnemies().stream().filter(Enemy::isAlive).toList();
-        for (int i = 0; i < alive.size(); i++) {
-            Enemy e = alive.get(i);
-            boolean selected = e == selectedEnemy;
-
-            VBox card = new VBox(3);
-            card.setPadding(new Insets(5));
-            card.setStyle(
-                "-fx-background-color:" + (selected ? "#1e1e50" : "#0d0d25") + ";" +
-                "-fx-border-color:" + (selected ? GOLD : BORDER_COL) + ";" +
-                "-fx-border-width:" + (selected ? "2" : "1") + ";"
-            );
-            card.setCursor(javafx.scene.Cursor.HAND);
-
-            String tags = (e.isBoss() ? "BOSS " : "") + (e.isImmune() ? "IMM " : "")
-                        + (e.isStunned() ? "STORD " : "") + (e.isEgg() ? "UOVO" : "");
-            Label nameL = pixelLabel("E" + (i+1) + " " + e.getName(), selected ? GOLD : RED, 7);
-            nameL.setWrapText(true);
-
-            double hpR = (double) e.getCurrentHp() / e.getMaxHp();
-            String hpC = hpR > 0.5 ? GREEN : hpR > 0.25 ? ORANGE : RED;
-            ProgressBar hpBar = new ProgressBar(hpR);
-            hpBar.setPrefWidth(180); hpBar.setPrefHeight(7);
-            hpBar.setStyle("-fx-accent:" + hpC + ";-fx-background-color:#222;");
-
-            Label hpL = pixelLabel("HP " + e.getCurrentHp() + "/" + e.getMaxHp() +
-                                   "  ATK " + e.getAttack() + "  DEF " + e.getDefense(), WHITE, 6);
-            hpL.setWrapText(true);
-
-            card.getChildren().addAll(nameL, hpBar, hpL);
-            if (!tags.isBlank())
-                card.getChildren().add(pixelLabel(tags.strip(), ORANGE, 6));
-
-            card.setOnMouseClicked(ev -> selectEnemy(e));
-
-            enemyStatsPanel.getChildren().add(card);
-        }
-    }
-
-    private void refreshActionPanel() {
-        actionPanel.getChildren().clear();
-        Room room = gc.getCurrentRoom();
-        boolean cleared = room.isCleared();
-
-        if (!cleared) {
-            Button btnAtk     = pixelButton("> Fight",  WHITE, "#1a1a3a");
-            Button btnSpecial = pixelButton("> Skills", WHITE, "#1a1a3a");
-            Button btnInv     = pixelButton("> Items",  WHITE, "#1a1a3a");
-            Button btnEquip   = pixelButton("> Equip",  WHITE, "#1a1a3a");
-            Button btnFuga    = pixelButton("> Run",    RED,   "#2a0a0a");
-            Button btnSave    = pixelButton("> Save",   GOLD,  "#1a1a3a");
-            Button btnMenu    = pixelButton("> Menu",   RED,   "#2a0a0a");
-
-            btnAtk.setOnAction(e     -> doNormalAttack());
-            btnSpecial.setOnAction(e -> showSpecialAtk());
-            btnInv.setOnAction(e     -> showInventario());
-            btnEquip.setOnAction(e   -> showEquip());
-            btnFuga.setOnAction(e    -> doFlee());
-            btnSave.setOnAction(e    -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
-            btnMenu.setOnAction(e    -> confirmMenu());
-
-            btnFuga.setDisable(!gc.canFlee());
-            if (!gc.canFlee()) btnFuga.setStyle(pixelBtnStyle("#555", "#2a0a0a"));
-
-            actionPanel.getChildren().addAll(btnAtk, btnSpecial, btnInv, btnEquip, btnFuga, pixelSep(), btnSave, btnMenu);
-        } else {
-            if (gc.getGameState().getDungeonMap().hasNextRoom()) {
-                Button adv = pixelButton("> Avanza", GREEN, "#0a2a0a");
-                adv.setMaxWidth(Double.MAX_VALUE);
-                adv.setOnAction(e -> doAdvanceRoom());
-                actionPanel.getChildren().add(adv);
-            } else {
-                showVictory();
-                return;
-            }
-            Button btnSave = pixelButton("> Save", GOLD, "#1a1a3a");
-            Button btnMenu = pixelButton("> Menu", RED,  "#2a0a0a");
-            btnSave.setOnAction(e -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
-            btnMenu.setOnAction(e -> confirmMenu());
-            actionPanel.getChildren().addAll(pixelSep(), btnSave, btnMenu);
-        }
+        Button btnSave = pixelButton("> Save", GOLD, "#1a1a3a");
+        Button btnMenu = pixelButton("> Menu", RED,  "#2a0a0a");
+        btnSave.setOnAction(e -> { gc.saveGame(); appendLog("[SAVE] Partita salvata."); });
+        btnMenu.setOnAction(e -> confirmMenu());
+        characterPanel.getChildren().addAll(btnSave, btnMenu);
     }
 
     private void showInventario() {
@@ -804,8 +775,7 @@ public class GameScreen {
 
     /**
      * Carica uno sprite nemico con altezza fissa e larghezza proporzionale.
-     * Usare fitHeight SOLO evita il collasso dell'immagine quando il PNG
-     * ha proporzioni diverse da quelle attese.
+     * fitHeight ONLY evita il collasso quando il PNG ha proporzioni diverse da quelle attese.
      */
     private ImageView loadSprite(String path, double height) {
         if (path == null) return null;
