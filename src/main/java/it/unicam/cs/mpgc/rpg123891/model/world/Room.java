@@ -13,8 +13,7 @@ import java.util.List;
  *
  * Struttura aggiornata per supportare le ondate sequenziali:
  *   - entryLoot     : item droppati appena si entra nella stanza,
- *                     prima che arrivino i nemici (es. Bastone Magico in Foresta,
- *                     Spadone in Catacombe).
+ *                     prima che arrivino i nemici (es. Bastone Magico in Foresta).
  *   - waves         : lista ordinata di Wave; il controller avanza
  *                     alla prossima solo quando quella corrente e' cleared.
  *   - waveIndex     : indice dell'ondata corrente
@@ -41,7 +40,7 @@ public class Room implements Serializable {
     }
 
     // -------------------------------------------------------------------------
-    // Entry loot (drop prima dei nemici)
+    // Entry loot
     // -------------------------------------------------------------------------
 
     public void addEntryLoot(Item item)   { entryLoot.add(item); }
@@ -69,6 +68,13 @@ public class Room implements Serializable {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Riporta waveIndex a 0, utile nei test per reinizializzare la stanza.
+     */
+    public void resetWaveIndex() {
+        this.waveIndex = 0;
     }
 
     public boolean hasMoreWaves() {
