@@ -34,7 +34,6 @@ import java.util.Optional;
 
 public class GameScreen {
 
-    // ── Colori & stili ──────────────────────────────────────────────────────
     private static final String BG_DARK    = "#0d0d1f";
     private static final String BG_PANEL   = "#12122a";
     private static final String BG_PANEL2  = "#0f0f22";
@@ -48,7 +47,6 @@ public class GameScreen {
     private Font pixelFont;
     private Font pixelFontSmall;
 
-    // ── Struttura root ───────────────────────────────────────────────────────
     private final BorderPane root;
     private final GameController gc;
     private final Stage stage;
@@ -56,40 +54,37 @@ public class GameScreen {
     private final CombatController combatController;
     private final EquipmentManager equipmentManager;
 
-    // ── Pannelli principali ──────────────────────────────────────────────────
-    private final StackPane  encounterPane  = new StackPane();
-    private final VBox       characterPanel = new VBox(6);
-    private final VBox       enemyStatsPanel= new VBox(6);
-    private final TextArea   logArea        = new TextArea();
-    private final VBox       actionPanel    = new VBox(6);
+    private final StackPane  encounterPane   = new StackPane();
+    private final VBox       characterPanel  = new VBox(6);
+    private final VBox       enemyStatsPanel = new VBox(6);
+    private final TextArea   logArea         = new TextArea();
+    private final VBox       actionPanel     = new VBox(6);
 
-    // ── Stato ────────────────────────────────────────────────────────────────
     private Enemy  selectedEnemy  = null;
     private String lastLoggedWave = null;
 
-    // ── Mapping nemici → sprite ──────────────────────────────────────────────
+    /**
+     * Mapping nome nemico (esattamente come in EnemyFactory) -> path sprite.
+     * Si usa Map.get(enemy.getName()) — nessun fuzzy matching.
+     */
     private static final Map<String, String> ENEMY_SPRITE = Map.ofEntries(
-        Map.entry("Cinghiale",         "/assets/enemies/Cinghiale1.png"),
-        Map.entry("Cinghiale Feroce",  "/assets/enemies/cinghiale2.png"),
-        Map.entry("Lupo",              "/assets/enemies/lupo.png"),
-        Map.entry("Goblin",            "/assets/enemies/Goblin.png"),
-        Map.entry("Goblin Guerriero",  "/assets/enemies/Goblin2.png"),
-        Map.entry("Goblin Guardia",    "/assets/enemies/goblinGuard.png"),
-        Map.entry("Guardia Goblin",    "/assets/enemies/goblinGuard2.png"),
-        Map.entry("Re Goblin",         "/assets/enemies/regoblin.png"),
-        Map.entry("Scheletro",         "/assets/enemies/scheletro.png"),
-        Map.entry("Scheletro Antico",  "/assets/enemies/scheletro2.png"),
-        Map.entry("Scheletro Guardia", "/assets/enemies/scheletroGuardia.png"),
-        Map.entry("Guardia Scheletro", "/assets/enemies/scheletroGuardia2.png"),
-        Map.entry("Strega",            "/assets/enemies/Strega.png"),
-        Map.entry("Uovo",              "/assets/enemies/uovo1.png"),
-        Map.entry("Uovo del Drago",    "/assets/enemies/uovo2.png"),
-        Map.entry("Cucciolo Drago",    "/assets/enemies/cucciolo1.png"),
-        Map.entry("Cucciolo del Drago","/assets/enemies/cucciolo2.png"),
-        Map.entry("Ultimo Drago",      "/assets/enemies/UltimoDrago.png")
+        Map.entry("Cinghiale",           "/assets/enemies/Cinghiale1.png"),
+        Map.entry("Cinghiale Feroce",    "/assets/enemies/cinghiale2.png"),
+        Map.entry("Lupo",                "/assets/enemies/lupo.png"),
+        Map.entry("Goblin",              "/assets/enemies/Goblin.png"),
+        Map.entry("Goblin Guerriero",    "/assets/enemies/Goblin2.png"),
+        Map.entry("Goblin Guardia",      "/assets/enemies/goblinGuard.png"),
+        Map.entry("Re Goblin",           "/assets/enemies/regoblin.png"),
+        Map.entry("Scheletro",           "/assets/enemies/scheletro.png"),
+        Map.entry("Scheletro Antico",    "/assets/enemies/scheletro2.png"),
+        Map.entry("Scheletro Guardia",   "/assets/enemies/scheletroGuardia.png"),
+        Map.entry("Strega",              "/assets/enemies/Strega.png"),
+        Map.entry("Uovo",                "/assets/enemies/uovo1.png"),
+        Map.entry("Uovo del Drago",      "/assets/enemies/uovo2.png"),
+        Map.entry("Cucciolo di Drago",   "/assets/enemies/cucciolo1.png"),
+        Map.entry("L'Ultimo Drago",      "/assets/enemies/UltimoDrago.png")
     );
 
-    // ── Mapping stanze → sfondo ──────────────────────────────────────────────
     private static final Map<String, String> ROOM_BG = Map.of(
         "r1", "/assets/backgrounds/foresta.png",
         "r2", "/assets/backgrounds/GoblinVillage.png",
@@ -98,9 +93,9 @@ public class GameScreen {
         "r5", "/assets/backgrounds/StanzaFinale.png"
     );
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Costruttore
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
         this.gc    = gc;
@@ -126,9 +121,9 @@ public class GameScreen {
 
     public BorderPane getRoot() { return root; }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Font
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void loadFonts() {
         try (InputStream is = getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf")) {
@@ -142,9 +137,9 @@ public class GameScreen {
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 7);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Layout principale
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void buildLayout() {
         encounterPane.setPrefSize(440, 320);
@@ -202,9 +197,9 @@ public class GameScreen {
         root.setCenter(main);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Refresh
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void refresh() {
         refreshEncounter();
@@ -214,9 +209,9 @@ public class GameScreen {
         logCurrentWaveIfNew();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // ENCOUNTER PANE
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void refreshEncounter() {
         encounterPane.getChildren().clear();
@@ -256,17 +251,13 @@ public class GameScreen {
         VBox card = new VBox(4);
         card.setAlignment(Pos.BOTTOM_CENTER);
 
-        String spritePath = ENEMY_SPRITE.entrySet().stream()
-            .filter(e -> enemy.getName().toLowerCase().contains(e.getKey().toLowerCase())
-                      || e.getKey().toLowerCase().contains(enemy.getName().toLowerCase()))
-            .map(Map.Entry::getValue)
-            .findFirst()
-            .orElse(null);
+        // Lookup diretto per nome esatto — O(1), nessun fuzzy matching
+        String spritePath = ENEMY_SPRITE.get(enemy.getName());
 
         ImageView sprite = loadImage(spritePath, 110, 130, false);
         if (sprite == null) {
-            Label ph = new Label("[" + enemy.getName().substring(0, Math.min(3, enemy.getName().length())) + "]");
-            ph.setStyle("-fx-text-fill:" + RED + ";-fx-font-size:18px;-fx-font-weight:bold;");
+            Label ph = new Label("[" + enemy.getName().substring(0, Math.min(4, enemy.getName().length())) + "]");
+            ph.setStyle("-fx-text-fill:" + RED + ";-fx-font-size:20px;-fx-font-weight:bold;");
             card.getChildren().add(ph);
         } else {
             StackPane spriteWrapper = new StackPane(sprite);
@@ -303,15 +294,14 @@ public class GameScreen {
         return card;
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // CHARACTER PANEL
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void refreshCharacterPanel() {
         characterPanel.getChildren().clear();
         GameCharacter p = player();
 
-        // FIX: aggiunto default per CharacterClass.ENEMY
         String classSprite = switch (p.getCharacterClass()) {
             case WARRIOR -> "/assets/classes/warrior.png";
             case MAGE    -> "/assets/classes/mage.png";
@@ -373,9 +363,9 @@ public class GameScreen {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // ENEMY STATS PANEL
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void refreshEnemyStats() {
         enemyStatsPanel.getChildren().clear();
@@ -436,9 +426,9 @@ public class GameScreen {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // ACTION PANEL
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void refreshActionPanel() {
         actionPanel.getChildren().clear();
@@ -484,9 +474,9 @@ public class GameScreen {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Pannelli secondari nel characterPanel
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void showInventario() {
         characterPanel.getChildren().clear();
@@ -646,9 +636,9 @@ public class GameScreen {
         characterPanel.getChildren().add(back);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Log
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void logRoomEntry() {
         Room room = gc.getCurrentRoom();
@@ -686,9 +676,9 @@ public class GameScreen {
         });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Azioni combattimento
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void doNormalAttack() {
         if (selectedEnemy == null || !selectedEnemy.isAlive()) {
@@ -760,9 +750,9 @@ public class GameScreen {
         t.play();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Game Over / Vittoria
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private void showGameOver() {
         VBox vb = new VBox(20);
@@ -796,9 +786,9 @@ public class GameScreen {
         alert.showAndWait().ifPresent(resp -> { if (resp == ButtonType.OK) app.showMenu(stage); });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Helper UI
-    // ════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     private Label pixelLabel(String text, String color, int size) {
         Label l = new Label(text);
