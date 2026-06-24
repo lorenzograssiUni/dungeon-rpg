@@ -63,10 +63,6 @@ public class GameScreen {
     private Enemy  selectedEnemy  = null;
     private String lastLoggedWave = null;
 
-    /**
-     * Mapping nome nemico (esattamente come in EnemyFactory) -> path sprite.
-     * Si usa Map.get(enemy.getName()) — nessun fuzzy matching.
-     */
     private static final Map<String, String> ENEMY_SPRITE = Map.ofEntries(
         Map.entry("Cinghiale",           "/assets/enemies/Cinghiale1.png"),
         Map.entry("Cinghiale Feroce",    "/assets/enemies/cinghiale2.png"),
@@ -93,10 +89,6 @@ public class GameScreen {
         "r5", "/assets/backgrounds/StanzaFinale.png"
     );
 
-    // =========================================================================
-    // Costruttore
-    // =========================================================================
-
     public GameScreen(GameController gc, Stage stage, FxApp app) {
         this.gc    = gc;
         this.stage = stage;
@@ -121,10 +113,6 @@ public class GameScreen {
 
     public BorderPane getRoot() { return root; }
 
-    // =========================================================================
-    // Font
-    // =========================================================================
-
     private void loadFonts() {
         try (InputStream is = getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf")) {
             if (is != null) {
@@ -136,10 +124,6 @@ public class GameScreen {
         if (pixelFont      == null) pixelFont      = Font.font("Courier New", FontWeight.BOLD, 9);
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 7);
     }
-
-    // =========================================================================
-    // Layout principale
-    // =========================================================================
 
     private void buildLayout() {
         encounterPane.setPrefSize(440, 320);
@@ -197,10 +181,6 @@ public class GameScreen {
         root.setCenter(main);
     }
 
-    // =========================================================================
-    // Refresh
-    // =========================================================================
-
     private void refresh() {
         refreshEncounter();
         refreshCharacterPanel();
@@ -209,10 +189,7 @@ public class GameScreen {
         logCurrentWaveIfNew();
     }
 
-    // =========================================================================
-    // Selezione nemico — punto unico, log scritto una sola volta
-    // =========================================================================
-
+    // Punto unico di selezione nemico — log scritto una sola volta
     private void selectEnemy(Enemy enemy) {
         if (enemy == selectedEnemy) return;
         selectedEnemy = enemy;
@@ -220,10 +197,6 @@ public class GameScreen {
         refreshEnemyStats();
         appendLog("[MIRA] " + enemy.getName() + " selezionato.");
     }
-
-    // =========================================================================
-    // ENCOUNTER PANE
-    // =========================================================================
 
     private void refreshEncounter() {
         encounterPane.getChildren().clear();
@@ -233,7 +206,6 @@ public class GameScreen {
         ImageView bg = loadImage(bgPath, 440, 310, true);
         if (bg != null) encounterPane.getChildren().add(bg);
 
-        // FIX: mouseTransparent=true — i click passano agli sprite sottostanti
         Region overlay = new Region();
         overlay.setStyle("-fx-background-color: rgba(0,0,0,0.15);");
         overlay.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -267,7 +239,9 @@ public class GameScreen {
 
         String spritePath = ENEMY_SPRITE.get(enemy.getName());
 
-        ImageView sprite = loadImage(spritePath, 110, 130, false);
+        // FIX: loadSprite usa solo fitHeight=130 con preserveRatio=true
+        // evita il collasso dello sprite quando il PNG non e' esattamente 110x130
+        ImageView sprite = loadSprite(spritePath, 130);
         if (sprite == null) {
             Label ph = new Label("[" + enemy.getName().substring(0, Math.min(4, enemy.getName().length())) + "]");
             ph.setStyle("-fx-text-fill:" + RED + ";-fx-font-size:20px;-fx-font-weight:bold;");
@@ -295,17 +269,12 @@ public class GameScreen {
         card.setPadding(new Insets(0, 4, 0, 4));
         card.setCursor(javafx.scene.Cursor.HAND);
 
-        // FIX: usa selectEnemy() — nessun appendLog diretto qui
         card.setOnMouseClicked(e -> selectEnemy(enemy));
         card.setOnMouseEntered(e -> { if (enemy != selectedEnemy) card.setStyle("-fx-opacity:0.85;"); });
         card.setOnMouseExited(e -> card.setStyle("-fx-opacity:1;"));
 
         return card;
     }
-
-    // =========================================================================
-    // CHARACTER PANEL
-    // =========================================================================
 
     private void refreshCharacterPanel() {
         characterPanel.getChildren().clear();
@@ -372,10 +341,6 @@ public class GameScreen {
         }
     }
 
-    // =========================================================================
-    // ENEMY STATS PANEL
-    // =========================================================================
-
     private void refreshEnemyStats() {
         enemyStatsPanel.getChildren().clear();
         Wave wave = gc.getCurrentRoom().getCurrentWave();
@@ -424,16 +389,11 @@ public class GameScreen {
             if (!tags.isBlank())
                 card.getChildren().add(pixelLabel(tags.strip(), ORANGE, 6));
 
-            // FIX: usa selectEnemy() — nessun appendLog diretto qui
             card.setOnMouseClicked(ev -> selectEnemy(e));
 
             enemyStatsPanel.getChildren().add(card);
         }
     }
-
-    // =========================================================================
-    // ACTION PANEL
-    // =========================================================================
 
     private void refreshActionPanel() {
         actionPanel.getChildren().clear();
@@ -478,10 +438,6 @@ public class GameScreen {
             actionPanel.getChildren().addAll(pixelSep(), btnSave, btnMenu);
         }
     }
-
-    // =========================================================================
-    // Pannelli secondari nel characterPanel
-    // =========================================================================
 
     private void showInventario() {
         characterPanel.getChildren().clear();
@@ -641,10 +597,6 @@ public class GameScreen {
         characterPanel.getChildren().add(back);
     }
 
-    // =========================================================================
-    // Log
-    // =========================================================================
-
     private void logRoomEntry() {
         Room room = gc.getCurrentRoom();
         appendLog("");
@@ -680,10 +632,6 @@ public class GameScreen {
             logArea.setScrollTop(Double.MAX_VALUE);
         });
     }
-
-    // =========================================================================
-    // Azioni combattimento
-    // =========================================================================
 
     private void doNormalAttack() {
         if (selectedEnemy == null || !selectedEnemy.isAlive()) {
@@ -754,10 +702,6 @@ public class GameScreen {
         );
         t.play();
     }
-
-    // =========================================================================
-    // Game Over / Vittoria
-    // =========================================================================
 
     private void showGameOver() {
         VBox vb = new VBox(20);
@@ -858,6 +802,27 @@ public class GameScreen {
         return pb;
     }
 
+    /**
+     * Carica uno sprite nemico con altezza fissa e larghezza proporzionale.
+     * Usare fitHeight SOLO evita il collasso dell'immagine quando il PNG
+     * ha proporzioni diverse da quelle attese.
+     */
+    private ImageView loadSprite(String path, double height) {
+        if (path == null) return null;
+        try (InputStream is = getClass().getResourceAsStream(path)) {
+            if (is == null) return null;
+            Image img = new Image(is);
+            ImageView iv = new ImageView(img);
+            iv.setSmooth(true);
+            iv.setPreserveRatio(true);
+            iv.setFitHeight(height);
+            return iv;
+        } catch (Exception e) { return null; }
+    }
+
+    /**
+     * Carica un'immagine generica con dimensioni esatte (sfondo) o proporzionali (ritratti).
+     */
     private ImageView loadImage(String path, double w, double h, boolean cover) {
         if (path == null) return null;
         try (InputStream is = getClass().getResourceAsStream(path)) {
