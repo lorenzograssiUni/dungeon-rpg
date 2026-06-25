@@ -22,7 +22,7 @@ public class GameScreen {
     private static final double GAP          =   8;
     private static final double PAD          =   8;
     private static final double RADIUS       =  10;
-    private static final int    BORDER_W     =   4;  // spessore bordo card
+    private static final int    BORDER_W     =   4;
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
@@ -35,12 +35,12 @@ public class GameScreen {
     private final Stage          stage;
     private final FxApp          app;
 
+    // Pane contenuto card
     private final StackPane paneEncounter  = new StackPane();
     private final VBox      paneEnemyStats = new VBox();
     private final VBox      paneCharacter  = new VBox();
     private final VBox      paneAction     = new VBox();
-    private final StackPane paneMiniMap    = new StackPane();
-    private final VBox      paneStatus     = new VBox();
+    private final VBox      paneRightTop   = new VBox();  // ex MINI-MAP + STATUS unificati
     private final VBox      paneLog        = new VBox();
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
@@ -59,23 +59,15 @@ public class GameScreen {
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        double mapH    = Math.round(ROW_TOP * 0.58);
-        double statusH = ROW_TOP - mapH - GAP;
-
+        // Colonna destra: unica card alta quanto l'intera riga superiore
         StackPane cardEncounter  = makeCard(paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCard(paneCharacter,  COL_MID,   ROW_TOP);
-        StackPane cardMiniMap    = makeCard(paneMiniMap,    COL_RIGHT, mapH);
-        StackPane cardStatus     = makeCard(paneStatus,     COL_RIGHT, statusH);
+        StackPane cardRightTop   = makeCard(paneRightTop,   COL_RIGHT, ROW_TOP); // card unificata
         StackPane cardEnemyStats = makeCard(paneEnemyStats, COL_LEFT,  ROW_BOT);
         StackPane cardAction     = makeCard(paneAction,     COL_MID,   ROW_BOT);
         StackPane cardLog        = makeCard(paneLog,        COL_RIGHT, ROW_BOT);
 
-        VBox rightTop = new VBox(GAP, cardMiniMap, cardStatus);
-        rightTop.setPrefSize(COL_RIGHT, ROW_TOP);
-        rightTop.setMinSize(COL_RIGHT, ROW_TOP);
-        rightTop.setMaxSize(COL_RIGHT, ROW_TOP);
-
-        HBox rowTop = new HBox(GAP, cardEncounter, cardCharacter, rightTop);
+        HBox rowTop = new HBox(GAP, cardEncounter, cardCharacter, cardRightTop);
         rowTop.setAlignment(Pos.TOP_LEFT);
 
         HBox rowBot = new HBox(GAP, cardEnemyStats, cardAction, cardLog);
@@ -91,13 +83,12 @@ public class GameScreen {
 
         Canvas gridOverlay = buildGridOverlay(
             new double[][]{
-                {PAD,                                   PAD,                   COL_LEFT,  ROW_TOP},
-                {PAD + COL_LEFT + GAP,                  PAD,                   COL_MID,   ROW_TOP},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP,  PAD,                   COL_RIGHT, mapH},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP,  PAD + mapH + GAP,      COL_RIGHT, statusH},
-                {PAD,                                   PAD + ROW_TOP + GAP,   COL_LEFT,  ROW_BOT},
-                {PAD + COL_LEFT + GAP,                  PAD + ROW_TOP + GAP,   COL_MID,   ROW_BOT},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP,  PAD + ROW_TOP + GAP,   COL_RIGHT, ROW_BOT}
+                {PAD,                                  PAD,                 COL_LEFT,  ROW_TOP},
+                {PAD + COL_LEFT + GAP,                 PAD,                 COL_MID,   ROW_TOP},
+                {PAD + COL_LEFT + GAP + COL_MID + GAP, PAD,                 COL_RIGHT, ROW_TOP}, // card unificata
+                {PAD,                                  PAD + ROW_TOP + GAP, COL_LEFT,  ROW_BOT},
+                {PAD + COL_LEFT + GAP,                 PAD + ROW_TOP + GAP, COL_MID,   ROW_BOT},
+                {PAD + COL_LEFT + GAP + COL_MID + GAP, PAD + ROW_TOP + GAP, COL_RIGHT, ROW_BOT}
             }
         );
         gridOverlay.setMouseTransparent(true);
