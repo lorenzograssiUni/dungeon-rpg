@@ -3,6 +3,7 @@ package it.unicam.cs.mpgc.rpg123891.ui;
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
+import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -93,7 +94,7 @@ public class GameScreen {
             pixelFont = Font.loadFont(
                 getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), FONT_SIZE);
             pixelFontSmall = Font.loadFont(
-                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10); // era 8, ora 10
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10);
         } catch (Exception ignored) {}
         if (pixelFont      == null) pixelFont      = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 10);
@@ -104,7 +105,6 @@ public class GameScreen {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        // padding top: 12 + 10 = 22px (abbassato di 10px)
         paneCharacter.setPadding(new Insets(22, 0, 0, 12));
 
         GameCharacter p = player();
@@ -135,19 +135,50 @@ public class GameScreen {
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
         statsBox.getChildren().addAll(
-            statLine(p.getName(),                                                   LABEL_FG, pixelFont),
-            statLine(p.getCharacterClass().toString(),                              WHITE,    pixelFontSmall),
-            statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),         WHITE,    pixelFontSmall),
-            statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(),    WHITE,    pixelFontSmall),
-            statLine("ATK: " + p.getAttack(),                                       WHITE,    pixelFontSmall),
-            statLine("DEF: " + p.getDefense(),                                      WHITE,    pixelFontSmall),
-            statLine("AGI: " + p.getAgility(),                                      WHITE,    pixelFontSmall),
-            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100),   WHITE,    pixelFontSmall)
+            statLine(p.getName(),                                                 LABEL_FG, pixelFont),
+            statLine(p.getCharacterClass().toString(),                            WHITE,    pixelFontSmall),
+            statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),       WHITE,    pixelFontSmall),
+            statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(),  WHITE,    pixelFontSmall),
+            statLine("ATK: " + p.getAttack(),                                     WHITE,    pixelFontSmall),
+            statLine("DEF: " + p.getDefense(),                                    WHITE,    pixelFontSmall),
+            statLine("AGI: " + p.getAgility(),                                    WHITE,    pixelFontSmall),
+            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall)
         );
 
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
-        paneCharacter.getChildren().add(topRow);
+
+        // ── Equipment section
+        Item rightHand = equipmentManager.getRightHand();
+        Item leftHand  = equipmentManager.getLeftHand();
+        Item armour    = equipmentManager.getArmour();
+
+        VBox equipBox = new VBox(8);
+        equipBox.setAlignment(Pos.TOP_LEFT);
+        equipBox.setPadding(new Insets(14, 0, 0, 0));
+        equipBox.getChildren().addAll(
+            equipRow("Right Hand", rightHand),
+            equipRow("Left Hand",  leftHand),
+            equipRow("Armour",     armour)
+        );
+
+        paneCharacter.getChildren().addAll(topRow, equipBox);
+    }
+
+    /** Riga "LABEL  valore" con label gold e valore white */
+    private HBox equipRow(String label, Item item) {
+        Label lbl = new Label(label + ": ");
+        lbl.setFont(pixelFontSmall);
+        lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+
+        String valText = (item != null) ? item.getName() : "none";
+        Label val = new Label(valText);
+        val.setFont(pixelFontSmall);
+        val.setStyle("-fx-text-fill:" + WHITE + ";");
+
+        HBox row = new HBox(0, lbl, val);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
