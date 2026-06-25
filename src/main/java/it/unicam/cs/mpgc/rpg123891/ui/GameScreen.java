@@ -105,8 +105,8 @@ public class GameScreen {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        // Padding: top=12 dal bordo superiore della card, left=12 dal bordo sinistro
-        paneCharacter.setPadding(new Insets(12, 0, 0, 12));
+        // Padding: top=20 dal bordo superiore della card, left=12 dal bordo sinistro
+        paneCharacter.setPadding(new Insets(20, 0, 0, 12));
 
         StackPane portraitBox = new StackPane();
         portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
@@ -127,7 +127,7 @@ public class GameScreen {
             case THIEF   -> "/assets/classes/thief.png";
             default      -> null;
         };
-        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
+        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE -10, PORTRAIT_SIZE -10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
         paneCharacter.getChildren().add(portraitBox);
