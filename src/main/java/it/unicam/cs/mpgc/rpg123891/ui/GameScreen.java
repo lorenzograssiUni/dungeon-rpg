@@ -105,7 +105,7 @@ public class GameScreen {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        paneCharacter.setPadding(new Insets(12, 0, 0, 12));
+        paneCharacter.setPadding(new Insets(20, 0, 0, 12));
 
         GameCharacter p = player();
 
@@ -131,7 +131,7 @@ public class GameScreen {
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
         // ── Stats a fianco
-        VBox statsBox = new VBox(6);
+        VBox statsBox = new VBox(2);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
         statsBox.getChildren().addAll(
@@ -156,8 +156,8 @@ public class GameScreen {
 
     private Label statLine(String text, String color) {
         Label l = new Label(text);
-        l.setFont(pixelFontSmall);
-        l.setStyle("-fx-text-fill:" + color + ";-fx-font-size:8px;");
+        l.setFont(pixelFont);
+        l.setStyle("-fx-text-fill:" + color + ";-fx-font-size:18px;");
         l.setWrapText(false);
         return l;
     }
