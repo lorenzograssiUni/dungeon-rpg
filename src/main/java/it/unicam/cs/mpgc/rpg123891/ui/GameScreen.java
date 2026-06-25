@@ -11,7 +11,6 @@ import javafx.stage.Stage;
 
 public class GameScreen {
 
-    // ── Dimensioni ──────────────────────────────────────────────────────────
     private static final double WIN_W        = 980;
     private static final double WIN_H        = 640;
     private static final double COL_LEFT     = 420;
@@ -23,8 +22,8 @@ public class GameScreen {
     private static final double GAP          =   8;
     private static final double PAD          =   8;
     private static final double RADIUS       =  10;
+    private static final int    BORDER_W     =   4;  // spessore bordo card
 
-    // ── Palette ───────────────────────────────────────────────────────────────
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
     private static final String BORDER       = "#9E6554";
@@ -36,7 +35,6 @@ public class GameScreen {
     private final Stage          stage;
     private final FxApp          app;
 
-    // Pane contenuto card (vuoti — riempiti negli step successivi)
     private final StackPane paneEncounter  = new StackPane();
     private final VBox      paneEnemyStats = new VBox();
     private final VBox      paneCharacter  = new VBox();
@@ -55,26 +53,15 @@ public class GameScreen {
 
     public BorderPane getRoot() { return root; }
 
-    // =========================================================================
-    // LAYOUT
-    //
-    //  StackPane
-    //   ├─ Canvas bgCanvas     ← sfondo #212121 + griglia base   (layer 0)
-    //   ├─ VBox mainBox        ← 6 card layout                   (layer 1)
-    //   └─ Canvas gridOverlay  ← griglia clippata dentro le card (layer 2)
-    // =========================================================================
     private void buildLayout() {
 
-        // Layer 0: sfondo + griglia base
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        // Altezze colonna destra
         double mapH    = Math.round(ROW_TOP * 0.58);
         double statusH = ROW_TOP - mapH - GAP;
 
-        // Layer 1: 6 card
         StackPane cardEncounter  = makeCard(paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCard(paneCharacter,  COL_MID,   ROW_TOP);
         StackPane cardMiniMap    = makeCard(paneMiniMap,    COL_RIGHT, mapH);
@@ -102,16 +89,15 @@ public class GameScreen {
         mainBox.setPadding(new Insets(PAD));
         mainBox.setStyle("-fx-background-color:transparent;");
 
-        // Layer 2: griglia sovrapposta dentro ogni card (clip per non coprire i bordi)
         Canvas gridOverlay = buildGridOverlay(
             new double[][]{
-                {PAD,                              PAD,                 COL_LEFT,  ROW_TOP},
-                {PAD + COL_LEFT + GAP,             PAD,                 COL_MID,   ROW_TOP},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP, PAD,            COL_RIGHT, mapH},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP, PAD + mapH + GAP, COL_RIGHT, statusH},
-                {PAD,                              PAD + ROW_TOP + GAP, COL_LEFT,  ROW_BOT},
-                {PAD + COL_LEFT + GAP,             PAD + ROW_TOP + GAP, COL_MID,   ROW_BOT},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP, PAD + ROW_TOP + GAP, COL_RIGHT, ROW_BOT}
+                {PAD,                                   PAD,                   COL_LEFT,  ROW_TOP},
+                {PAD + COL_LEFT + GAP,                  PAD,                   COL_MID,   ROW_TOP},
+                {PAD + COL_LEFT + GAP + COL_MID + GAP,  PAD,                   COL_RIGHT, mapH},
+                {PAD + COL_LEFT + GAP + COL_MID + GAP,  PAD + mapH + GAP,      COL_RIGHT, statusH},
+                {PAD,                                   PAD + ROW_TOP + GAP,   COL_LEFT,  ROW_BOT},
+                {PAD + COL_LEFT + GAP,                  PAD + ROW_TOP + GAP,   COL_MID,   ROW_BOT},
+                {PAD + COL_LEFT + GAP + COL_MID + GAP,  PAD + ROW_TOP + GAP,   COL_RIGHT, ROW_BOT}
             }
         );
         gridOverlay.setMouseTransparent(true);
@@ -122,7 +108,6 @@ public class GameScreen {
         root.setCenter(stack);
     }
 
-    // ── Card: sfondo #140E2C, bordi stondati #9E6554 ───────────────────────────
     private StackPane makeCard(Region content, double w, double h) {
         content.setPrefSize(w, h);
         content.setMinSize(w, h);
@@ -134,14 +119,13 @@ public class GameScreen {
         card.setStyle(
             "-fx-background-color:" + CARD_BG + ";" +
             "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:2;" +
+            "-fx-border-width:" + BORDER_W + ";" +
             "-fx-border-radius:" + RADIUS + ";" +
             "-fx-background-radius:" + RADIUS + ";"
         );
         return card;
     }
 
-    // ── Sfondo + griglia base (layer 0) ──────────────────────────────────────
     private void drawGrid(Canvas canvas) {
         GraphicsContext g = canvas.getGraphicsContext2D();
         g.setFill(Color.web(BG));
@@ -154,13 +138,12 @@ public class GameScreen {
             g.strokeLine(0, y, canvas.getWidth(), y);
     }
 
-    // ── Griglia sovrapposta alle card, clippata per non coprire i bordi (layer 2) ──
     private Canvas buildGridOverlay(double[][] cards) {
         Canvas canvas = new Canvas(WIN_W, WIN_H);
         GraphicsContext g = canvas.getGraphicsContext2D();
         for (double[] c : cards) {
             double cx = c[0], cy = c[1], cw = c[2], ch = c[3];
-            double inset = 3;
+            double inset = BORDER_W + 1;
             g.save();
             g.beginPath();
             g.moveTo(cx + inset + RADIUS, cy + inset);
