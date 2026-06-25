@@ -54,18 +54,17 @@ public class GameScreen {
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
-    // Portrait: più grande, bordi stondati
+    // Portrait
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
-    private static final double PORTRAIT_TOP_PAD = 30; // distanza dal top della card
 
     private Font pixelFont;
     private Font pixelFontSmall;
 
-    private final BorderPane      root;
-    private final GameController  gc;
-    private final Stage           stage;
-    private final FxApp           app;
+    private final BorderPane       root;
+    private final GameController   gc;
+    private final Stage            stage;
+    private final FxApp            app;
     private final EquipmentManager equipmentManager;
 
     private final StackPane paneEncounter  = new StackPane();
@@ -104,10 +103,10 @@ public class GameScreen {
     // ── CHARACTER card ──────────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
-        paneCharacter.setAlignment(Pos.TOP_CENTER);
+        paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        // Spingi il riquadro verso il basso con un padding top
-        paneCharacter.setPadding(new Insets(PORTRAIT_TOP_PAD, 0, 0, 0));
+        // Padding: top=12 dal bordo superiore della card, left=12 dal bordo sinistro
+        paneCharacter.setPadding(new Insets(12, 0, 0, 12));
 
         StackPane portraitBox = new StackPane();
         portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
