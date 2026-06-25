@@ -20,7 +20,7 @@ public class GameScreen {
     private static final double WIN_H        = 640;
     private static final double COL_LEFT     = 390;
     private static final double COL_MID      = 310;
-    private static final double COL_RIGHT    = 240;  // allargata
+    private static final double COL_RIGHT    = 280;  // leggermente meno di COL_MID
     private static final double ROW_TOP      = 300;
     private static final double ROW_BOT      = 240;
     private static final double SYS_H        =  32;
@@ -107,9 +107,7 @@ public class GameScreen {
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, PAD, PAD));
         mainBox.setStyle("-fx-background-color:transparent;");
 
-        // Centra il mainBox nello StackPane
         StackPane.setAlignment(mainBox, Pos.CENTER);
-
         double totalW = COL_LEFT + GAP + COL_MID + GAP + COL_RIGHT + PAD * 2;
         double totalH = LABEL_OFFSET + PAD + ROW_TOP + GAP + LABEL_OFFSET + ROW_BOT + GAP + SYS_H + PAD;
         mainBox.setMaxSize(totalW, totalH);
@@ -117,7 +115,6 @@ public class GameScreen {
 
         double xOff = (WIN_W - totalW) / 2.0;
         double yOff = (WIN_H - totalH) / 2.0;
-
         double yTop = yOff + PAD + LABEL_OFFSET * 2;
         double yBot = yTop + ROW_TOP + GAP + LABEL_OFFSET;
 
@@ -172,10 +169,8 @@ public class GameScreen {
         wrapper.setPrefSize(w, h + LABEL_OFFSET);
         wrapper.setMinSize(w, h + LABEL_OFFSET);
         wrapper.setMaxSize(w, h + LABEL_OFFSET);
-
         StackPane.setAlignment(card, Pos.BOTTOM_CENTER);
         StackPane.setAlignment(lbl,  Pos.TOP_CENTER);
-
         wrapper.getChildren().addAll(card, lbl);
         return wrapper;
     }
