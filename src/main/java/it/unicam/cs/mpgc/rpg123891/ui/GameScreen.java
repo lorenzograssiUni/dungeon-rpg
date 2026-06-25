@@ -2,8 +2,9 @@ package it.unicam.cs.mpgc.rpg123891.ui;
 
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
+import it.unicam.cs.mpgc.rpg123891.model.item.EquipSlot;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
-import it.unicam.cs.mpgc.rpg123891.model.item.Item;
+import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -148,31 +149,29 @@ public class GameScreen {
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
 
-        // ── Equipment section
-        Item rightHand = equipmentManager.getRightHand();
-        Item leftHand  = equipmentManager.getLeftHand();
-        Item armour    = equipmentManager.getArmour();
+        // ── Equipment section (sotto il topRow)
+        String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
+        String lh = equipmentManager.getEquipped(EquipSlot.OFF_HAND).map(Weapon::getName).orElse("none");
+        String ar = equipmentManager.getEquipped(EquipSlot.BODY).map(Weapon::getName).orElse("none");
 
         VBox equipBox = new VBox(8);
         equipBox.setAlignment(Pos.TOP_LEFT);
         equipBox.setPadding(new Insets(14, 0, 0, 0));
         equipBox.getChildren().addAll(
-            equipRow("Right Hand", rightHand),
-            equipRow("Left Hand",  leftHand),
-            equipRow("Armour",     armour)
+            equipRow("Right Hand", rh),
+            equipRow("Left Hand",  lh),
+            equipRow("Armour",     ar)
         );
 
         paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    /** Riga "LABEL  valore" con label gold e valore white */
-    private HBox equipRow(String label, Item item) {
+    private HBox equipRow(String label, String value) {
         Label lbl = new Label(label + ": ");
         lbl.setFont(pixelFontSmall);
         lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
 
-        String valText = (item != null) ? item.getName() : "none";
-        Label val = new Label(valText);
+        Label val = new Label(value);
         val.setFont(pixelFontSmall);
         val.setStyle("-fx-text-fill:" + WHITE + ";");
 
