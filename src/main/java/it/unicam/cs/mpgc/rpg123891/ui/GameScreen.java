@@ -18,9 +18,9 @@ public class GameScreen {
 
     private static final double WIN_W        = 980;
     private static final double WIN_H        = 640;
-    private static final double COL_LEFT     = 420;
-    private static final double COL_MID      = 330;
-    private static final double COL_RIGHT    = 192;
+    private static final double COL_LEFT     = 390;
+    private static final double COL_MID      = 310;
+    private static final double COL_RIGHT    = 240;  // allargata
     private static final double ROW_TOP      = 300;
     private static final double ROW_BOT      = 240;
     private static final double SYS_H        =  32;
@@ -28,9 +28,9 @@ public class GameScreen {
     private static final double PAD          =   8;
     private static final double RADIUS       =  10;
     private static final int    BORDER_W     =   4;
-    private static final double LABEL_H      =  28;  // più alta per il font grande
-    private static final double LABEL_OFFSET =  14;  // metà fuori dalla card
-    private static final int    FONT_SIZE    =  11;  // font titolo card
+    private static final double LABEL_H      =  28;
+    private static final double LABEL_OFFSET =  14;
+    private static final int    FONT_SIZE    =  11;
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
@@ -77,12 +77,12 @@ public class GameScreen {
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",   paneEncounter,  COL_LEFT,  ROW_TOP);
-        StackPane cardCharacter  = makeCardWithTitle("CHARACTER",   paneCharacter,  COL_MID,   ROW_TOP);
-        StackPane cardRightTop   = makeCardWithTitle("MAP & STATUS", paneRightTop,   COL_RIGHT, ROW_TOP);
-        StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS",  paneEnemyStats, COL_LEFT,  ROW_BOT);
-        StackPane cardAction     = makeCardWithTitle("ACTION",       paneAction,     COL_MID,   ROW_BOT);
-        StackPane cardLog        = makeCardWithTitle("COMBAT LOG",   paneLog,        COL_RIGHT, ROW_BOT);
+        StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",  paneEncounter,  COL_LEFT,  ROW_TOP);
+        StackPane cardCharacter  = makeCardWithTitle("CHARACTER",  paneCharacter,  COL_MID,   ROW_TOP);
+        StackPane cardRightTop   = makeCardWithTitle("Map",         paneRightTop,   COL_RIGHT, ROW_TOP);
+        StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS", paneEnemyStats, COL_LEFT,  ROW_BOT);
+        StackPane cardAction     = makeCardWithTitle("ACTION",      paneAction,     COL_MID,   ROW_BOT);
+        StackPane cardLog        = makeCardWithTitle("COMBAT LOG",  paneLog,        COL_RIGHT, ROW_BOT);
 
         double rowTopH = ROW_TOP + LABEL_OFFSET;
         double rowBotH = ROW_BOT + LABEL_OFFSET;
@@ -107,22 +107,34 @@ public class GameScreen {
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, PAD, PAD));
         mainBox.setStyle("-fx-background-color:transparent;");
 
-        double yTop = PAD + LABEL_OFFSET * 2;
-        double yBot = PAD + LABEL_OFFSET * 2 + ROW_TOP + GAP + LABEL_OFFSET;
+        // Centra il mainBox nello StackPane
+        StackPane.setAlignment(mainBox, Pos.CENTER);
+
+        double totalW = COL_LEFT + GAP + COL_MID + GAP + COL_RIGHT + PAD * 2;
+        double totalH = LABEL_OFFSET + PAD + ROW_TOP + GAP + LABEL_OFFSET + ROW_BOT + GAP + SYS_H + PAD;
+        mainBox.setMaxSize(totalW, totalH);
+        mainBox.setMinSize(totalW, totalH);
+
+        double xOff = (WIN_W - totalW) / 2.0;
+        double yOff = (WIN_H - totalH) / 2.0;
+
+        double yTop = yOff + PAD + LABEL_OFFSET * 2;
+        double yBot = yTop + ROW_TOP + GAP + LABEL_OFFSET;
+
         Canvas gridOverlay = buildGridOverlay(
             new double[][]{
-                {PAD,                                  yTop, COL_LEFT,  ROW_TOP},
-                {PAD + COL_LEFT + GAP,                 yTop, COL_MID,   ROW_TOP},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP, yTop, COL_RIGHT, ROW_TOP},
-                {PAD,                                  yBot, COL_LEFT,  ROW_BOT},
-                {PAD + COL_LEFT + GAP,                 yBot, COL_MID,   ROW_BOT},
-                {PAD + COL_LEFT + GAP + COL_MID + GAP, yBot, COL_RIGHT, ROW_BOT}
+                {xOff + PAD,                                  yTop, COL_LEFT,  ROW_TOP},
+                {xOff + PAD + COL_LEFT + GAP,                 yTop, COL_MID,   ROW_TOP},
+                {xOff + PAD + COL_LEFT + GAP + COL_MID + GAP, yTop, COL_RIGHT, ROW_TOP},
+                {xOff + PAD,                                  yBot, COL_LEFT,  ROW_BOT},
+                {xOff + PAD + COL_LEFT + GAP,                 yBot, COL_MID,   ROW_BOT},
+                {xOff + PAD + COL_LEFT + GAP + COL_MID + GAP, yBot, COL_RIGHT, ROW_BOT}
             }
         );
         gridOverlay.setMouseTransparent(true);
 
         StackPane stack = new StackPane(bgCanvas, mainBox, gridOverlay);
-        stack.setAlignment(Pos.TOP_LEFT);
+        stack.setAlignment(Pos.CENTER);
         stack.setStyle("-fx-background-color:" + BG + ";");
         root.setCenter(stack);
     }
