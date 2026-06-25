@@ -4,16 +4,14 @@ import it.unicam.cs.mpgc.rpg123891.controller.GameController;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipSlot;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
+import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -27,7 +25,6 @@ import java.util.Optional;
 
 public class GameScreen {
 
-    // ── Dimensioni card
     private static final double COL_LEFT     = 390;
     private static final double COL_MID      = 310;
     private static final double COL_RIGHT    = 280;
@@ -52,7 +49,6 @@ public class GameScreen {
         + LABEL_OFFSET + SYS_H
         + PAD;
 
-    // ── Palette
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
     private static final String SYS_BG       = "#000000";
@@ -60,10 +56,6 @@ public class GameScreen {
     private static final String LABEL_FG     = "#D4A96A";
     private static final String SYS_TEXT     = "#ffffff";
     private static final String WHITE        = "#cccccc";
-    private static final String RED          = "#e05555";
-    private static final String GREEN        = "#55e077";
-    private static final String ORANGE       = "#e0a030";
-    private static final String BLUE         = "#4a9eff";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
@@ -78,7 +70,7 @@ public class GameScreen {
 
     private final StackPane paneEncounter  = new StackPane();
     private final VBox      paneEnemyStats = new VBox();
-    private final VBox      paneCharacter  = new VBox(5);
+    private final VBox      paneCharacter  = new VBox();
     private final VBox      paneAction     = new VBox();
     private final VBox      paneRightTop   = new VBox();
     private final VBox      paneLog        = new VBox();
@@ -92,13 +84,11 @@ public class GameScreen {
         loadFont();
         buildLayout();
         refreshCharacterPanel();
-        // Chiusura finestra → termina tutto il processo (chiude anche il cmd)
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
     public BorderPane getRoot() { return root; }
 
-    // ── Font ─────────────────────────────────────────────────────────────────
     private void loadFont() {
         try (InputStream is = getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf")) {
             if (is != null) {
@@ -111,18 +101,17 @@ public class GameScreen {
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 8);
     }
 
-    // ── Layout ────────────────────────────────────────────────────────────────
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",   paneEncounter,  COL_LEFT,  ROW_TOP);
-        StackPane cardCharacter  = makeCardWithTitle("CHARACTER",   paneCharacter,  COL_MID,   ROW_TOP);
-        StackPane cardRightTop   = makeCardWithTitle("Map",          paneRightTop,   COL_RIGHT, ROW_TOP);
-        StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS",  paneEnemyStats, COL_LEFT,  ROW_BOT);
-        StackPane cardAction     = makeCardWithTitle("ACTION",       paneAction,     COL_MID,   ROW_BOT);
-        StackPane cardLog        = makeCardWithTitle("COMBAT LOG",   paneLog,        COL_RIGHT, ROW_BOT);
+        StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",  paneEncounter,  COL_LEFT,  ROW_TOP);
+        StackPane cardCharacter  = makeCardWithTitle("CHARACTER",  paneCharacter,  COL_MID,   ROW_TOP);
+        StackPane cardRightTop   = makeCardWithTitle("Map",         paneRightTop,   COL_RIGHT, ROW_TOP);
+        StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS", paneEnemyStats, COL_LEFT,  ROW_BOT);
+        StackPane cardAction     = makeCardWithTitle("ACTION",      paneAction,     COL_MID,   ROW_BOT);
+        StackPane cardLog        = makeCardWithTitle("COMBAT LOG",  paneLog,        COL_RIGHT, ROW_BOT);
 
         double rowTopH = ROW_TOP + LABEL_OFFSET;
         double rowBotH = ROW_BOT + LABEL_OFFSET;
@@ -135,7 +124,6 @@ public class GameScreen {
         rowBot.setAlignment(Pos.BOTTOM_LEFT);
         rowBot.setPrefHeight(rowBotH); rowBot.setMinHeight(rowBotH); rowBot.setMaxHeight(rowBotH);
 
-        // SYSTEM INFO
         Label sysContent = new Label("DUNGEON RPG  v1.0  \u2014  by Lorenzo Grassi");
         sysContent.setFont(pixelFontSmall);
         sysContent.setStyle("-fx-text-fill:" + SYS_TEXT + ";");
@@ -193,120 +181,93 @@ public class GameScreen {
         root.setCenter(stack);
     }
 
-    // ── Character panel ───────────────────────────────────────────────────────
+    // ── CHARACTER card ────────────────────────────────────────────────────────
+    // Layout (fedele allo screenshot):
+    //
+    //  [ portrait ]  Nome
+    //  [          ]  Classe
+    //  [          ]  HP: x/y
+    //  [          ]  STA: x/y
+    //  [          ]  ATK: x  DEF: x  AGI: x  CRI: x%
+    //  ─────────────────────────────────────
+    //  Item: <primo consumabile>
+    //  W: <arma principale>
+    //  A: <armatura>
+    // ─────────────────────────────────────────────────────────────────────────
     private void refreshCharacterPanel() {
         paneCharacter.getChildren().clear();
-        paneCharacter.setPadding(new Insets(10));
+        paneCharacter.setPadding(new Insets(8));
+        paneCharacter.setSpacing(4);
         paneCharacter.setStyle("-fx-background-color:transparent;");
 
         GameCharacter p = player();
 
-        // Portrait + nome/classe
-        String classSprite = switch (p.getCharacterClass()) {
+        // Portrait
+        String spritePath = switch (p.getCharacterClass()) {
             case WARRIOR -> "/assets/classes/warrior.png";
             case MAGE    -> "/assets/classes/mage.png";
             case THIEF   -> "/assets/classes/thief.png";
             default      -> null;
         };
-        HBox portraitRow = new HBox(8);
-        portraitRow.setAlignment(Pos.CENTER_LEFT);
-        ImageView portrait = loadImage(classSprite, 56, 56);
-        if (portrait != null) {
-            portrait.setStyle("-fx-border-color:" + BORDER + ";-fx-border-width:2;");
-            portraitRow.getChildren().add(portrait);
-        }
-        VBox nameBox = new VBox(3,
-            pixelLabel(p.getName(),                      LABEL_FG, 8),
-            pixelLabel(p.getCharacterClass().toString(), WHITE,    7)
-        );
-        portraitRow.getChildren().add(nameBox);
-        paneCharacter.getChildren().add(portraitRow);
-        paneCharacter.getChildren().add(sep());
+        ImageView portrait = loadImage(spritePath, 72, 72);
 
-        // HP
-        double hpRatio = (double) p.getCurrentHp() / p.getMaxHp();
-        String hpCol   = hpRatio > 0.5 ? GREEN : hpRatio > 0.25 ? ORANGE : RED;
-        // STA
-        double staRatio = p.getMaxStamina() > 0 ? (double) p.getCurrentStamina() / p.getMaxStamina() : 0;
-
-        paneCharacter.getChildren().addAll(
-            statRow("HP",  p.getCurrentHp()      + "/" + p.getMaxHp(),      hpCol),
-            progressBar(hpRatio,  hpCol),
-            statRow("STA", p.getCurrentStamina() + "/" + p.getMaxStamina(), BLUE),
-            progressBar(staRatio, BLUE),
-            sep(),
-            statRow("ATK", String.valueOf(p.getAttack()),  WHITE),
-            statRow("DEF", String.valueOf(p.getDefense()), WHITE),
-            statRow("AGI", String.valueOf(p.getAgility()), WHITE),
-            statRow("CRI", String.format("%.0f%%", p.getCritChance() * 100), WHITE)
+        // Info testuale affianco al portrait
+        VBox info = new VBox(2);
+        info.getChildren().addAll(
+            txt(p.getName()),
+            txt(p.getCharacterClass().toString()),
+            txt("HP:  " + p.getCurrentHp() + "/" + p.getMaxHp()),
+            txt("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina()),
+            txt("ATK: " + p.getAttack()),
+            txt("DEF: " + p.getDefense()),
+            txt("AGI: " + p.getAgility()),
+            txt("CRI: " + String.format("%.0f%%", p.getCritChance() * 100))
         );
 
-        // Equipaggiamento
-        paneCharacter.getChildren().add(sep());
-        for (EquipSlot slot : EquipSlot.values()) {
-            Optional<Weapon> eq = equipmentManager.getEquipped(slot);
-            String prefix = switch (slot) { case MAIN_HAND -> "W:"; case OFF_HAND -> "S:"; case BODY -> "A:"; };
-            paneCharacter.getChildren().add(
-                statRow(prefix, eq.map(Weapon::getName).orElse("-"), eq.isPresent() ? LABEL_FG : "#555577"));
-        }
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.TOP_LEFT);
+        if (portrait != null) topRow.getChildren().add(portrait);
+        topRow.getChildren().add(info);
+        paneCharacter.getChildren().add(topRow);
 
-        // Spacer + pulsanti
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-        paneCharacter.getChildren().add(spacer);
-        paneCharacter.getChildren().add(sep());
+        // Separatore
+        paneCharacter.getChildren().add(hline());
 
-        Button btnSave = btn("> Salva",  LABEL_FG, CARD_BG);
-        Button btnMenu = btn("> Menu",   RED,      "#2a0a0a");
-        btnSave.setOnAction(e -> { gc.saveGame(); });
-        btnMenu.setOnAction(e -> app.showMenu(stage));
-        paneCharacter.getChildren().addAll(btnSave, btnMenu);
+        // Primo item consumabile in inventario
+        String itemName = p.getInventory().stream()
+            .filter(i -> !(i instanceof Weapon))
+            .map(Item::getName)
+            .findFirst()
+            .orElse("-");
+        paneCharacter.getChildren().add(txt("Item: " + itemName));
+
+        // Arma principale
+        Optional<Weapon> mainHand = equipmentManager.getEquipped(EquipSlot.MAIN_HAND);
+        paneCharacter.getChildren().add(txt("W: " + mainHand.map(Weapon::getName).orElse("-")));
+
+        // Armatura (body)
+        Optional<Weapon> body = equipmentManager.getEquipped(EquipSlot.BODY);
+        paneCharacter.getChildren().add(txt("A: " + body.map(Weapon::getName).orElse("-")));
     }
 
-    // ── Helpers UI ────────────────────────────────────────────────────────────
-    private Label pixelLabel(String text, String color, int size) {
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Testo pixel bianco uniforme */
+    private Label txt(String text) {
         Label l = new Label(text);
-        l.setFont(size >= FONT_SIZE ? pixelFont : pixelFontSmall);
-        l.setStyle("-fx-text-fill:" + color + ";-fx-font-size:" + size + "px;");
+        l.setFont(pixelFontSmall);
+        l.setStyle("-fx-text-fill:" + WHITE + ";-fx-font-size:8px;");
         l.setWrapText(true);
         return l;
     }
 
-    private HBox statRow(String key, String val, String valColor) {
-        Label k = new Label(key + " ");
-        k.setFont(pixelFontSmall);
-        k.setStyle("-fx-text-fill:" + WHITE + ";-fx-font-size:7px;");
-        Label v = new Label(val);
-        v.setFont(pixelFontSmall);
-        v.setStyle("-fx-text-fill:" + valColor + ";-fx-font-size:7px;-fx-font-weight:bold;");
-        v.setWrapText(true);
-        HBox row = new HBox(2, k, v);
-        row.setAlignment(Pos.CENTER_LEFT);
-        return row;
-    }
-
-    private ProgressBar progressBar(double ratio, String color) {
-        ProgressBar pb = new ProgressBar(ratio);
-        pb.setPrefHeight(7); pb.setMaxWidth(Double.MAX_VALUE);
-        pb.setStyle("-fx-accent:" + color + ";-fx-background-color:#222;");
-        return pb;
-    }
-
-    private Separator sep() {
-        Separator s = new Separator();
-        s.setStyle("-fx-background-color:" + BORDER + ";");
-        return s;
-    }
-
-    private Button btn(String text, String textColor, String bgColor) {
-        Button b = new Button(text);
-        b.setFont(pixelFontSmall);
-        b.setMaxWidth(Double.MAX_VALUE);
-        b.setStyle("-fx-text-fill:" + textColor +
-            ";-fx-background-color:" + bgColor +
-            ";-fx-border-color:" + BORDER +
-            ";-fx-border-width:1;-fx-padding:5 8;-fx-cursor:hand;");
-        return b;
+    /** Linea separatrice orizzontale */
+    private Region hline() {
+        Region r = new Region();
+        r.setPrefHeight(1); r.setMaxWidth(Double.MAX_VALUE);
+        r.setStyle("-fx-background-color:" + BORDER + ";-fx-padding:0;");
+        VBox.setMargin(r, new Insets(4, 0, 4, 0));
+        return r;
     }
 
     private ImageView loadImage(String path, double w, double h) {
@@ -316,6 +277,8 @@ public class GameScreen {
             Image img = new Image(is, w, h, true, false);
             ImageView iv = new ImageView(img);
             iv.setFitWidth(w); iv.setFitHeight(h); iv.setPreserveRatio(true);
+            // bordo stile screenshot
+            iv.setStyle("-fx-effect: dropshadow(one-pass-box, " + BORDER + ", 0, 0, 0, 0);");
             return iv;
         } catch (Exception e) { return null; }
     }
