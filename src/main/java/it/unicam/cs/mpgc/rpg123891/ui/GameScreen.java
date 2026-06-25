@@ -93,10 +93,10 @@ public class GameScreen {
             pixelFont = Font.loadFont(
                 getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), FONT_SIZE);
             pixelFontSmall = Font.loadFont(
-                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 8);
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10); // era 8, ora 10
         } catch (Exception ignored) {}
         if (pixelFont      == null) pixelFont      = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
-        if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 8);
+        if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 10);
     }
 
     // ── CHARACTER card ──────────────────────────────────────────────────────
@@ -104,7 +104,8 @@ public class GameScreen {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        paneCharacter.setPadding(new Insets(12, 0, 0, 12));
+        // padding top: 12 + 10 = 22px (abbassato di 10px)
+        paneCharacter.setPadding(new Insets(22, 0, 0, 12));
 
         GameCharacter p = player();
 
@@ -150,8 +151,6 @@ public class GameScreen {
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
-
-    /** Font passato direttamente — nessun override CSS sulla size */
     private Label statLine(String text, String color, Font font) {
         Label l = new Label(text);
         l.setFont(font);
