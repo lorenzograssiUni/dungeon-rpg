@@ -89,12 +89,11 @@ public class GameScreen {
     public BorderPane getRoot() { return root; }
 
     private void loadFont() {
-        try (InputStream is = getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf")) {
-            if (is != null) {
-                pixelFont      = Font.loadFont(is, FONT_SIZE);
-                pixelFontSmall = Font.loadFont(
-                    getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 8);
-            }
+        try {
+            pixelFont = Font.loadFont(
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), FONT_SIZE);
+            pixelFontSmall = Font.loadFont(
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 8);
         } catch (Exception ignored) {}
         if (pixelFont      == null) pixelFont      = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 8);
@@ -105,7 +104,7 @@ public class GameScreen {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        paneCharacter.setPadding(new Insets(20, 0, 0, 12));
+        paneCharacter.setPadding(new Insets(12, 0, 0, 12));
 
         GameCharacter p = player();
 
@@ -131,33 +130,32 @@ public class GameScreen {
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
         // ── Stats a fianco
-        VBox statsBox = new VBox(2);
+        VBox statsBox = new VBox(6);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
         statsBox.getChildren().addAll(
-            statLine(p.getName(),                                          LABEL_FG),
-            statLine(p.getCharacterClass().toString(),                     WHITE),
-            statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),      WHITE),
-            statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(), WHITE),
-            statLine("ATK: " + p.getAttack(),                             WHITE),
-            statLine("DEF: " + p.getDefense(),                            WHITE),
-            statLine("AGI: " + p.getAgility(),                            WHITE),
-            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE)
+            statLine(p.getName(),                                                   LABEL_FG, pixelFont),
+            statLine(p.getCharacterClass().toString(),                              WHITE,    pixelFontSmall),
+            statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),         WHITE,    pixelFontSmall),
+            statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(),    WHITE,    pixelFontSmall),
+            statLine("ATK: " + p.getAttack(),                                       WHITE,    pixelFontSmall),
+            statLine("DEF: " + p.getDefense(),                                      WHITE,    pixelFontSmall),
+            statLine("AGI: " + p.getAgility(),                                      WHITE,    pixelFontSmall),
+            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100),   WHITE,    pixelFontSmall)
         );
 
-        // ── Riga portrait + stats affiancati
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
-
         paneCharacter.getChildren().add(topRow);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    private Label statLine(String text, String color) {
+    /** Font passato direttamente — nessun override CSS sulla size */
+    private Label statLine(String text, String color, Font font) {
         Label l = new Label(text);
-        l.setFont(pixelFont);
-        l.setStyle("-fx-text-fill:" + color + ";-fx-font-size:18px;");
+        l.setFont(font);
+        l.setStyle("-fx-text-fill:" + color + ";");
         l.setWrapText(false);
         return l;
     }
