@@ -54,8 +54,10 @@ public class GameScreen {
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
-    // Dimensioni riquadro portrait
-    private static final double PORTRAIT_SIZE = 90;
+    // Portrait: più grande, bordi stondati
+    private static final double PORTRAIT_SIZE   = 140;
+    private static final double PORTRAIT_RADIUS = 12;
+    private static final double PORTRAIT_TOP_PAD = 30; // distanza dal top della card
 
     private Font pixelFont;
     private Font pixelFontSmall;
@@ -102,12 +104,11 @@ public class GameScreen {
     // ── CHARACTER card ──────────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
-        paneCharacter.setPadding(new Insets(10));
-        paneCharacter.setSpacing(0);
-        paneCharacter.setAlignment(Pos.TOP_LEFT);
+        paneCharacter.setAlignment(Pos.TOP_CENTER);
         paneCharacter.setStyle("-fx-background-color:transparent;");
+        // Spingi il riquadro verso il basso con un padding top
+        paneCharacter.setPadding(new Insets(PORTRAIT_TOP_PAD, 0, 0, 0));
 
-        // Riquadro portrait: sfondo scuro + bordo dorato, dimensione fissa
         StackPane portraitBox = new StackPane();
         portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         portraitBox.setMinSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
@@ -115,10 +116,11 @@ public class GameScreen {
         portraitBox.setStyle(
             "-fx-background-color:#0d0d1f;" +
             "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:3;"
+            "-fx-border-width:3;" +
+            "-fx-border-radius:" + PORTRAIT_RADIUS + ";" +
+            "-fx-background-radius:" + PORTRAIT_RADIUS + ";"
         );
 
-        // Se esiste lo sprite del personaggio, lo mostriamo
         GameCharacter p = player();
         String spritePath = switch (p.getCharacterClass()) {
             case WARRIOR -> "/assets/classes/warrior.png";
@@ -126,7 +128,7 @@ public class GameScreen {
             case THIEF   -> "/assets/classes/thief.png";
             default      -> null;
         };
-        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 6, PORTRAIT_SIZE - 6);
+        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
         paneCharacter.getChildren().add(portraitBox);
