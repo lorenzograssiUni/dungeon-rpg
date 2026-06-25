@@ -2,10 +2,7 @@ package it.unicam.cs.mpgc.rpg123891.ui;
 
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
-import it.unicam.cs.mpgc.rpg123891.model.item.EquipSlot;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
-import it.unicam.cs.mpgc.rpg123891.model.item.Item;
-import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -21,7 +18,6 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.io.InputStream;
-import java.util.Optional;
 
 public class GameScreen {
 
@@ -55,9 +51,11 @@ public class GameScreen {
     private static final String BORDER       = "#9E6554";
     private static final String LABEL_FG     = "#D4A96A";
     private static final String SYS_TEXT     = "#ffffff";
-    private static final String WHITE        = "#cccccc";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
+
+    // Dimensioni riquadro portrait
+    private static final double PORTRAIT_SIZE = 90;
 
     private Font pixelFont;
     private Font pixelFontSmall;
@@ -83,7 +81,7 @@ public class GameScreen {
         this.equipmentManager = new EquipmentManager((GameCharacter) gc.getPlayer());
         loadFont();
         buildLayout();
-        refreshCharacterPanel();
+        buildCharacterPanel();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
@@ -101,6 +99,54 @@ public class GameScreen {
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 8);
     }
 
+    // ── CHARACTER card ──────────────────────────────────────────────────────
+    private void buildCharacterPanel() {
+        paneCharacter.getChildren().clear();
+        paneCharacter.setPadding(new Insets(10));
+        paneCharacter.setSpacing(0);
+        paneCharacter.setAlignment(Pos.TOP_LEFT);
+        paneCharacter.setStyle("-fx-background-color:transparent;");
+
+        // Riquadro portrait: sfondo scuro + bordo dorato, dimensione fissa
+        StackPane portraitBox = new StackPane();
+        portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
+        portraitBox.setMinSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
+        portraitBox.setMaxSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
+        portraitBox.setStyle(
+            "-fx-background-color:#0d0d1f;" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:3;"
+        );
+
+        // Se esiste lo sprite del personaggio, lo mostriamo
+        GameCharacter p = player();
+        String spritePath = switch (p.getCharacterClass()) {
+            case WARRIOR -> "/assets/classes/warrior.png";
+            case MAGE    -> "/assets/classes/mage.png";
+            case THIEF   -> "/assets/classes/thief.png";
+            default      -> null;
+        };
+        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 6, PORTRAIT_SIZE - 6);
+        if (portrait != null) portraitBox.getChildren().add(portrait);
+
+        paneCharacter.getChildren().add(portraitBox);
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    private ImageView loadImage(String path, double w, double h) {
+        if (path == null) return null;
+        try (InputStream is = getClass().getResourceAsStream(path)) {
+            if (is == null) return null;
+            Image img = new Image(is, w, h, true, true);
+            ImageView iv = new ImageView(img);
+            iv.setFitWidth(w); iv.setFitHeight(h); iv.setPreserveRatio(true);
+            return iv;
+        } catch (Exception e) { return null; }
+    }
+
+    private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
+
+    // ── Layout principale ───────────────────────────────────────────────────
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
@@ -181,111 +227,6 @@ public class GameScreen {
         root.setCenter(stack);
     }
 
-    // ── CHARACTER card ────────────────────────────────────────────────────────
-    // Layout (fedele allo screenshot):
-    //
-    //  [ portrait ]  Nome
-    //  [          ]  Classe
-    //  [          ]  HP: x/y
-    //  [          ]  STA: x/y
-    //  [          ]  ATK: x  DEF: x  AGI: x  CRI: x%
-    //  ─────────────────────────────────────
-    //  Item: <primo consumabile>
-    //  W: <arma principale>
-    //  A: <armatura>
-    // ─────────────────────────────────────────────────────────────────────────
-    private void refreshCharacterPanel() {
-        paneCharacter.getChildren().clear();
-        paneCharacter.setPadding(new Insets(8));
-        paneCharacter.setSpacing(4);
-        paneCharacter.setStyle("-fx-background-color:transparent;");
-
-        GameCharacter p = player();
-
-        // Portrait
-        String spritePath = switch (p.getCharacterClass()) {
-            case WARRIOR -> "/assets/classes/warrior.png";
-            case MAGE    -> "/assets/classes/mage.png";
-            case THIEF   -> "/assets/classes/thief.png";
-            default      -> null;
-        };
-        ImageView portrait = loadImage(spritePath, 72, 72);
-
-        // Info testuale affianco al portrait
-        VBox info = new VBox(2);
-        info.getChildren().addAll(
-            txt(p.getName()),
-            txt(p.getCharacterClass().toString()),
-            txt("HP:  " + p.getCurrentHp() + "/" + p.getMaxHp()),
-            txt("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina()),
-            txt("ATK: " + p.getAttack()),
-            txt("DEF: " + p.getDefense()),
-            txt("AGI: " + p.getAgility()),
-            txt("CRI: " + String.format("%.0f%%", p.getCritChance() * 100))
-        );
-
-        HBox topRow = new HBox(8);
-        topRow.setAlignment(Pos.TOP_LEFT);
-        if (portrait != null) topRow.getChildren().add(portrait);
-        topRow.getChildren().add(info);
-        paneCharacter.getChildren().add(topRow);
-
-        // Separatore
-        paneCharacter.getChildren().add(hline());
-
-        // Primo item consumabile in inventario
-        String itemName = p.getInventory().stream()
-            .filter(i -> !(i instanceof Weapon))
-            .map(Item::getName)
-            .findFirst()
-            .orElse("-");
-        paneCharacter.getChildren().add(txt("Item: " + itemName));
-
-        // Arma principale
-        Optional<Weapon> mainHand = equipmentManager.getEquipped(EquipSlot.MAIN_HAND);
-        paneCharacter.getChildren().add(txt("W: " + mainHand.map(Weapon::getName).orElse("-")));
-
-        // Armatura (body)
-        Optional<Weapon> body = equipmentManager.getEquipped(EquipSlot.BODY);
-        paneCharacter.getChildren().add(txt("A: " + body.map(Weapon::getName).orElse("-")));
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /** Testo pixel bianco uniforme */
-    private Label txt(String text) {
-        Label l = new Label(text);
-        l.setFont(pixelFontSmall);
-        l.setStyle("-fx-text-fill:" + WHITE + ";-fx-font-size:8px;");
-        l.setWrapText(true);
-        return l;
-    }
-
-    /** Linea separatrice orizzontale */
-    private Region hline() {
-        Region r = new Region();
-        r.setPrefHeight(1); r.setMaxWidth(Double.MAX_VALUE);
-        r.setStyle("-fx-background-color:" + BORDER + ";-fx-padding:0;");
-        VBox.setMargin(r, new Insets(4, 0, 4, 0));
-        return r;
-    }
-
-    private ImageView loadImage(String path, double w, double h) {
-        if (path == null) return null;
-        try (InputStream is = getClass().getResourceAsStream(path)) {
-            if (is == null) return null;
-            Image img = new Image(is, w, h, true, false);
-            ImageView iv = new ImageView(img);
-            iv.setFitWidth(w); iv.setFitHeight(h); iv.setPreserveRatio(true);
-            // bordo stile screenshot
-            iv.setStyle("-fx-effect: dropshadow(one-pass-box, " + BORDER + ", 0, 0, 0, 0);");
-            return iv;
-        } catch (Exception e) { return null; }
-    }
-
-    private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
-
-    // ── Card factory ──────────────────────────────────────────────────────────
     private StackPane makeCardWithTitle(String title, Region content, double w, double h) {
         content.setPrefSize(w, h); content.setMinSize(w, h); content.setMaxSize(w, h);
         StackPane card = new StackPane(content);
@@ -312,7 +253,6 @@ public class GameScreen {
         return wrapper;
     }
 
-    // ── Grid ──────────────────────────────────────────────────────────────────
     private void drawGrid(Canvas canvas) {
         GraphicsContext g = canvas.getGraphicsContext2D();
         g.setFill(Color.web(BG));
