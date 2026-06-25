@@ -51,10 +51,10 @@ public class GameScreen {
     private static final String BORDER       = "#9E6554";
     private static final String LABEL_FG     = "#D4A96A";
     private static final String SYS_TEXT     = "#ffffff";
+    private static final String WHITE        = "#cccccc";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
-    // Portrait
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
 
@@ -105,9 +105,11 @@ public class GameScreen {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
-        // Padding: top=20 dal bordo superiore della card, left=12 dal bordo sinistro
-        paneCharacter.setPadding(new Insets(20, 0, 0, 12));
+        paneCharacter.setPadding(new Insets(12, 0, 0, 12));
 
+        GameCharacter p = player();
+
+        // ── Portrait
         StackPane portraitBox = new StackPane();
         portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         portraitBox.setMinSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
@@ -119,21 +121,47 @@ public class GameScreen {
             "-fx-border-radius:" + PORTRAIT_RADIUS + ";" +
             "-fx-background-radius:" + PORTRAIT_RADIUS + ";"
         );
-
-        GameCharacter p = player();
         String spritePath = switch (p.getCharacterClass()) {
             case WARRIOR -> "/assets/classes/warrior.png";
             case MAGE    -> "/assets/classes/mage.png";
             case THIEF   -> "/assets/classes/thief.png";
             default      -> null;
         };
-        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE -10, PORTRAIT_SIZE -10);
+        ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
-        paneCharacter.getChildren().add(portraitBox);
+        // ── Stats a fianco
+        VBox statsBox = new VBox(6);
+        statsBox.setAlignment(Pos.TOP_LEFT);
+        statsBox.setPadding(new Insets(4, 0, 0, 10));
+        statsBox.getChildren().addAll(
+            statLine(p.getName(),                                          LABEL_FG),
+            statLine(p.getCharacterClass().toString(),                     WHITE),
+            statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),      WHITE),
+            statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(), WHITE),
+            statLine("ATK: " + p.getAttack(),                             WHITE),
+            statLine("DEF: " + p.getDefense(),                            WHITE),
+            statLine("AGI: " + p.getAgility(),                            WHITE),
+            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE)
+        );
+
+        // ── Riga portrait + stats affiancati
+        HBox topRow = new HBox(0, portraitBox, statsBox);
+        topRow.setAlignment(Pos.TOP_LEFT);
+
+        paneCharacter.getChildren().add(topRow);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
+
+    private Label statLine(String text, String color) {
+        Label l = new Label(text);
+        l.setFont(pixelFontSmall);
+        l.setStyle("-fx-text-fill:" + color + ";-fx-font-size:8px;");
+        l.setWrapText(false);
+        return l;
+    }
+
     private ImageView loadImage(String path, double w, double h) {
         if (path == null) return null;
         try (InputStream is = getClass().getResourceAsStream(path)) {
