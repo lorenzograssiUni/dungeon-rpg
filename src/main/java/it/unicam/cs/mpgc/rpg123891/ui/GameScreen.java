@@ -16,21 +16,25 @@ import java.io.InputStream;
 
 public class GameScreen {
 
-    private static final double WIN_W        = 980;
-    private static final double WIN_H        = 640;
     private static final double COL_LEFT     = 390;
     private static final double COL_MID      = 310;
     private static final double COL_RIGHT    = 280;
     private static final double ROW_TOP      = 280;
     private static final double ROW_BOT      = 220;
-    private static final double SYS_H        =  44;  // abbastanza alto da non tagliare il testo
+    private static final double SYS_H        =  44;
     private static final double GAP          =   8;
-    private static final double PAD          =   8;
+    private static final double PAD          =  20;  // margine bordo finestra
     private static final double RADIUS       =  10;
     private static final int    BORDER_W     =   4;
     private static final double LABEL_H      =  28;
     private static final double LABEL_OFFSET =  14;
     private static final int    FONT_SIZE    =  11;
+
+    // Dimensioni finestra calcolate dal contenuto
+    static final double WIN_W =
+        COL_LEFT + GAP + COL_MID + GAP + COL_RIGHT + PAD * 2;
+    static final double WIN_H =
+        PAD + LABEL_OFFSET + ROW_TOP + GAP + LABEL_OFFSET + ROW_BOT + GAP + LABEL_OFFSET + SYS_H + PAD;
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
@@ -150,21 +154,20 @@ public class GameScreen {
         StackPane.setAlignment(sysTitle, Pos.TOP_CENTER);
         sysWrapper.getChildren().addAll(sysCard, sysTitle);
 
-        // ── Main VBox
+        // ── Main VBox — padding PAD su tutti i lati tranne bottom (sysBar tocca il fondo)
         VBox mainBox = new VBox(GAP, rowTop, rowBot, sysWrapper);
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, 0, PAD));
         mainBox.setStyle("-fx-background-color:transparent;");
 
         double fullW = totalW + PAD * 2;
-        double fullH = LABEL_OFFSET + PAD + ROW_TOP + GAP + LABEL_OFFSET + ROW_BOT + GAP + LABEL_OFFSET + SYS_H;
+        double fullH = WIN_H;
         mainBox.setMaxSize(fullW, fullH);
         mainBox.setMinSize(fullW, fullH);
         StackPane.setAlignment(mainBox, Pos.BOTTOM_CENTER);
 
         // ── Grid overlay
-        double xOff = (WIN_W - fullW) / 2.0 + PAD;
-        double yBase = WIN_H - fullH + LABEL_OFFSET * 2 + PAD;
-        double yTop2 = yBase;
+        double xOff = PAD;
+        double yTop2 = PAD + LABEL_OFFSET;
         double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
         double ySys  = yBot2 + ROW_BOT + GAP + LABEL_OFFSET;
 
