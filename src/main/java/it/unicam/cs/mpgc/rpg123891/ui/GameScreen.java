@@ -86,6 +86,7 @@ public class GameScreen {
         loadFont();
         buildLayout();
         buildCharacterPanel();
+        buildActionPanel();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
@@ -132,7 +133,7 @@ public class GameScreen {
         ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
-        // ── Stats (solo testo, senza pulsanti)
+        // ── Stats
         VBox statsBox = new VBox(6);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
@@ -150,7 +151,7 @@ public class GameScreen {
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
 
-        // ── Pulsanti SAVE e MENU (riga separata, allineata a destra)
+        // ── Pulsanti SAVE / MENU
         Button btnSave = makeButton("SAVE");
         Button btnMenu = makeButton("MENU");
         btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
@@ -159,14 +160,13 @@ public class GameScreen {
         VBox btnCol = new VBox(8, btnSave, btnMenu);
         btnCol.setAlignment(Pos.TOP_LEFT);
 
-        // HBox che occupa tutta la larghezza della card e spinge i pulsanti a destra
         HBox btnRow = new HBox(btnCol);
         btnRow.setAlignment(Pos.CENTER_RIGHT);
         btnRow.setPadding(new Insets(10, 12, 0, 0));
         HBox.setHgrow(btnCol, Priority.ALWAYS);
         btnCol.setMaxWidth(Double.MAX_VALUE);
 
-        // ── Equipment section
+        // ── Equipment
         String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
         String lh = equipmentManager.getEquipped(EquipSlot.OFF_HAND).map(Weapon::getName).orElse("none");
         String ar = equipmentManager.getEquipped(EquipSlot.BODY).map(Weapon::getName).orElse("none");
@@ -183,7 +183,64 @@ public class GameScreen {
         paneCharacter.getChildren().addAll(topRow, btnRow, equipBox);
     }
 
-    // ── Pulsante stile card ──────────────────────────────────────────────
+    // ── ACTION card ─────────────────────────────────────────────────────────
+    private void buildActionPanel() {
+        paneAction.getChildren().clear();
+        paneAction.setAlignment(Pos.CENTER);
+        paneAction.setStyle("-fx-background-color:transparent;");
+        paneAction.setPadding(new Insets(20, 16, 16, 16));
+
+        Button btnAttack    = makeActionButton("ATTACK");
+        Button btnSAttack   = makeActionButton("S. ATTACK");
+        Button btnItem      = makeActionButton("ITEM");
+        Button btnEquipment = makeActionButton("EQUIPMENT");
+        Button btnRun       = makeActionButton("RUN");
+
+        // TODO: collegare alla logica di gioco
+        btnAttack   .setOnAction(e -> { /* gc.playerAttack()       */ });
+        btnSAttack  .setOnAction(e -> { /* gc.playerSpecialAttack() */ });
+        btnItem     .setOnAction(e -> { /* gc.openInventory()       */ });
+        btnEquipment.setOnAction(e -> { /* gc.openEquipment()       */ });
+        btnRun      .setOnAction(e -> { /* gc.playerRun()           */ });
+
+        for (Button b : new Button[]{btnAttack, btnSAttack, btnItem, btnEquipment, btnRun}) {
+            b.setMaxWidth(Double.MAX_VALUE);
+        }
+
+        paneAction.getChildren().addAll(btnAttack, btnSAttack, btnItem, btnEquipment, btnRun);
+    }
+
+    // ── Pulsante ACTION (larghezza piena, font più grande) ──────────────────
+    private Button makeActionButton(String text) {
+        String base =
+            "-fx-background-color:" + CARD_BG + ";" +
+            "-fx-text-fill:" + LABEL_FG + ";" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:2;" +
+            "-fx-border-radius:" + RADIUS + ";" +
+            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-padding:8 0;" +
+            "-fx-cursor:hand;" +
+            "-fx-alignment:center;";
+        String hover =
+            "-fx-background-color:#1e1640;" +
+            "-fx-text-fill:#ffffff;" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:2;" +
+            "-fx-border-radius:" + RADIUS + ";" +
+            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-padding:8 0;" +
+            "-fx-cursor:hand;" +
+            "-fx-alignment:center;";
+        Button btn = new Button(text);
+        btn.setFont(pixelFontSmall);
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(hover));
+        btn.setOnMouseExited(e  -> btn.setStyle(base));
+        return btn;
+    }
+
+    // ── Pulsante stile card (piccolo, per SAVE/MENU) ─────────────────────
     private Button makeButton(String text) {
         String base =
             "-fx-background-color:" + CARD_BG + ";" +
