@@ -132,19 +132,7 @@ public class GameScreen {
         ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
-        // ── Pulsanti SAVE e MENU
-        Button btnSave = makeButton("SAVE");
-        Button btnMenu = makeButton("MENU");
-        btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
-        btnMenu.setOnAction(e -> app.showMenu(stage));
-        btnSave.setMaxWidth(Double.MAX_VALUE);
-        btnMenu.setMaxWidth(Double.MAX_VALUE);
-
-        VBox btnRow = new VBox(8, btnSave, btnMenu);
-        btnRow.setAlignment(Pos.TOP_CENTER);
-        btnRow.setPadding(new Insets(12, 0, 0, 0));
-
-        // ── Stats + pulsanti
+        // ── Stats (solo testo, senza pulsanti)
         VBox statsBox = new VBox(6);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
@@ -156,12 +144,27 @@ public class GameScreen {
             statLine("ATK: " + p.getAttack(),                                     WHITE,    pixelFontSmall),
             statLine("DEF: " + p.getDefense(),                                    WHITE,    pixelFontSmall),
             statLine("AGI: " + p.getAgility(),                                    WHITE,    pixelFontSmall),
-            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall),
-            btnRow
+            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall)
         );
 
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
+
+        // ── Pulsanti SAVE e MENU (riga separata, allineata a destra)
+        Button btnSave = makeButton("SAVE");
+        Button btnMenu = makeButton("MENU");
+        btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
+        btnMenu.setOnAction(e -> app.showMenu(stage));
+
+        VBox btnCol = new VBox(8, btnSave, btnMenu);
+        btnCol.setAlignment(Pos.TOP_LEFT);
+
+        // HBox che occupa tutta la larghezza della card e spinge i pulsanti a destra
+        HBox btnRow = new HBox(btnCol);
+        btnRow.setAlignment(Pos.CENTER_RIGHT);
+        btnRow.setPadding(new Insets(10, 12, 0, 0));
+        HBox.setHgrow(btnCol, Priority.ALWAYS);
+        btnCol.setMaxWidth(Double.MAX_VALUE);
 
         // ── Equipment section
         String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
@@ -177,7 +180,7 @@ public class GameScreen {
             equipRow("Armour",     ar)
         );
 
-        paneCharacter.getChildren().addAll(topRow, equipBox);
+        paneCharacter.getChildren().addAll(topRow, btnRow, equipBox);
     }
 
     // ── Pulsante stile card ──────────────────────────────────────────────
