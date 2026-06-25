@@ -28,13 +28,13 @@ public class GameScreen {
     private static final double PAD          =   8;
     private static final double RADIUS       =  10;
     private static final int    BORDER_W     =   4;
-    private static final double LABEL_H      =  22;  // altezza label titolo
-    private static final double LABEL_OFFSET =  11;  // metà fuori dalla card
+    private static final double LABEL_H      =  28;  // più alta per il font grande
+    private static final double LABEL_OFFSET =  14;  // metà fuori dalla card
+    private static final int    FONT_SIZE    =  11;  // font titolo card
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
     private static final String BORDER       = "#9E6554";
-    private static final String LABEL_BG     = "#140E2C";
     private static final String LABEL_FG     = "#D4A96A";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
@@ -66,30 +66,17 @@ public class GameScreen {
 
     private void loadFont() {
         try (InputStream is = getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf")) {
-            if (is != null) pixelFont = Font.loadFont(is, 8);
+            if (is != null) pixelFont = Font.loadFont(is, FONT_SIZE);
         } catch (Exception ignored) {}
-        if (pixelFont == null) pixelFont = Font.font("Courier New", FontWeight.BOLD, 8);
+        if (pixelFont == null) pixelFont = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
     }
 
-    // =========================================================================
-    // LAYOUT
-    //
-    // Ogni card è avvolta in uno StackPane con la label sovrapposta
-    // traslata verso l'alto di LABEL_OFFSET px, così si compenetra
-    // con il bordo superiore della card:
-    //
-    //       ____+[ ENCOUNTER ]+____
-    //      |                       |
-    //      |                       |
-    //
-    // =========================================================================
     private void buildLayout() {
 
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        // Card con label titolo
         StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",   paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCardWithTitle("CHARACTER",   paneCharacter,  COL_MID,   ROW_TOP);
         StackPane cardRightTop   = makeCardWithTitle("MAP & STATUS", paneRightTop,   COL_RIGHT, ROW_TOP);
@@ -97,13 +84,11 @@ public class GameScreen {
         StackPane cardAction     = makeCardWithTitle("ACTION",       paneAction,     COL_MID,   ROW_BOT);
         StackPane cardLog        = makeCardWithTitle("COMBAT LOG",   paneLog,        COL_RIGHT, ROW_BOT);
 
-        // Le card con label escono di LABEL_OFFSET verso l'alto,
-        // quindi la loro altezza è card_h + LABEL_OFFSET
         double rowTopH = ROW_TOP + LABEL_OFFSET;
         double rowBotH = ROW_BOT + LABEL_OFFSET;
 
         HBox rowTop = new HBox(GAP, cardEncounter, cardCharacter, cardRightTop);
-        rowTop.setAlignment(Pos.BOTTOM_LEFT);  // allinea al bordo basso così i top si allineano
+        rowTop.setAlignment(Pos.BOTTOM_LEFT);
         rowTop.setPrefHeight(rowTopH);
         rowTop.setMinHeight(rowTopH);
         rowTop.setMaxHeight(rowTopH);
@@ -122,7 +107,6 @@ public class GameScreen {
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, PAD, PAD));
         mainBox.setStyle("-fx-background-color:transparent;");
 
-        // Offset y delle card nel grid overlay (la card vera parte a y + LABEL_OFFSET)
         double yTop = PAD + LABEL_OFFSET * 2;
         double yBot = PAD + LABEL_OFFSET * 2 + ROW_TOP + GAP + LABEL_OFFSET;
         Canvas gridOverlay = buildGridOverlay(
@@ -143,16 +127,7 @@ public class GameScreen {
         root.setCenter(stack);
     }
 
-    /**
-     * Crea una card con label centrata che si compenetra nel bordo superiore.
-     * La struttura è uno StackPane di dimensioni (w) x (h + LABEL_OFFSET):
-     *
-     *   StackPane (w x h+offset)
-     *    ├─ card  ← posizionata in fondo (BOTTOM)
-     *    └─ label ← posizionata in cima (TOP, centrata), sovrapposta al bordo
-     */
     private StackPane makeCardWithTitle(String title, Region content, double w, double h) {
-        // Card vera
         content.setPrefSize(w, h);
         content.setMinSize(w, h);
         content.setMaxSize(w, h);
@@ -168,21 +143,19 @@ public class GameScreen {
             "-fx-background-radius:" + RADIUS + ";"
         );
 
-        // Label titolo
         Label lbl = new Label("  " + title + "  ");
         lbl.setFont(pixelFont);
         lbl.setPrefHeight(LABEL_H);
         lbl.setStyle(
             "-fx-text-fill:" + LABEL_FG + ";" +
-            "-fx-background-color:" + LABEL_BG + ";" +
+            "-fx-background-color:" + CARD_BG + ";" +
             "-fx-border-color:" + BORDER + ";" +
             "-fx-border-width:" + BORDER_W + ";" +
             "-fx-border-radius:6;" +
             "-fx-background-radius:6;" +
-            "-fx-padding:2 10;"
+            "-fx-padding:3 12;"
         );
 
-        // Wrapper: card in basso, label centrata in alto sovrapposta
         StackPane wrapper = new StackPane();
         wrapper.setPrefSize(w, h + LABEL_OFFSET);
         wrapper.setMinSize(w, h + LABEL_OFFSET);
