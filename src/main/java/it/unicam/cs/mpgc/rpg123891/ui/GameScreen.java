@@ -42,11 +42,11 @@ public class GameScreen {
 
     public static final double WIN_W = TOTAL_W + PAD * 2;
     public static final double WIN_H =
-            PAD + LABEL_OFFSET
-                    + ROW_TOP + GAP
-                    + LABEL_OFFSET + ROW_BOT + GAP
-                    + LABEL_OFFSET + SYS_H
-                    + PAD;
+        PAD + LABEL_OFFSET
+        + ROW_TOP + GAP
+        + LABEL_OFFSET + ROW_BOT + GAP
+        + LABEL_OFFSET + SYS_H
+        + PAD;
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
@@ -94,9 +94,9 @@ public class GameScreen {
     private void loadFont() {
         try {
             pixelFont = Font.loadFont(
-                    getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), FONT_SIZE);
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), FONT_SIZE);
             pixelFontSmall = Font.loadFont(
-                    getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10);
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10);
         } catch (Exception ignored) {}
         if (pixelFont      == null) pixelFont      = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 10);
@@ -117,11 +117,11 @@ public class GameScreen {
         portraitBox.setMinSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         portraitBox.setMaxSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         portraitBox.setStyle(
-                "-fx-background-color:#0d0d1f;" +
-                        "-fx-border-color:" + BORDER + ";" +
-                        "-fx-border-width:3;" +
-                        "-fx-border-radius:" + PORTRAIT_RADIUS + ";" +
-                        "-fx-background-radius:" + PORTRAIT_RADIUS + ";"
+            "-fx-background-color:#0d0d1f;" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:3;" +
+            "-fx-border-radius:" + PORTRAIT_RADIUS + ";" +
+            "-fx-background-radius:" + PORTRAIT_RADIUS + ";"
         );
         String spritePath = switch (p.getCharacterClass()) {
             case WARRIOR -> "/assets/classes/warrior.png";
@@ -132,33 +132,32 @@ public class GameScreen {
         ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
-        // ── Pulsanti SAVE e MENU (verticali, sotto le stats)
+        // ── Pulsanti SAVE e MENU
         Button btnSave = makeButton("SAVE");
         Button btnMenu = makeButton("MENU");
-
-        btnSave.setOnAction(e -> {
-            // TODO: logica salvataggio
-        });
+        btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
         btnMenu.setOnAction(e -> app.showMenu(stage));
+        btnSave.setMaxWidth(Double.MAX_VALUE);
+        btnMenu.setMaxWidth(Double.MAX_VALUE);
 
         VBox btnRow = new VBox(8, btnSave, btnMenu);
-        btnRow.setAlignment(Pos.CENTER);
+        btnRow.setAlignment(Pos.TOP_CENTER);
         btnRow.setPadding(new Insets(12, 0, 0, 0));
 
-        // ── Stats a fianco + pulsanti sotto
+        // ── Stats + pulsanti
         VBox statsBox = new VBox(6);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
         statsBox.getChildren().addAll(
-                statLine(p.getName(),                                                 LABEL_FG, pixelFont),
-                statLine(p.getCharacterClass().toString(),                            WHITE,    pixelFontSmall),
-                statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),       WHITE,    pixelFontSmall),
-                statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(),  WHITE,    pixelFontSmall),
-                statLine("ATK: " + p.getAttack(),                                     WHITE,    pixelFontSmall),
-                statLine("DEF: " + p.getDefense(),                                    WHITE,    pixelFontSmall),
-                statLine("AGI: " + p.getAgility(),                                    WHITE,    pixelFontSmall),
-                statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall),
-                btnRow
+            statLine(p.getName(),                                                 LABEL_FG, pixelFont),
+            statLine(p.getCharacterClass().toString(),                            WHITE,    pixelFontSmall),
+            statLine("HP:  " + p.getCurrentHp()      + "/" + p.getMaxHp(),       WHITE,    pixelFontSmall),
+            statLine("STA: " + p.getCurrentStamina() + "/" + p.getMaxStamina(),  WHITE,    pixelFontSmall),
+            statLine("ATK: " + p.getAttack(),                                     WHITE,    pixelFontSmall),
+            statLine("DEF: " + p.getDefense(),                                    WHITE,    pixelFontSmall),
+            statLine("AGI: " + p.getAgility(),                                    WHITE,    pixelFontSmall),
+            statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall),
+            btnRow
         );
 
         HBox topRow = new HBox(0, portraitBox, statsBox);
@@ -173,35 +172,34 @@ public class GameScreen {
         equipBox.setAlignment(Pos.TOP_LEFT);
         equipBox.setPadding(new Insets(14, 0, 0, 0));
         equipBox.getChildren().addAll(
-                equipRow("Right Hand", rh),
-                equipRow("Left Hand",  lh),
-                equipRow("Armour",     ar)
+            equipRow("Right Hand", rh),
+            equipRow("Left Hand",  lh),
+            equipRow("Armour",     ar)
         );
 
         paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    // ── Pulsante stile card ──────────────────────────────────────────────────
+    // ── Pulsante stile card ──────────────────────────────────────────────
     private Button makeButton(String text) {
         String base =
-                "-fx-background-color:" + CARD_BG + ";" +
-                        "-fx-text-fill:" + LABEL_FG + ";" +
-                        "-fx-border-color:" + BORDER + ";" +
-                        "-fx-border-width:2;" +
-                        "-fx-border-radius:" + RADIUS + ";" +
-                        "-fx-background-radius:" + RADIUS + ";" +
-                        "-fx-padding:6 14;" +
-                        "-fx-cursor:hand;";
+            "-fx-background-color:" + CARD_BG + ";" +
+            "-fx-text-fill:" + LABEL_FG + ";" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:2;" +
+            "-fx-border-radius:" + RADIUS + ";" +
+            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-padding:6 14;" +
+            "-fx-cursor:hand;";
         String hover =
-                "-fx-background-color:#1e1640;" +
-                        "-fx-text-fill:" + LABEL_FG + ";" +
-                        "-fx-border-color:" + BORDER + ";" +
-                        "-fx-border-width:2;" +
-                        "-fx-border-radius:" + RADIUS + ";" +
-                        "-fx-background-radius:" + RADIUS + ";" +
-                        "-fx-padding:6 14;" +
-                        "-fx-cursor:hand;";
-
+            "-fx-background-color:#1e1640;" +
+            "-fx-text-fill:" + LABEL_FG + ";" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:2;" +
+            "-fx-border-radius:" + RADIUS + ";" +
+            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-padding:6 14;" +
+            "-fx-cursor:hand;";
         Button btn = new Button(text);
         btn.setFont(pixelFontSmall);
         btn.setStyle(base);
@@ -211,16 +209,13 @@ public class GameScreen {
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
-
     private HBox equipRow(String label, String value) {
         Label lbl = new Label(label + ": ");
         lbl.setFont(pixelFontSmall);
         lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-
         Label val = new Label(value);
         val.setFont(pixelFontSmall);
         val.setStyle("-fx-text-fill:" + WHITE + ";");
-
         HBox row = new HBox(0, lbl, val);
         row.setAlignment(Pos.CENTER_LEFT);
         return row;
@@ -283,13 +278,13 @@ public class GameScreen {
         StackPane sysCard = new StackPane(sysInner);
         sysCard.setPrefSize(TOTAL_W, SYS_H); sysCard.setMinSize(TOTAL_W, SYS_H); sysCard.setMaxSize(TOTAL_W, SYS_H);
         sysCard.setStyle("-fx-background-color:" + SYS_BG + ";-fx-border-color:" + BORDER +
-                ";-fx-border-width:" + BORDER_W + ";-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS + ";");
+            ";-fx-border-width:" + BORDER_W + ";-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS + ";");
 
         Label sysTitle = new Label("  SYSTEM INFO  ");
         sysTitle.setFont(pixelFont); sysTitle.setPrefHeight(LABEL_H);
         sysTitle.setStyle("-fx-text-fill:" + LABEL_FG + ";-fx-background-color:" + SYS_BG +
-                ";-fx-border-color:" + BORDER + ";-fx-border-width:" + BORDER_W +
-                ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
+            ";-fx-border-color:" + BORDER + ";-fx-border-width:" + BORDER_W +
+            ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
 
         StackPane sysWrapper = new StackPane();
         sysWrapper.setPrefSize(TOTAL_W, SYS_H + LABEL_OFFSET);
@@ -311,13 +306,13 @@ public class GameScreen {
         double ySys  = yBot2 + ROW_BOT + GAP + LABEL_OFFSET;
 
         Canvas gridOverlay = buildGridOverlay(new double[][]{
-                {xOff,                                  yTop2, COL_LEFT,  ROW_TOP},
-                {xOff + COL_LEFT + GAP,                 yTop2, COL_MID,   ROW_TOP},
-                {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
-                {xOff,                                  yBot2, COL_LEFT,  ROW_BOT},
-                {xOff + COL_LEFT + GAP,                 yBot2, COL_MID,   ROW_BOT},
-                {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT},
-                {xOff,                                  ySys,  TOTAL_W,   SYS_H}
+            {xOff,                                  yTop2, COL_LEFT,  ROW_TOP},
+            {xOff + COL_LEFT + GAP,                 yTop2, COL_MID,   ROW_TOP},
+            {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
+            {xOff,                                  yBot2, COL_LEFT,  ROW_BOT},
+            {xOff + COL_LEFT + GAP,                 yBot2, COL_MID,   ROW_BOT},
+            {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT},
+            {xOff,                                  ySys,  TOTAL_W,   SYS_H}
         });
         gridOverlay.setMouseTransparent(true);
 
@@ -333,17 +328,17 @@ public class GameScreen {
         StackPane card = new StackPane(content);
         card.setPrefSize(w, h); card.setMinSize(w, h); card.setMaxSize(w, h);
         card.setStyle("-fx-background-color:" + CARD_BG +
-                ";-fx-border-color:" + BORDER +
-                ";-fx-border-width:" + BORDER_W +
-                ";-fx-border-radius:" + RADIUS +
-                ";-fx-background-radius:" + RADIUS + ";");
+            ";-fx-border-color:" + BORDER +
+            ";-fx-border-width:" + BORDER_W +
+            ";-fx-border-radius:" + RADIUS +
+            ";-fx-background-radius:" + RADIUS + ";");
         Label lbl = new Label("  " + title + "  ");
         lbl.setFont(pixelFont); lbl.setPrefHeight(LABEL_H);
         lbl.setStyle("-fx-text-fill:" + LABEL_FG +
-                ";-fx-background-color:" + CARD_BG +
-                ";-fx-border-color:" + BORDER +
-                ";-fx-border-width:" + BORDER_W +
-                ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
+            ";-fx-background-color:" + CARD_BG +
+            ";-fx-border-color:" + BORDER +
+            ";-fx-border-width:" + BORDER_W +
+            ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
         StackPane wrapper = new StackPane();
         wrapper.setPrefSize(w, h + LABEL_OFFSET);
         wrapper.setMinSize(w, h + LABEL_OFFSET);
