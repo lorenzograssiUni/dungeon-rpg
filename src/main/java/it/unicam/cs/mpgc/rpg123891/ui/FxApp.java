@@ -8,14 +8,21 @@ import javafx.stage.Stage;
 
 public class FxApp extends Application {
 
+    private static final double WIN_W = 980;
+    private static final double WIN_H = 640;
+
     private GameController gameController;
 
     @Override
     public void start(Stage primaryStage) {
         gameController = new GameController(new JsonPersistenceManager());
         primaryStage.setTitle("Dungeon RPG");
-        primaryStage.setMinWidth(960);
-        primaryStage.setMinHeight(680);
+
+        // Blocca resize e schermo intero
+        primaryStage.setResizable(false);
+        primaryStage.setFullScreen(false);
+        primaryStage.setFullScreenExitHint("");
+
         showMenu(primaryStage);
     }
 
@@ -28,7 +35,13 @@ public class FxApp extends Application {
 
     public void showGame(Stage stage) {
         GameScreen game = new GameScreen(gameController, stage, this);
-        Scene scene = new Scene(game.getRoot(), 1100, 680);
+        Scene scene = new Scene(game.getRoot(), WIN_W, WIN_H);
+        stage.setWidth(WIN_W);
+        stage.setHeight(WIN_H);
+        stage.setMinWidth(WIN_W);
+        stage.setMinHeight(WIN_H);
+        stage.setMaxWidth(WIN_W);
+        stage.setMaxHeight(WIN_H);
         stage.setScene(scene);
         stage.show();
     }

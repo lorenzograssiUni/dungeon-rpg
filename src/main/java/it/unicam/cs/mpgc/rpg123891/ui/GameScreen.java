@@ -21,9 +21,9 @@ public class GameScreen {
     private static final double COL_LEFT     = 390;
     private static final double COL_MID      = 310;
     private static final double COL_RIGHT    = 280;
-    private static final double ROW_TOP      = 300;
-    private static final double ROW_BOT      = 240;
-    private static final double SYS_H        =  38;
+    private static final double ROW_TOP      = 280;
+    private static final double ROW_BOT      = 220;
+    private static final double SYS_H        =  44;  // abbastanza alto da non tagliare il testo
     private static final double GAP          =   8;
     private static final double PAD          =   8;
     private static final double RADIUS       =  10;
@@ -34,9 +34,10 @@ public class GameScreen {
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
-    private static final String SYS_BG       = "#000000";  // nero per system info
+    private static final String SYS_BG       = "#000000";
     private static final String BORDER       = "#9E6554";
     private static final String LABEL_FG     = "#D4A96A";
+    private static final String SYS_TEXT     = "#ffffff";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
@@ -84,7 +85,7 @@ public class GameScreen {
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        // ── 6 card principali ───────────────────────────────────────────
+        // ── 6 card principali
         StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",  paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCardWithTitle("CHARACTER",  paneCharacter,  COL_MID,   ROW_TOP);
         StackPane cardRightTop   = makeCardWithTitle("Map",         paneRightTop,   COL_RIGHT, ROW_TOP);
@@ -103,13 +104,12 @@ public class GameScreen {
         rowBot.setAlignment(Pos.BOTTOM_LEFT);
         rowBot.setPrefHeight(rowBotH); rowBot.setMinHeight(rowBotH); rowBot.setMaxHeight(rowBotH);
 
-        // ── SYSTEM INFO card ───────────────────────────────────────────
-        // Larghezza totale delle card
+        // ── SYSTEM INFO card
         double totalW = COL_LEFT + GAP + COL_MID + GAP + COL_RIGHT;
 
         Label sysContent = new Label("DUNGEON RPG  v1.0  —  by Lorenzo Grassi");
         sysContent.setFont(pixelFontSmall);
-        sysContent.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+        sysContent.setStyle("-fx-text-fill:" + SYS_TEXT + ";");
         sysContent.setAlignment(Pos.CENTER);
         sysContent.setMaxWidth(Double.MAX_VALUE);
 
@@ -118,7 +118,6 @@ public class GameScreen {
         sysInner.setMinSize(totalW, SYS_H);
         sysInner.setMaxSize(totalW, SYS_H);
 
-        // Card nera, bordo solo su top + lati, niente bordo in basso
         StackPane sysCard = new StackPane(sysInner);
         sysCard.setPrefSize(totalW, SYS_H);
         sysCard.setMinSize(totalW, SYS_H);
@@ -131,7 +130,6 @@ public class GameScreen {
             "-fx-background-radius:" + RADIUS + " " + RADIUS + " 0 0;"
         );
 
-        // Label titolo che si compenetra nel bordo superiore della sysCard
         Label sysTitle = new Label("  SYSTEM INFO  ");
         sysTitle.setFont(pixelFont);
         sysTitle.setPrefHeight(LABEL_H);
@@ -140,8 +138,7 @@ public class GameScreen {
             "-fx-background-color:" + SYS_BG + ";" +
             "-fx-border-color:" + BORDER + ";" +
             "-fx-border-width:" + BORDER_W + ";" +
-            "-fx-border-radius:6;" +
-            "-fx-background-radius:6;" +
+            "-fx-border-radius:6;-fx-background-radius:6;" +
             "-fx-padding:3 12;"
         );
 
@@ -153,35 +150,33 @@ public class GameScreen {
         StackPane.setAlignment(sysTitle, Pos.TOP_CENTER);
         sysWrapper.getChildren().addAll(sysCard, sysTitle);
 
-        // ── Main VBox centrato ───────────────────────────────────────────
+        // ── Main VBox
         VBox mainBox = new VBox(GAP, rowTop, rowBot, sysWrapper);
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, 0, PAD));
         mainBox.setStyle("-fx-background-color:transparent;");
 
-        double fullH = LABEL_OFFSET + PAD + ROW_TOP + GAP + LABEL_OFFSET + ROW_BOT + GAP + LABEL_OFFSET + SYS_H;
         double fullW = totalW + PAD * 2;
+        double fullH = LABEL_OFFSET + PAD + ROW_TOP + GAP + LABEL_OFFSET + ROW_BOT + GAP + LABEL_OFFSET + SYS_H;
         mainBox.setMaxSize(fullW, fullH);
         mainBox.setMinSize(fullW, fullH);
-        StackPane.setAlignment(mainBox, Pos.BOTTOM_CENTER); // incollata in basso
+        StackPane.setAlignment(mainBox, Pos.BOTTOM_CENTER);
 
-        // ── Grid overlay ──────────────────────────────────────────────
+        // ── Grid overlay
         double xOff = (WIN_W - fullW) / 2.0 + PAD;
         double yBase = WIN_H - fullH + LABEL_OFFSET * 2 + PAD;
         double yTop2 = yBase;
         double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
         double ySys  = yBot2 + ROW_BOT + GAP + LABEL_OFFSET;
 
-        Canvas gridOverlay = buildGridOverlay(
-            new double[][]{
-                {xOff,                        yTop2, COL_LEFT,  ROW_TOP},
-                {xOff + COL_LEFT + GAP,        yTop2, COL_MID,   ROW_TOP},
-                {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
-                {xOff,                        yBot2, COL_LEFT,  ROW_BOT},
-                {xOff + COL_LEFT + GAP,        yBot2, COL_MID,   ROW_BOT},
-                {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT},
-                {xOff,                        ySys,  totalW,    SYS_H}   // sys card
-            }
-        );
+        Canvas gridOverlay = buildGridOverlay(new double[][]{
+            {xOff,                               yTop2, COL_LEFT,  ROW_TOP},
+            {xOff + COL_LEFT + GAP,               yTop2, COL_MID,   ROW_TOP},
+            {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
+            {xOff,                               yBot2, COL_LEFT,  ROW_BOT},
+            {xOff + COL_LEFT + GAP,               yBot2, COL_MID,   ROW_BOT},
+            {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT},
+            {xOff,                               ySys,  totalW,    SYS_H}
+        });
         gridOverlay.setMouseTransparent(true);
 
         StackPane stack = new StackPane(bgCanvas, mainBox, gridOverlay);
@@ -212,7 +207,9 @@ public class GameScreen {
             "-fx-padding:3 12;"
         );
         StackPane wrapper = new StackPane();
-        wrapper.setPrefSize(w, h + LABEL_OFFSET); wrapper.setMinSize(w, h + LABEL_OFFSET); wrapper.setMaxSize(w, h + LABEL_OFFSET);
+        wrapper.setPrefSize(w, h + LABEL_OFFSET);
+        wrapper.setMinSize(w, h + LABEL_OFFSET);
+        wrapper.setMaxSize(w, h + LABEL_OFFSET);
         StackPane.setAlignment(card, Pos.BOTTOM_CENTER);
         StackPane.setAlignment(lbl,  Pos.TOP_CENTER);
         wrapper.getChildren().addAll(card, lbl);
