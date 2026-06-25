@@ -29,12 +29,16 @@ public class FxApp extends Application {
 
     public void showGame(Stage stage) {
         GameScreen game = new GameScreen(gameController, stage, this);
-        double w = GameScreen.WIN_W;
-        double h = GameScreen.WIN_H;
-        Scene scene = new Scene(game.getRoot(), w, h);
-        stage.setMinWidth(w);  stage.setMaxWidth(w);
-        stage.setMinHeight(h); stage.setMaxHeight(h);
+        // Crea la scene con le dimensioni esatte del contenuto
+        Scene scene = new Scene(game.getRoot(), GameScreen.WIN_W, GameScreen.WIN_H);
         stage.setScene(scene);
+        // sizeToScene adatta la finestra alla scene (considera title bar + bordi OS)
+        stage.sizeToScene();
+        // Blocca il resize DOPO aver impostato le dimensioni
+        stage.setMinWidth(stage.getWidth());
+        stage.setMaxWidth(stage.getWidth());
+        stage.setMinHeight(stage.getHeight());
+        stage.setMaxHeight(stage.getHeight());
         stage.show();
     }
 

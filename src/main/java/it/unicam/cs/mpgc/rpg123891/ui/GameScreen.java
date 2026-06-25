@@ -16,6 +16,7 @@ import java.io.InputStream;
 
 public class GameScreen {
 
+    // ── Dimensioni card
     private static final double COL_LEFT     = 390;
     private static final double COL_MID      = 310;
     private static final double COL_RIGHT    = 280;
@@ -23,23 +24,27 @@ public class GameScreen {
     private static final double ROW_BOT      = 220;
     private static final double SYS_H        =  44;
     private static final double GAP          =   8;
-    private static final double PAD          =  20;  // margine su tutti i lati
+    private static final double PAD          =  20;  // margine uguale su tutti i lati
     private static final double RADIUS       =  10;
     private static final int    BORDER_W     =   4;
     private static final double LABEL_H      =  28;
     private static final double LABEL_OFFSET =  14;
     private static final int    FONT_SIZE    =  11;
 
-    // Dimensioni finestra = contenuto + margini (PAD su ogni lato)
+    // Larghezza totale delle tre colonne (senza padding)
     private static final double TOTAL_W = COL_LEFT + GAP + COL_MID + GAP + COL_RIGHT;
-    static final double WIN_W = TOTAL_W + PAD * 2;
-    // altezza: margine top + label sporgente + righe + sysWrapper + margine bottom
-    static final double WIN_H =
-        PAD + LABEL_OFFSET          // spazio sopra per la label della prima riga
+
+    // Dimensioni della Scene (= contenuto + PAD su ogni lato)
+    public static final double WIN_W = TOTAL_W + PAD * 2;
+    public static final double WIN_H =
+        PAD                         // margine top (sopra la label sporgente)
+        + LABEL_OFFSET              // label che sporge
         + ROW_TOP + GAP
-        + LABEL_OFFSET + ROW_BOT + GAP
-        + LABEL_OFFSET + SYS_H      // sysWrapper
-        + PAD;                      // margine bottom: la sysBar non tocca il fondo
+        + LABEL_OFFSET              // label riga bot
+        + ROW_BOT + GAP
+        + LABEL_OFFSET              // label system info
+        + SYS_H
+        + PAD;                      // margine bottom
 
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
@@ -90,11 +95,12 @@ public class GameScreen {
 
     private void buildLayout() {
 
+        // Canvas esattamente grande quanto la scena
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
 
-        // ── 6 card principali
+        // ── 6 card
         StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",  paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCardWithTitle("CHARACTER",  paneCharacter,  COL_MID,   ROW_TOP);
         StackPane cardRightTop   = makeCardWithTitle("Map",         paneRightTop,   COL_RIGHT, ROW_TOP);
@@ -113,7 +119,7 @@ public class GameScreen {
         rowBot.setAlignment(Pos.BOTTOM_LEFT);
         rowBot.setPrefHeight(rowBotH); rowBot.setMinHeight(rowBotH); rowBot.setMaxHeight(rowBotH);
 
-        // ── SYSTEM INFO card
+        // ── SYSTEM INFO
         Label sysContent = new Label("DUNGEON RPG  v1.0  —  by Lorenzo Grassi");
         sysContent.setFont(pixelFontSmall);
         sysContent.setStyle("-fx-text-fill:" + SYS_TEXT + ";");
@@ -132,7 +138,7 @@ public class GameScreen {
         sysCard.setStyle(
             "-fx-background-color:" + SYS_BG + ";" +
             "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:" + BORDER_W + " " + BORDER_W + " " + BORDER_W + " " + BORDER_W + ";" +
+            "-fx-border-width:" + BORDER_W + ";" +
             "-fx-border-radius:" + RADIUS + ";" +
             "-fx-background-radius:" + RADIUS + ";"
         );
@@ -157,34 +163,40 @@ public class GameScreen {
         StackPane.setAlignment(sysTitle, Pos.TOP_CENTER);
         sysWrapper.getChildren().addAll(sysCard, sysTitle);
 
-        // ── Main VBox — centrato, padding PAD su tutti i lati
+        // ── Main VBox: padding top = PAD + LABEL_OFFSET (spazio per label sporgente)
+        //                   padding sides = PAD
+        //                   padding bottom = PAD
         VBox mainBox = new VBox(GAP, rowTop, rowBot, sysWrapper);
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, PAD, PAD));
-        mainBox.setStyle("-fx-background-color:transparent;");
-        mainBox.setMaxSize(WIN_W, WIN_H);
+        mainBox.setAlignment(Pos.TOP_CENTER);  // centra i figli orizzontalmente
+        mainBox.setPrefSize(WIN_W, WIN_H);
         mainBox.setMinSize(WIN_W, WIN_H);
-        // centrato sia orizzontalmente che verticalmente
-        StackPane.setAlignment(mainBox, Pos.CENTER);
+        mainBox.setMaxSize(WIN_W, WIN_H);
+        mainBox.setStyle("-fx-background-color:transparent;");
 
-        // ── Grid overlay (coordinate assolute dall'angolo top-left della finestra)
+        // Grid overlay: coordinate = PAD offset dall'angolo in alto a sinistra
         double xOff  = PAD;
         double yTop2 = PAD + LABEL_OFFSET;
         double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
         double ySys  = yBot2 + ROW_BOT + GAP + LABEL_OFFSET;
 
         Canvas gridOverlay = buildGridOverlay(new double[][]{
-            {xOff,                                   yTop2, COL_LEFT,  ROW_TOP},
-            {xOff + COL_LEFT + GAP,                  yTop2, COL_MID,   ROW_TOP},
-            {xOff + COL_LEFT + GAP + COL_MID + GAP,  yTop2, COL_RIGHT, ROW_TOP},
-            {xOff,                                   yBot2, COL_LEFT,  ROW_BOT},
-            {xOff + COL_LEFT + GAP,                  yBot2, COL_MID,   ROW_BOT},
-            {xOff + COL_LEFT + GAP + COL_MID + GAP,  yBot2, COL_RIGHT, ROW_BOT},
-            {xOff,                                   ySys,  TOTAL_W,   SYS_H}
+            {xOff,                                  yTop2, COL_LEFT,  ROW_TOP},
+            {xOff + COL_LEFT + GAP,                 yTop2, COL_MID,   ROW_TOP},
+            {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
+            {xOff,                                  yBot2, COL_LEFT,  ROW_BOT},
+            {xOff + COL_LEFT + GAP,                 yBot2, COL_MID,   ROW_BOT},
+            {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT},
+            {xOff,                                  ySys,  TOTAL_W,   SYS_H}
         });
         gridOverlay.setMouseTransparent(true);
 
+        // StackPane radice: tutti e tre i layer hanno WIN_W x WIN_H
         StackPane stack = new StackPane(bgCanvas, mainBox, gridOverlay);
-        stack.setAlignment(Pos.CENTER);
+        stack.setPrefSize(WIN_W, WIN_H);
+        stack.setMinSize(WIN_W, WIN_H);
+        stack.setMaxSize(WIN_W, WIN_H);
+        stack.setAlignment(Pos.TOP_LEFT);
         stack.setStyle("-fx-background-color:" + BG + ";");
         root.setCenter(stack);
     }
