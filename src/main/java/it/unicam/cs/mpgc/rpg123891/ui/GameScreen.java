@@ -348,76 +348,42 @@ public class GameScreen {
     }
 
     // ── MAP card ────────────────────────────────────────────────────────────
-    /**
-     * Draws a vertical linear guide inside paneRightTop:
-     *
-     *   ●  FOREST            ← area node (gold if current, dim grey if future)
-     *      • Wave 1
-     *      • Wave 2
-     *   |                    ← connector line
-     *   ●  GOBLIN VILLAGE
-     *      • Wave 1
-     *      • Wave 2
-     *      • Miniboss
-     *   ...
-     *
-     * Active room: gold dot + gold text.
-     * Active wave inside active room: gold small dot + gold text.
-     * Cleared / past items: muted grey.
-     * Future items: dim grey.
-     */
     private void buildMapPanel() {
         paneRightTop.getChildren().clear();
         paneRightTop.setStyle("-fx-background-color:transparent;");
 
-        List<Room> rooms = gc.getDungeonMap().getRooms();
+        // ── FIX: getDungeonMap() lives on GameState, not on GameController ──
+        List<Room> rooms = gc.getGameState().getDungeonMap().getRooms();
         Room currentRoom  = gc.getCurrentRoom();
         int  currentWaveI = currentRoom.getWaveIndex();
 
-        // ── layout constants ──────────────────────────────────────────────
-        double cardW      = COL_RIGHT;
-        double cardH      = ROW_TOP;
-        double marginL    = 22;   // left margin for the vertical line
-        double lineX      = marginL + 6;  // centre of the vertical connector line
-        double dotR       = 5;    // radius of area node dot
-        double waveDotR   = 3;    // radius of wave sub-dot
-        double textOffX   = lineX + dotR + 10;  // x where label text starts
-        double topPad     = 20;   // vertical padding from card top
-        double botPad     = 12;
-
-        // Compute total entry count to distribute vertical space
-        // Each room = 1 area node; each wave inside = 1 sub-entry; connector line between rooms
-        int totalEntries = 0;
-        for (Room r : rooms) totalEntries += 1 + r.getTotalWaves();
-        // +connector slots between rooms
-        int connectors = rooms.size() - 1;
-        double availH  = cardH - topPad - botPad;
-        // Assign heights: area-node row = 18, wave row = 14, connector = 10
-        double areaH  = 18;
-        double waveH  = 14;
-        double connH  = 10;
-        // We'll just stack them and scroll is not needed (fits in ~280px for 5 rooms + 13 waves)
+        double cardW    = COL_RIGHT;
+        double cardH    = ROW_TOP;
+        double lineX    = 28.0;
+        double dotR     = 5;
+        double waveDotR = 3;
+        double textOffX = lineX + dotR + 10;
+        double topPad   = 20;
+        double areaH    = 18;
+        double waveH    = 14;
+        double connH    = 10;
 
         Canvas canvas = new Canvas(cardW, cardH);
         GraphicsContext g = canvas.getGraphicsContext2D();
 
-        // pre-compute colours
         Color colGold    = Color.web(LABEL_FG);
-        Color colWhite   = Color.web(WHITE);
-        Color colDim     = Color.web("#555566");
         Color colCleared = Color.web("#447744");
+        Color colDim     = Color.web("#555566");
         Color lineColor  = Color.web("#443355");
 
         double y = topPad;
 
         for (int ri = 0; ri < rooms.size(); ri++) {
-            Room   room      = rooms.get(ri);
-            String roomId    = room.getId();
+            Room    room      = rooms.get(ri);
+            String  roomId    = room.getId();
             boolean isCurrent = roomId.equals(currentRoom.getId());
             boolean isPast    = ri < indexOf(rooms, currentRoom);
-            boolean isFuture  = ri > indexOf(rooms, currentRoom);
 
-            // ── vertical connector from previous room ─────────────────────
             if (ri > 0) {
                 g.setStroke(lineColor);
                 g.setLineWidth(2);
@@ -425,68 +391,40 @@ public class GameScreen {
                 y += connH;
             }
 
-            // ── area node dot ─────────────────────────────────────────────
-            Color dotFill;
-            Color textCol;
-            if (isCurrent) {
-                dotFill = colGold;
-                textCol = colGold;
-            } else if (isPast) {
-                dotFill = colCleared;
-                textCol = colCleared;
-            } else {
-                dotFill = colDim;
-                textCol = colDim;
-            }
+            Color dotFill = isCurrent ? colGold : isPast ? colCleared : colDim;
+            Color textCol = dotFill;
 
-            // dot
             g.setFill(dotFill);
             g.fillOval(lineX - dotR, y + areaH / 2 - dotR, dotR * 2, dotR * 2);
 
-            // area label
             String areaName = ROOM_NAMES_EN.getOrDefault(roomId, room.getName()).toUpperCase();
             g.setFill(textCol);
             g.setFont(pixelFontSmall != null ? pixelFontSmall : Font.font("Courier New", FontWeight.BOLD, 10));
             g.fillText(areaName, textOffX, y + areaH / 2 + 4);
-
             y += areaH;
 
-            // ── wave sub-dots ─────────────────────────────────────────────
             List<Wave> waves = room.getWaves();
             for (int wi = 0; wi < waves.size(); wi++) {
-                Wave    wave    = waves.get(wi);
+                Wave    wave         = waves.get(wi);
                 boolean isActiveWave = isCurrent && wi == currentWaveI;
                 boolean isWaveCleared = wave.isCleared();
 
-                Color waveDotCol;
-                Color waveTxtCol;
-                if (isActiveWave) {
-                    waveDotCol = colGold;
-                    waveTxtCol = colGold;
-                } else if (isWaveCleared || isPast) {
-                    waveDotCol = colCleared;
-                    waveTxtCol = colCleared;
-                } else {
-                    waveDotCol = colDim;
-                    waveTxtCol = colDim;
-                }
+                Color waveDotCol = isActiveWave ? colGold
+                                 : (isWaveCleared || isPast) ? colCleared
+                                 : colDim;
 
-                // small indent line from main axis to sub-dot
                 double indentX = lineX + 12;
                 g.setStroke(lineColor);
                 g.setLineWidth(1);
                 g.strokeLine(lineX, y + waveH / 2, indentX - waveDotR - 2, y + waveH / 2);
 
-                // wave dot
                 g.setFill(waveDotCol);
                 g.fillOval(indentX - waveDotR, y + waveH / 2 - waveDotR, waveDotR * 2, waveDotR * 2);
 
-                // wave label — use wave name, truncate if needed
                 String waveName = waveLabel(wi, waves.size(), wave.getName());
-                g.setFill(waveTxtCol);
+                g.setFill(waveDotCol);
                 g.setFont(pixelFontTiny != null ? pixelFontTiny : Font.font("Courier New", FontWeight.BOLD, 8));
                 g.fillText(waveName, indentX + waveDotR + 6, y + waveH / 2 + 3);
-
                 y += waveH;
             }
         }
@@ -495,23 +433,18 @@ public class GameScreen {
         StackPane.setAlignment(canvas, Pos.TOP_LEFT);
     }
 
-    /**
-     * Produces a short English label for a wave.
-     * Boss/miniboss waves keep their original name; regular waves become "Wave N".
-     */
     private String waveLabel(int index, int total, String originalName) {
         String lower = originalName.toLowerCase();
         if (lower.contains("boss") || lower.contains("miniboss")) {
             if (lower.contains("finale") || lower.contains("final")) return "Final Boss";
-            if (lower.contains("re goblin") || lower.contains("king"))  return "Miniboss: Goblin King";
-            if (lower.contains("strega") || lower.contains("witch"))    return "Miniboss: Witch";
+            if (lower.contains("re goblin") || lower.contains("king")) return "Miniboss: Goblin King";
+            if (lower.contains("strega") || lower.contains("witch"))   return "Miniboss: Witch";
             return "Boss";
         }
         if (lower.contains("statua") || lower.contains("statue")) return "Statue Hall";
         return "Wave " + (index + 1);
     }
 
-    /** Returns the index of a room inside the list (by id). */
     private int indexOf(List<Room> rooms, Room target) {
         for (int i = 0; i < rooms.size(); i++)
             if (rooms.get(i).getId().equals(target.getId())) return i;
