@@ -75,7 +75,7 @@ public class GameScreen {
     private static final double ENEMY_SPRITE_W  = 110;
 
     // HP bar
-    private static final double HP_BAR_H        = 7;
+    private static final double HP_BAR_H        = 8;
     private static final String HP_BAR_BG       = "#3a1a1a";
     private static final String HP_BAR_FG_HIGH  = "#4caf50";
     private static final String HP_BAR_FG_MID   = "#ff9800";
@@ -85,8 +85,8 @@ public class GameScreen {
     private static final String BADGE_BOSS      = "#c0392b";
     private static final String BADGE_EGG       = "#78909c";
 
-    // Larghezza barra HP e stats nella card enemy stats
-    private static final double ENEMY_ROW_W     = COL_LEFT - 28.0;
+    // Larghezza utile della card ENEMY STATS
+    private static final double ENEMY_ROW_W = COL_LEFT - 28.0;
 
     private Font pixelFont;
     private Font pixelFontSmall;
@@ -165,7 +165,7 @@ public class GameScreen {
         if (pixelFontTiny   == null) pixelFontTiny   = Font.font("Courier New", FontWeight.BOLD, 8);
     }
 
-    // ── ENCOUNTER card ──────────────────────────────────────────────────────
+    // ── ENCOUNTER card ────────────────────────────────────────────────────
     private void buildEncounterPanel() {
         paneEncounter.getChildren().clear();
         paneEncounter.setStyle("-fx-background-color:transparent;");
@@ -233,10 +233,10 @@ public class GameScreen {
     // ── ENEMY STATS card ────────────────────────────────────────────────────
     private void buildEnemyStatsPanel() {
         paneEnemyStats.getChildren().clear();
-        paneEnemyStats.setAlignment(Pos.TOP_LEFT);
+        paneEnemyStats.setAlignment(Pos.CENTER);          // centrato verticalmente
         paneEnemyStats.setStyle("-fx-background-color:transparent;");
-        paneEnemyStats.setPadding(new Insets(14, 14, 10, 14));
-        paneEnemyStats.setSpacing(10);
+        paneEnemyStats.setPadding(new Insets(14, 20, 10, 20));
+        paneEnemyStats.setSpacing(12);
 
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         List<Enemy> alive = wave == null ? List.of() :
@@ -250,66 +250,55 @@ public class GameScreen {
             return;
         }
 
-        // Una riga per ogni nemico, in verticale
         for (Enemy enemy : alive) {
             paneEnemyStats.getChildren().add(buildEnemyStatRow(enemy));
         }
     }
 
     /**
-     * Riga piatta (senza riquadro) per un singolo nemico:
-     *   [Nome  BOSS?  EGG?  STUN?  IMMUNE?]   HP cur/max
-     *   [██████████░░░░░░░░░░░]   ATK·DEF·AGI·CRIT
+     * Riga centrata per un nemico:
+     *   Riga 1 (centrata): Nome  BOSS?  EGG?  STUN?  IMMUNE?
+     *   Riga 2 (centrata): [HP bar full-width]
+     *   Riga 3 (centrata): ATK xx  DEF xx  AGI xx  CRIT xx%
      */
     private VBox buildEnemyStatRow(Enemy enemy) {
         double rowW = ENEMY_ROW_W;
 
-        // ─ Riga 1: nome + badge + HP numerico ─
+        // ─ Riga 1: nome centrato + badge ─
         HBox nameRow = new HBox(6);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
+        nameRow.setAlignment(Pos.CENTER);
+        nameRow.setMaxWidth(rowW);
 
         Label nameLbl = new Label(enemy.getName());
-        nameLbl.setFont(pixelFontTiny);
+        nameLbl.setFont(pixelFontSmall);   // più grande: 10px invece di 8px
         nameLbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label hpNum = new Label(enemy.getCurrentHp() + "/" + enemy.getMaxHp());
-        hpNum.setFont(pixelFontTiny);
-        hpNum.setStyle("-fx-text-fill:" + WHITE + ";");
 
         nameRow.getChildren().add(nameLbl);
         if (enemy.isBoss())    nameRow.getChildren().add(badge("BOSS",   BADGE_BOSS));
         if (enemy.isEgg())     nameRow.getChildren().add(badge("EGG",    BADGE_EGG));
         if (enemy.isStunned()) nameRow.getChildren().add(badge("STUN",   BADGE_STUN));
         if (enemy.isImmune())  nameRow.getChildren().add(badge("IMMUNE", BADGE_IMMUNE));
-        nameRow.getChildren().addAll(spacer, hpNum);
 
-        // ─ Riga 2: HP bar + stat chips ─
+        // ─ Riga 2: HP bar full-width ─
         double hpRatio  = (double) enemy.getCurrentHp() / Math.max(1, enemy.getMaxHp());
         String barColor = hpRatio > 0.5 ? HP_BAR_FG_HIGH
                         : hpRatio > 0.25 ? HP_BAR_FG_MID
                         : HP_BAR_FG_LOW;
-        // La barra occupa circa la metà della larghezza, i chip l'altra metà
-        double barW     = rowW * 0.50;
-        double fillW    = Math.max(1, hpRatio * barW);
-        StackPane hpBar = buildBar(barW, HP_BAR_H, fillW, HP_BAR_BG, barColor);
+        double fillW    = Math.max(1, hpRatio * rowW);
+        StackPane hpBar = buildBar(rowW, HP_BAR_H, fillW, HP_BAR_BG, barColor);
 
-        Region spacer2 = new Region();
-        HBox.setHgrow(spacer2, Priority.ALWAYS);
-
-        HBox statsRow = new HBox(10, hpBar, spacer2,
+        // ─ Riga 3: chips stats centrati ─
+        HBox statsRow = new HBox(16,
             statChip("ATK", String.valueOf(enemy.getAttack())),
             statChip("DEF", String.valueOf(enemy.getDefense())),
             statChip("AGI", String.valueOf(enemy.getAgility())),
-            statChip("CRI", String.format("%.0f%%", enemy.getCritChance() * 100))
+            statChip("CRIT", String.format("%.0f%%", enemy.getCritChance() * 100))
         );
-        statsRow.setAlignment(Pos.CENTER_LEFT);
+        statsRow.setAlignment(Pos.CENTER);
         statsRow.setMaxWidth(rowW);
 
-        VBox row = new VBox(4, nameRow, statsRow);
-        row.setAlignment(Pos.TOP_LEFT);
+        VBox row = new VBox(5, nameRow, hpBar, statsRow);
+        row.setAlignment(Pos.CENTER);
         row.setMaxWidth(rowW);
         return row;
     }
@@ -333,15 +322,15 @@ public class GameScreen {
         return sp;
     }
 
-    /** Chip inline: label grigia sopra, valore bianco sotto. */
+    /** Chip inline centrato: label grigia sopra, valore bianco sotto. */
     private VBox statChip(String key, String val) {
         Label k = new Label(key);
         k.setFont(pixelFontTiny);
         k.setStyle("-fx-text-fill:#888888;");
         Label v = new Label(val);
-        v.setFont(pixelFontTiny);
+        v.setFont(pixelFontSmall);   // più grande: 10px
         v.setStyle("-fx-text-fill:" + WHITE + ";");
-        VBox chip = new VBox(1, k, v);
+        VBox chip = new VBox(2, k, v);
         chip.setAlignment(Pos.CENTER);
         return chip;
     }
