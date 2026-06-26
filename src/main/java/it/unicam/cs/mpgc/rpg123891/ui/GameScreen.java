@@ -103,7 +103,7 @@ public class GameScreen {
         if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 10);
     }
 
-    // ── CHARACTER card ──────────────────────────────────────────────────────
+    // ── CHARACTER card ─────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
@@ -151,21 +151,6 @@ public class GameScreen {
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
 
-        // ── Pulsanti SAVE / MENU
-        Button btnSave = makeButton("SAVE");
-        Button btnMenu = makeButton("MENU");
-        btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
-        btnMenu.setOnAction(e -> app.showMenu(stage));
-
-        VBox btnCol = new VBox(8, btnSave, btnMenu);
-        btnCol.setAlignment(Pos.TOP_LEFT);
-
-        HBox btnRow = new HBox(btnCol);
-        btnRow.setAlignment(Pos.CENTER_RIGHT);
-        btnRow.setPadding(new Insets(10, 12, 0, 0));
-        HBox.setHgrow(btnCol, Priority.ALWAYS);
-        btnCol.setMaxWidth(Double.MAX_VALUE);
-
         // ── Equipment
         String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
         String lh = equipmentManager.getEquipped(EquipSlot.OFF_HAND).map(Weapon::getName).orElse("none");
@@ -180,55 +165,72 @@ public class GameScreen {
             equipRow("Armour",     ar)
         );
 
-        paneCharacter.getChildren().addAll(topRow, btnRow, equipBox);
+        paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    // ── ACTION card ─────────────────────────────────────────────────────────
+    // ── ACTION card ───────────────────────────────────────────────────
     private void buildActionPanel() {
         paneAction.getChildren().clear();
         paneAction.setAlignment(Pos.CENTER);
         paneAction.setStyle("-fx-background-color:transparent;");
-        paneAction.setPadding(new Insets(20, 16, 16, 16));
+        paneAction.setPadding(new Insets(18, 16, 14, 16));
+        paneAction.setSpacing(10);
 
-        Button btnAttack    = makeActionButton("ATTACK");
-        Button btnSAttack   = makeActionButton("S. ATTACK");
-        Button btnItem      = makeActionButton("ITEM");
-        Button btnEquipment = makeActionButton("EQUIPMENT");
-        Button btnRun       = makeActionButton("RUN");
+        // Riga 1: ATTACK  |  S. ATTACK
+        Button btnAttack  = makeTextButton("ATTACK");
+        Button btnSAttack = makeTextButton("S. ATTACK");
+        btnAttack .setOnAction(e -> { /* TODO: gc.playerAttack() */ });
+        btnSAttack.setOnAction(e -> { /* TODO: gc.playerSpecialAttack() */ });
+        HBox row1 = makeButtonRow(btnAttack, btnSAttack);
 
-        // TODO: collegare alla logica di gioco
-        btnAttack   .setOnAction(e -> { /* gc.playerAttack()       */ });
-        btnSAttack  .setOnAction(e -> { /* gc.playerSpecialAttack() */ });
-        btnItem     .setOnAction(e -> { /* gc.openInventory()       */ });
-        btnEquipment.setOnAction(e -> { /* gc.openEquipment()       */ });
-        btnRun      .setOnAction(e -> { /* gc.playerRun()           */ });
+        // Riga 2: INVENTORY  |  RUN
+        Button btnInventory = makeTextButton("INVENTORY");
+        Button btnRun       = makeTextButton("RUN");
+        btnInventory.setOnAction(e -> { /* TODO: gc.openInventory() */ });
+        btnRun      .setOnAction(e -> { /* TODO: gc.playerRun()    */ });
+        HBox row2 = makeButtonRow(btnInventory, btnRun);
 
-        for (Button b : new Button[]{btnAttack, btnSAttack, btnItem, btnEquipment, btnRun}) {
-            b.setMaxWidth(Double.MAX_VALUE);
-        }
+        // Riga 3: SAVE  |  MENU  (con bordo, stile card)
+        Button btnSave = makeBorderedButton("SAVE");
+        Button btnMenu = makeBorderedButton("MENU");
+        btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
+        btnMenu.setOnAction(e -> app.showMenu(stage));
+        btnSave.setMaxWidth(Double.MAX_VALUE);
+        btnMenu.setMaxWidth(Double.MAX_VALUE);
+        HBox row3 = new HBox(10, btnSave, btnMenu);
+        row3.setAlignment(Pos.CENTER);
+        HBox.setHgrow(btnSave, Priority.ALWAYS);
+        HBox.setHgrow(btnMenu, Priority.ALWAYS);
 
-        paneAction.getChildren().addAll(btnAttack, btnSAttack, btnItem, btnEquipment, btnRun);
+        paneAction.getChildren().addAll(row1, row2, row3);
     }
 
-    // ── Pulsante ACTION (larghezza piena, font più grande) ──────────────────
-    private Button makeActionButton(String text) {
+    // Due pulsanti affiancati, larghezza uguale
+    private HBox makeButtonRow(Button left, Button right) {
+        left .setMaxWidth(Double.MAX_VALUE);
+        right.setMaxWidth(Double.MAX_VALUE);
+        HBox row = new HBox(10, left, right);
+        row.setAlignment(Pos.CENTER);
+        HBox.setHgrow(left,  Priority.ALWAYS);
+        HBox.setHgrow(right, Priority.ALWAYS);
+        return row;
+    }
+
+    // Pulsante testo (niente bordo): bianco a riposo, oro all'hover
+    private Button makeTextButton(String text) {
         String base =
-            "-fx-background-color:" + CARD_BG + ";" +
-            "-fx-text-fill:" + LABEL_FG + ";" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:2;" +
-            "-fx-border-radius:" + RADIUS + ";" +
-            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-background-color:transparent;" +
+            "-fx-text-fill:" + WHITE + ";" +
+            "-fx-border-color:transparent;" +
+            "-fx-border-width:0;" +
             "-fx-padding:8 0;" +
             "-fx-cursor:hand;" +
             "-fx-alignment:center;";
         String hover =
-            "-fx-background-color:#1e1640;" +
-            "-fx-text-fill:#ffffff;" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:2;" +
-            "-fx-border-radius:" + RADIUS + ";" +
-            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-background-color:transparent;" +
+            "-fx-text-fill:" + LABEL_FG + ";" +
+            "-fx-border-color:transparent;" +
+            "-fx-border-width:0;" +
             "-fx-padding:8 0;" +
             "-fx-cursor:hand;" +
             "-fx-alignment:center;";
@@ -240,8 +242,8 @@ public class GameScreen {
         return btn;
     }
 
-    // ── Pulsante stile card (piccolo, per SAVE/MENU) ─────────────────────
-    private Button makeButton(String text) {
+    // Pulsante con bordo (stile card): per SAVE e MENU
+    private Button makeBorderedButton(String text) {
         String base =
             "-fx-background-color:" + CARD_BG + ";" +
             "-fx-text-fill:" + LABEL_FG + ";" +
@@ -253,7 +255,7 @@ public class GameScreen {
             "-fx-cursor:hand;";
         String hover =
             "-fx-background-color:#1e1640;" +
-            "-fx-text-fill:" + LABEL_FG + ";" +
+            "-fx-text-fill:" + WHITE + ";" +
             "-fx-border-color:" + BORDER + ";" +
             "-fx-border-width:2;" +
             "-fx-border-radius:" + RADIUS + ";" +
