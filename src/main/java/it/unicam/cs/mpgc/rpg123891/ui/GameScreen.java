@@ -157,11 +157,6 @@ public class GameScreen {
     private final StackPane paneRightTop   = new StackPane();
     private final VBox      paneLog        = new VBox();
 
-    /** Pending target selection for normal attack (null = no selection active). */
-    private Enemy pendingTarget = null;
-    /** Pending special for the special-attack flow. */
-    private SpecialAttack pendingSpecial = null;
-
     private final List<String> logEntries = new ArrayList<>();
 
     // ── Constructor ───────────────────────────────────────────────────
@@ -178,7 +173,6 @@ public class GameScreen {
         loadFont();
         buildLayout();
         refresh();
-        // Auto-advance loot waves that have no enemies (cleared instantly)
         handleLootWaveAutoAdvance();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
@@ -217,10 +211,9 @@ public class GameScreen {
     }
 
     // =========================================================================
-    // COMBAT ACTIONS — called from buttons
+    // COMBAT ACTIONS
     // =========================================================================
 
-    /** Called by ATTACK button: opens target chooser or fires directly. */
     private void onAttack() {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave == null) return;
@@ -234,7 +227,6 @@ public class GameScreen {
         }
     }
 
-    /** Called by S.ATTACK button. */
     private void onSpecialAttack() {
         List<SpecialAttack> specials = equippedSpecials();
         if (specials.isEmpty()) {
@@ -244,17 +236,10 @@ public class GameScreen {
         showSpecialDialog(specials);
     }
 
-    /** Called by INVENTORY button. */
-    private void onInventory() {
-        showInventoryDialog();
-    }
+    private void onInventory() { showInventoryDialog(); }
 
-    /** Called by RUN button. */
-    private void onRun() {
-        executeTurn(combatController.playerFlee());
-    }
+    private void onRun() { executeTurn(combatController.playerFlee()); }
 
-    /** Called by SAVE button. */
     private void onSave() {
         gc.saveGame();
         addLogEntry("\u2726 Partita salvata.");
@@ -271,54 +256,39 @@ public class GameScreen {
             refresh();
             return;
         }
-
         if (result.playerDead()) {
             refresh();
             showGameOverOverlay();
             return;
         }
-
         if (result.waveCleared()) {
             Wave wave = gc.getCurrentRoom().getCurrentWave();
-            // collect loot from the cleared wave
             gc.checkWaveCleared();
             addLogEntry("\u2605 Ondata completata!");
-            // Collect loot items names for the log
             if (wave != null) {
                 wave.getLoot().forEach(item -> addLogEntry("\u2726 Hai ottenuto: " + item.getName()));
             }
             refresh();
-
             if (gc.getGameState().isVictory()) {
                 showVictoryOverlay();
                 return;
             }
-
-            // If the new current wave is a loot-only wave, auto-advance it too
             handleLootWaveAutoAdvance();
             return;
         }
-
         refresh();
     }
 
-    /**
-     * If the current wave has no enemies (loot room), collect its loot,
-     * advance to the next wave, and refresh.
-     */
     private void handleLootWaveAutoAdvance() {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave == null) return;
-        if (!wave.getEnemies().isEmpty()) return; // normal wave
-        // It's a loot-only wave: collect and mark cleared
+        if (!wave.getEnemies().isEmpty()) return;
         wave.setCleared(true);
         List<Item> loot = new ArrayList<>(wave.getLoot());
         gc.collectWaveLoot(wave);
         loot.forEach(item -> addLogEntry("\u2726 Hai trovato: " + item.getName()));
-        // Do NOT auto-advance yet — show the loot room visually.
-        // The player clicks ADVANCE to move on.
         refresh();
-        buildActionPanel(); // rebuild to show ADVANCE button
+        buildActionPanel();
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────
@@ -357,14 +327,13 @@ public class GameScreen {
         for (SpecialAttack s : specials) {
             boolean ok = player().canUseSpecial(s.getStaminaCost());
             String label = s.getName() + "  STA:" + s.getStaminaCost()
-                + "  — " + s.getDescription() + (ok ? "" : "  [STAMINA INSUFF.]");
+                + "  \u2014 " + s.getDescription() + (ok ? "" : "  [STAMINA INSUFF.]");
             RadioButton rb = new RadioButton(label);
             rb.setToggleGroup(tg);
             rb.setUserData(s);
             rb.setDisable(!ok);
             box.getChildren().add(rb);
         }
-        // select first enabled
         box.getChildren().stream()
             .filter(n -> !n.isDisabled())
             .findFirst()
@@ -396,37 +365,31 @@ public class GameScreen {
         Alert dlg = new Alert(Alert.AlertType.NONE);
         dlg.setTitle("Inventario");
         dlg.setHeaderText(null);
-
         if (inv.isEmpty()) {
-            dlg.setContentText("L'inventario è vuoto.");
+            dlg.setContentText("L'inventario \u00e8 vuoto.");
             dlg.getButtonTypes().add(ButtonType.OK);
             dlg.showAndWait();
             return;
         }
-
         VBox box = new VBox(8);
         box.setPadding(new Insets(12));
         ToggleGroup tg = new ToggleGroup();
         for (Item item : inv) {
-            RadioButton rb = new RadioButton(item.getName() + " — " + item.getDescription());
+            RadioButton rb = new RadioButton(item.getName() + " \u2014 " + item.getDescription());
             rb.setToggleGroup(tg);
             rb.setUserData(item);
             box.getChildren().add(rb);
         }
         ((RadioButton) box.getChildren().get(0)).setSelected(true);
-
-        ButtonType useBtn  = new ButtonType("Usa",    ButtonBar.ButtonData.OK_DONE);
+        ButtonType useBtn   = new ButtonType("Usa",   ButtonBar.ButtonData.OK_DONE);
         ButtonType equipBtn = new ButtonType("Equip", ButtonBar.ButtonData.OTHER);
         dlg.getDialogPane().setContent(box);
         dlg.getButtonTypes().addAll(useBtn, equipBtn, ButtonType.CANCEL);
         dlg.showAndWait().ifPresent(bt -> {
             if (tg.getSelectedToggle() == null) return;
             Item selected = (Item) tg.getSelectedToggle().getUserData();
-            if (bt == useBtn) {
-                useItem(selected);
-            } else if (bt == equipBtn) {
-                equipItem(selected);
-            }
+            if (bt == useBtn)   useItem(selected);
+            else if (bt == equipBtn) equipItem(selected);
         });
     }
 
@@ -439,7 +402,7 @@ public class GameScreen {
             gc.getPlayer().getInventory().remove(item);
             addLogEntry("\u2726 Hai mangiato Carne! +10 HP, +2 Stamina.");
         } else {
-            addLogEntry("[!] Questo oggetto non può essere usato direttamente.");
+            addLogEntry("[!] Questo oggetto non pu\u00f2 essere usato direttamente.");
         }
         refresh();
     }
@@ -449,12 +412,12 @@ public class GameScreen {
             addLogEntry("[!] Solo le armi possono essere equipaggiate.");
             return;
         }
-        // Try to equip via EquipmentManager
-        boolean equipped = equipmentManager.equip(w);
-        if (equipped) {
+        // equip() returns EquipResult — use .success() to check outcome
+        EquipmentManager.EquipResult result = equipmentManager.equip(w);
+        if (result.success()) {
             addLogEntry("\u2726 Hai equipaggiato: " + w.getName());
         } else {
-            addLogEntry("[!] Non puoi equipaggiare " + w.getName() + " in questo slot.");
+            addLogEntry("[!] " + result.message());
         }
         refresh();
     }
@@ -464,38 +427,30 @@ public class GameScreen {
     }
 
     private void showVictoryOverlay() {
-        showEndOverlay("VITTORIA!", "L'Ultimo Drago è stato sconfitto. Sei un leggendario eroe!", true);
+        showEndOverlay("VITTORIA!", "L'Ultimo Drago \u00e8 stato sconfitto. Sei un leggendario eroe!", true);
     }
 
     private void showEndOverlay(String title, String message, boolean victory) {
-        // Semi-transparent overlay over the game
         StackPane overlay = new StackPane();
         overlay.setStyle("-fx-background-color:rgba(0,0,0,0.78);");
         overlay.setPrefSize(WIN_W, WIN_H);
-
         VBox box = new VBox(18);
         box.setAlignment(Pos.CENTER);
-
         Label titleLbl = new Label(title);
         titleLbl.setFont(pixelFont != null ? pixelFont : Font.font("Courier New", FontWeight.BOLD, 20));
         titleLbl.setStyle("-fx-text-fill:" + (victory ? LABEL_FG : "#f44336") + ";");
-
         Label msgLbl = new Label(message);
         msgLbl.setFont(pixelFontSmall);
         msgLbl.setStyle("-fx-text-fill:" + WHITE + ";");
         msgLbl.setWrapText(true);
         msgLbl.setMaxWidth(500);
         msgLbl.setAlignment(Pos.CENTER);
-
         Button btnMenu = new Button("Torna al Menu");
         btnMenu.setStyle("-fx-background-color:#2a2a4e;-fx-text-fill:" + LABEL_FG + ";" +
             "-fx-font-size:13px;-fx-cursor:hand;-fx-padding:8 24;");
         btnMenu.setOnAction(e -> app.showMenu(stage));
-
         box.getChildren().addAll(titleLbl, msgLbl, btnMenu);
         overlay.getChildren().add(box);
-
-        // Add overlay on top of root
         if (root.getCenter() instanceof StackPane sp) {
             sp.getChildren().add(overlay);
         }
@@ -527,18 +482,14 @@ public class GameScreen {
     // PANEL BUILDERS
     // =========================================================================
 
-    // ── ENCOUNTER card ────────────────────────────────────────────────
     private void buildEncounterPanel() {
         paneEncounter.getChildren().clear();
         paneEncounter.setStyle("-fx-background-color:transparent;");
-
         double clipInset = BORDER_W;
         double clipW     = COL_LEFT - clipInset * 2;
         double clipH     = ROW_TOP  - clipInset * 2;
-
         String roomId = gc.getCurrentRoom().getId();
         String bgPath = ROOM_BG.getOrDefault(roomId, "/assets/backgrounds/foresta.png");
-
         try (InputStream is = getClass().getResourceAsStream(bgPath)) {
             if (is != null) {
                 Image bgImg  = new Image(is, COL_LEFT, ROW_TOP, false, true);
@@ -552,11 +503,9 @@ public class GameScreen {
                 paneEncounter.getChildren().add(bg);
             }
         } catch (Exception ignored) {}
-
         Wave wave  = gc.getCurrentRoom().getCurrentWave();
         List<Enemy> alive = wave == null ? List.of() :
             wave.getEnemies().stream().filter(Enemy::isAlive).toList();
-
         if (alive.isEmpty() && wave != null) {
             String key        = wave.getName().toLowerCase();
             String spritePath = LOOT_WAVE_SPRITES.get(key);
@@ -602,18 +551,15 @@ public class GameScreen {
         return row;
     }
 
-    // ── ENEMY STATS card ──────────────────────────────────────────────
     private void buildEnemyStatsPanel() {
         paneEnemyStats.getChildren().clear();
         paneEnemyStats.setAlignment(Pos.CENTER);
         paneEnemyStats.setStyle("-fx-background-color:transparent;");
         paneEnemyStats.setPadding(new Insets(14, 20, 10, 20));
         paneEnemyStats.setSpacing(12);
-
         Wave wave  = gc.getCurrentRoom().getCurrentWave();
         List<Enemy> alive = wave == null ? List.of() :
             wave.getEnemies().stream().filter(Enemy::isAlive).toList();
-
         if (alive.isEmpty()) {
             Label empty = new Label(wave != null && wave.isCleared() ? "Ondata completata!" : "Nessun nemico");
             empty.setFont(pixelFontSmall);
@@ -638,11 +584,9 @@ public class GameScreen {
         if (enemy.isEgg())     nameRow.getChildren().add(badge("EGG",    BADGE_EGG));
         if (enemy.isStunned()) nameRow.getChildren().add(badge("STUN",   BADGE_STUN));
         if (enemy.isImmune())  nameRow.getChildren().add(badge("IMMUNE", BADGE_IMMUNE));
-
         double hpRatio  = (double) enemy.getCurrentHp() / Math.max(1, enemy.getMaxHp());
         String barColor = hpRatio > 0.5 ? HP_BAR_FG_HIGH : hpRatio > 0.25 ? HP_BAR_FG_MID : HP_BAR_FG_LOW;
         StackPane hpBar = buildBar(rowW, HP_BAR_H, Math.max(1, hpRatio * rowW), HP_BAR_BG, barColor);
-
         HBox statsRow = new HBox(16,
             statChip("ATK",  String.valueOf(enemy.getAttack())),
             statChip("DEF",  String.valueOf(enemy.getDefense())),
@@ -655,11 +599,9 @@ public class GameScreen {
         return row;
     }
 
-    // ── COMBAT LOG card ───────────────────────────────────────────────
     private void buildLogPanel() {
         paneLog.getChildren().clear();
         paneLog.setStyle("-fx-background-color:transparent;");
-
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave != null) {
             Label waveTitle = new Label(wave.getName().toUpperCase());
@@ -667,23 +609,19 @@ public class GameScreen {
             waveTitle.setStyle("-fx-text-fill:" + LABEL_FG + ";");
             waveTitle.setWrapText(true);
             waveTitle.setMaxWidth(COL_RIGHT - 24);
-
             Label desc = new Label(wave.getDescription());
             desc.setFont(pixelFontTiny);
             desc.setStyle("-fx-text-fill:" + WHITE + ";-fx-line-spacing:3;");
             desc.setWrapText(true);
             desc.setMaxWidth(COL_RIGHT - 24);
-
             VBox header = new VBox(6, waveTitle, desc);
             header.setPadding(new Insets(10, 12, 8, 12));
-
             Region sep = new Region();
             sep.setPrefHeight(1); sep.setMaxWidth(COL_RIGHT - 24);
             sep.setStyle("-fx-background-color:" + BORDER + ";-fx-opacity:0.4;");
             VBox.setMargin(sep, new Insets(0, 12, 0, 12));
             paneLog.getChildren().addAll(header, sep);
         }
-
         VBox entriesBox = new VBox(4);
         entriesBox.setPadding(new Insets(6, 12, 8, 12));
         if (logEntries.isEmpty()) {
@@ -716,25 +654,21 @@ public class GameScreen {
         paneLog.getChildren().add(scroll);
     }
 
-    // ── MAP card ──────────────────────────────────────────────────────
     private void buildMapPanel() {
         paneRightTop.getChildren().clear();
         paneRightTop.setStyle("-fx-background-color:transparent;");
         List<Room> rooms    = gc.getGameState().getDungeonMap().getRooms();
         Room currentRoom    = gc.getCurrentRoom();
         int  currentWaveI   = currentRoom.getWaveIndex();
-
         double cardW    = COL_RIGHT, cardH = ROW_TOP;
         double lineX    = 28, dotR = 5, waveDotR = 3;
         double textOffX = lineX + dotR + 10;
         double topPad   = 20, areaH = 18, waveH = 14, connH = 10;
-
         Canvas canvas = new Canvas(cardW, cardH);
         GraphicsContext g = canvas.getGraphicsContext2D();
         Color colGold = Color.web(LABEL_FG), colCleared = Color.web("#447744");
         Color colDim  = Color.web("#555566"), lineColor   = Color.web("#443355");
         double y = topPad;
-
         for (int ri = 0; ri < rooms.size(); ri++) {
             Room room      = rooms.get(ri);
             boolean isCur  = room.getId().equals(currentRoom.getId());
@@ -786,14 +720,12 @@ public class GameScreen {
         return 0;
     }
 
-    // ── CHARACTER card ────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
         paneCharacter.setStyle("-fx-background-color:transparent;");
         paneCharacter.setPadding(new Insets(22, 0, 0, 12));
         GameCharacter p = player();
-
         StackPane portraitBox = new StackPane();
         portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         portraitBox.setMinSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
@@ -808,7 +740,6 @@ public class GameScreen {
         };
         ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
-
         VBox statsBox = new VBox(6);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
@@ -822,15 +753,12 @@ public class GameScreen {
             statLine("AGI: " + p.getAgility(),                                    WHITE,    pixelFontSmall),
             statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall)
         );
-        // Class-specific badges
         if (p instanceof Mage m && m.isMagicShieldActive())
             statsBox.getChildren().add(badge("MAGIC SHIELD", "#2196f3"));
         if (p instanceof Thief t && t.isStealthBonusActive())
             statsBox.getChildren().add(badge("STEALTH", "#a855f7"));
-
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
-
         String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
         String lh = equipmentManager.getEquipped(EquipSlot.OFF_HAND).map(Weapon::getName).orElse("none");
         String ar = equipmentManager.getEquipped(EquipSlot.BODY).map(Weapon::getName).orElse("none");
@@ -845,23 +773,19 @@ public class GameScreen {
         paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    // ── ACTION card ───────────────────────────────────────────────────
     private void buildActionPanel() {
         paneAction.getChildren().clear();
         paneAction.setAlignment(Pos.CENTER);
         paneAction.setStyle("-fx-background-color:transparent;");
         paneAction.setPadding(new Insets(18, 20, 14, 20));
         paneAction.setSpacing(10);
-
         Room currentRoom = gc.getCurrentRoom();
         Wave currentWave = currentRoom.getCurrentWave();
         boolean isLootWave = currentWave != null
             && currentWave.getEnemies().isEmpty()
             && currentWave.isCleared();
         boolean roomCleared = currentRoom.isCleared();
-
         if (roomCleared && gc.getGameState().getDungeonMap().hasNextRoom()) {
-            // Show ADVANCE button
             Button btnAdvance = makeBorderedButtonWithIcon("AVANZA", "/assets/icons/arrow.svg");
             btnAdvance.setMaxWidth(Double.MAX_VALUE);
             btnAdvance.setOnAction(e -> {
@@ -873,7 +797,6 @@ public class GameScreen {
             });
             paneAction.getChildren().add(btnAdvance);
         } else if (isLootWave) {
-            // Loot room: just show PROCEED to next wave button
             Button btnNext = makeBorderedButtonWithIcon("PROCEDI", "/assets/icons/arrow.svg");
             btnNext.setMaxWidth(Double.MAX_VALUE);
             btnNext.setOnAction(e -> {
@@ -882,20 +805,16 @@ public class GameScreen {
             });
             paneAction.getChildren().add(btnNext);
         } else {
-            // Normal combat buttons
             long potions = gc.countPotions();
             Button btnAttack    = makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg", false);
             Button btnSAttack   = makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg", true);
             Button btnInventory = makeTextButtonWithIcon("INVENTORY (" + potions + ")", "/assets/icons/arrow.svg", false);
             Button btnRun       = makeTextButtonWithIcon("RUN",        "/assets/icons/arrow.svg", true);
-
             btnRun.setDisable(!gc.canFlee());
-
             btnAttack   .setOnAction(e -> onAttack());
             btnSAttack  .setOnAction(e -> onSpecialAttack());
             btnInventory.setOnAction(e -> onInventory());
             btnRun      .setOnAction(e -> onRun());
-
             paneAction.getChildren().addAll(
                 makeSplitRow(btnAttack, btnSAttack),
                 makeSplitRow(btnInventory, btnRun),
@@ -905,52 +824,44 @@ public class GameScreen {
     }
 
     // =========================================================================
-    // LAYOUT — built once, content panels are replaced on refresh
+    // LAYOUT
     // =========================================================================
 
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
         bgCanvas.setMouseTransparent(true);
-
         StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",   paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCardWithTitle("CHARACTER",   paneCharacter,  COL_MID,   ROW_TOP);
         StackPane cardRightTop   = makeCardWithTitle("MAP",          paneRightTop,   COL_RIGHT, ROW_TOP);
         StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS",  paneEnemyStats, COL_LEFT,  ROW_BOT);
         StackPane cardAction     = makeCardWithTitle("ACTION",       paneAction,     COL_MID,   ROW_BOT);
         StackPane cardLog        = makeCardWithTitle("COMBAT LOG",   paneLog,        COL_RIGHT, ROW_BOT);
-
         HBox rowTop = new HBox(GAP, cardEncounter, cardCharacter, cardRightTop);
         rowTop.setAlignment(Pos.BOTTOM_LEFT);
         rowTop.setPrefHeight(ROW_TOP + LABEL_OFFSET);
         rowTop.setMinHeight(ROW_TOP + LABEL_OFFSET);
         rowTop.setMaxHeight(ROW_TOP + LABEL_OFFSET);
-
         HBox rowBot = new HBox(GAP, cardEnemyStats, cardAction, cardLog);
         rowBot.setAlignment(Pos.BOTTOM_LEFT);
         rowBot.setPrefHeight(ROW_BOT + LABEL_OFFSET);
         rowBot.setMinHeight(ROW_BOT + LABEL_OFFSET);
         rowBot.setMaxHeight(ROW_BOT + LABEL_OFFSET);
-
         Label sysContent = new Label("DUNGEON RPG  v1.0  \u2014  by Lorenzo Grassi");
         sysContent.setFont(pixelFontSmall);
         sysContent.setStyle("-fx-text-fill:" + SYS_TEXT + ";");
         sysContent.setAlignment(Pos.CENTER); sysContent.setMaxWidth(Double.MAX_VALUE);
-
         StackPane sysInner = new StackPane(sysContent);
         sysInner.setPrefSize(TOTAL_W, SYS_H); sysInner.setMinSize(TOTAL_W, SYS_H); sysInner.setMaxSize(TOTAL_W, SYS_H);
-
         StackPane sysCard = new StackPane(sysInner);
         sysCard.setPrefSize(TOTAL_W, SYS_H); sysCard.setMinSize(TOTAL_W, SYS_H); sysCard.setMaxSize(TOTAL_W, SYS_H);
         sysCard.setStyle("-fx-background-color:" + SYS_BG + ";-fx-border-color:" + BORDER +
             ";-fx-border-width:" + BORDER_W + ";-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS + ";");
-
         Label sysTitle = new Label("  SYSTEM INFO  ");
         sysTitle.setFont(pixelFont); sysTitle.setPrefHeight(LABEL_H);
         sysTitle.setStyle("-fx-text-fill:" + LABEL_FG + ";-fx-background-color:" + SYS_BG +
             ";-fx-border-color:" + BORDER + ";-fx-border-width:" + BORDER_W +
             ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
-
         StackPane sysWrapper = new StackPane();
         sysWrapper.setPrefSize(TOTAL_W, SYS_H + LABEL_OFFSET);
         sysWrapper.setMinSize(TOTAL_W, SYS_H + LABEL_OFFSET);
@@ -958,13 +869,11 @@ public class GameScreen {
         StackPane.setAlignment(sysCard,  Pos.BOTTOM_CENTER);
         StackPane.setAlignment(sysTitle, Pos.TOP_CENTER);
         sysWrapper.getChildren().addAll(sysCard, sysTitle);
-
         VBox mainBox = new VBox(GAP, rowTop, rowBot, sysWrapper);
         mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, PAD, PAD));
         mainBox.setAlignment(Pos.TOP_CENTER);
         mainBox.setPrefSize(WIN_W, WIN_H); mainBox.setMinSize(WIN_W, WIN_H); mainBox.setMaxSize(WIN_W, WIN_H);
         mainBox.setStyle("-fx-background-color:transparent;");
-
         double xOff  = PAD;
         double yTop2 = PAD + LABEL_OFFSET;
         double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
@@ -976,7 +885,6 @@ public class GameScreen {
             {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT}
         });
         gridOverlay.setMouseTransparent(true);
-
         StackPane stack = new StackPane(bgCanvas, mainBox, gridOverlay);
         stack.setPrefSize(WIN_W, WIN_H); stack.setMinSize(WIN_W, WIN_H); stack.setMaxSize(WIN_W, WIN_H);
         stack.setAlignment(Pos.TOP_LEFT);
