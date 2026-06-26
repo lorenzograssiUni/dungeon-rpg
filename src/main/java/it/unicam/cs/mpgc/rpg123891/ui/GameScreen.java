@@ -15,6 +15,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -25,6 +26,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +76,8 @@ public class GameScreen {
 
     private static final double ENEMY_SPRITE_H  = 130;
     private static final double ENEMY_SPRITE_W  = 110;
+    private static final double LOOT_SPRITE_H   = 160;
+    private static final double LOOT_SPRITE_W   = 120;
 
     // HP bar
     private static final double HP_BAR_H        = 8;
@@ -86,10 +90,8 @@ public class GameScreen {
     private static final String BADGE_BOSS      = "#c0392b";
     private static final String BADGE_EGG       = "#78909c";
 
-    // Larghezza utile della card ENEMY STATS
     private static final double ENEMY_ROW_W = COL_LEFT - 28.0;
 
-    // Map card — English area names keyed by room ID
     private static final Map<String, String> ROOM_NAMES_EN = Map.of(
         "r1", "Forest",
         "r2", "Goblin Village",
@@ -97,6 +99,16 @@ public class GameScreen {
         "r4", "Treasure Room",
         "r5", "Dragon's Lair"
     );
+
+    /**
+     * Wave name → weapon sprite path shown in the encounter card for loot rooms.
+     * A loot room is a wave with no enemies.
+     */
+    private static final Map<String, String> LOOT_WAVE_SPRITES = new HashMap<>();
+    static {
+        LOOT_WAVE_SPRITES.put("stanza del bastone", "/assets/weapons/bastone.png");
+        LOOT_WAVE_SPRITES.put("stanza dello spadone", "/assets/weapons/spadone.png");
+    }
 
     private Font pixelFont;
     private Font pixelFontSmall;
@@ -115,6 +127,9 @@ public class GameScreen {
     private final VBox      paneAction     = new VBox();
     private final StackPane paneRightTop   = new StackPane();
     private final VBox      paneLog        = new VBox();
+
+    /** Log entries accumulated during the session (newest at bottom). */
+    private final List<String> logEntries = new ArrayList<>();
 
     private static final Map<String, List<String>> ENEMY_SPRITES = new HashMap<>();
     static {
@@ -154,10 +169,20 @@ public class GameScreen {
         buildEncounterPanel();
         buildEnemyStatsPanel();
         buildMapPanel();
+        buildLogPanel();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
     public BorderPane getRoot() { return root; }
+
+    /**
+     * Adds a message to the combat log and refreshes the panel.
+     * Call this from GameController whenever a relevant game event occurs.
+     */
+    public void addLogEntry(String message) {
+        logEntries.add(message);
+        buildLogPanel();
+    }
 
     private void loadFont() {
         try {
@@ -176,7 +201,7 @@ public class GameScreen {
         if (pixelFontTiny   == null) pixelFontTiny   = Font.font("Courier New", FontWeight.BOLD, 8);
     }
 
-    // ── ENCOUNTER card ────────────────────────────────────────────────
+    // ── ENCOUNTER card ────────────────────────────────────────────────────────
     private void buildEncounterPanel() {
         paneEncounter.getChildren().clear();
         paneEncounter.setStyle("-fx-background-color:transparent;");
@@ -188,6 +213,7 @@ public class GameScreen {
         String roomId = gc.getCurrentRoom().getId();
         String bgPath = ROOM_BG.getOrDefault(roomId, "/assets/backgrounds/foresta.png");
 
+        // Background
         try (InputStream is = getClass().getResourceAsStream(bgPath)) {
             if (is != null) {
                 Image bgImg  = new Image(is, COL_LEFT, ROW_TOP, false, true);
@@ -196,12 +222,10 @@ public class GameScreen {
                 bg.setFitHeight(ROW_TOP);
                 bg.setPreserveRatio(false);
                 bg.setOpacity(0.80);
-
                 Rectangle clip = new Rectangle(clipInset, clipInset, clipW, clipH);
                 clip.setArcWidth(RADIUS * 2);
                 clip.setArcHeight(RADIUS * 2);
                 bg.setClip(clip);
-
                 StackPane.setAlignment(bg, Pos.CENTER);
                 paneEncounter.getChildren().add(bg);
             }
@@ -211,7 +235,36 @@ public class GameScreen {
         List<Enemy> alive = wave == null ? List.of() :
             wave.getEnemies().stream().filter(Enemy::isAlive).toList();
 
-        if (!alive.isEmpty()) {
+        if (alive.isEmpty() && wave != null) {
+            // ── Loot room: show weapon sprite centred ──────────────────────
+            String key = wave.getName().toLowerCase();
+            String spritePath = LOOT_WAVE_SPRITES.get(key);
+            if (spritePath != null) {
+                ImageView weaponIv = loadImage(spritePath, LOOT_SPRITE_W, LOOT_SPRITE_H);
+                if (weaponIv != null) {
+                    // Subtle glow overlay
+                    StackPane glowBox = new StackPane(weaponIv);
+                    glowBox.setStyle("-fx-effect: dropshadow(gaussian, #D4A96A, 28, 0.55, 0, 0);");
+                    StackPane.setAlignment(glowBox, Pos.CENTER);
+                    paneEncounter.getChildren().add(glowBox);
+                }
+                // Loot label at the bottom
+                String lootName = wave.getLoot().isEmpty() ? "" : wave.getLoot().get(0).getName();
+                if (!lootName.isEmpty()) {
+                    Label lootLbl = new Label("✦  " + lootName.toUpperCase() + "  ✦");
+                    lootLbl.setFont(pixelFontSmall);
+                    lootLbl.setStyle(
+                        "-fx-text-fill:" + LABEL_FG + ";" +
+                        "-fx-background-color:rgba(20,14,44,0.75);" +
+                        "-fx-background-radius:6;" +
+                        "-fx-padding:4 10;"
+                    );
+                    StackPane.setAlignment(lootLbl, Pos.BOTTOM_CENTER);
+                    StackPane.setMargin(lootLbl, new Insets(0, 0, 14, 0));
+                    paneEncounter.getChildren().add(lootLbl);
+                }
+            }
+        } else if (!alive.isEmpty()) {
             HBox enemyRow = buildEnemyRow(alive);
             StackPane.setAlignment(enemyRow, Pos.BOTTOM_CENTER);
             paneEncounter.getChildren().add(enemyRow);
@@ -228,20 +281,17 @@ public class GameScreen {
             String name = enemy.getName();
             int used    = usageCount.getOrDefault(name, 0);
             usageCount.put(name, used + 1);
-
             List<String> variants = ENEMY_SPRITES.getOrDefault(name, List.of());
             if (variants.isEmpty()) continue;
-
             String spritePath = variants.get(used % variants.size());
             ImageView iv      = loadImage(spritePath, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
             if (iv == null) continue;
-
             row.getChildren().add(iv);
         }
         return row;
     }
 
-    // ── ENEMY STATS card ──────────────────────────────────────────────
+    // ── ENEMY STATS card ──────────────────────────────────────────────────────
     private void buildEnemyStatsPanel() {
         paneEnemyStats.getChildren().clear();
         paneEnemyStats.setAlignment(Pos.CENTER);
@@ -260,7 +310,6 @@ public class GameScreen {
             paneEnemyStats.getChildren().add(empty);
             return;
         }
-
         for (Enemy enemy : alive) {
             paneEnemyStats.getChildren().add(buildEnemyStatRow(enemy));
         }
@@ -276,7 +325,6 @@ public class GameScreen {
         Label nameLbl = new Label(enemy.getName());
         nameLbl.setFont(pixelFontSmall);
         nameLbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-
         nameRow.getChildren().add(nameLbl);
         if (enemy.isBoss())    nameRow.getChildren().add(badge("BOSS",   BADGE_BOSS));
         if (enemy.isEgg())     nameRow.getChildren().add(badge("EGG",    BADGE_EGG));
@@ -284,16 +332,14 @@ public class GameScreen {
         if (enemy.isImmune())  nameRow.getChildren().add(badge("IMMUNE", BADGE_IMMUNE));
 
         double hpRatio  = (double) enemy.getCurrentHp() / Math.max(1, enemy.getMaxHp());
-        String barColor = hpRatio > 0.5 ? HP_BAR_FG_HIGH
-                        : hpRatio > 0.25 ? HP_BAR_FG_MID
-                        : HP_BAR_FG_LOW;
+        String barColor = hpRatio > 0.5 ? HP_BAR_FG_HIGH : hpRatio > 0.25 ? HP_BAR_FG_MID : HP_BAR_FG_LOW;
         double fillW    = Math.max(1, hpRatio * rowW);
         StackPane hpBar = buildBar(rowW, HP_BAR_H, fillW, HP_BAR_BG, barColor);
 
         HBox statsRow = new HBox(16,
-            statChip("ATK", String.valueOf(enemy.getAttack())),
-            statChip("DEF", String.valueOf(enemy.getDefense())),
-            statChip("AGI", String.valueOf(enemy.getAgility())),
+            statChip("ATK",  String.valueOf(enemy.getAttack())),
+            statChip("DEF",  String.valueOf(enemy.getDefense())),
+            statChip("AGI",  String.valueOf(enemy.getAgility())),
             statChip("CRIT", String.format("%.0f%%", enemy.getCritChance() * 100))
         );
         statsRow.setAlignment(Pos.CENTER);
@@ -305,21 +351,16 @@ public class GameScreen {
         return row;
     }
 
-    private StackPane buildBar(double totalW, double h, double fillW,
-                               String bgColor, String fgColor) {
+    private StackPane buildBar(double totalW, double h, double fillW, String bgColor, String fgColor) {
         Rectangle bg   = new Rectangle(totalW, h);
         bg.setFill(Color.web(bgColor));
         bg.setArcWidth(h); bg.setArcHeight(h);
-
         Rectangle fill = new Rectangle(fillW, h);
         fill.setFill(Color.web(fgColor));
         fill.setArcWidth(h); fill.setArcHeight(h);
-
         StackPane sp = new StackPane(bg, fill);
         sp.setAlignment(Pos.CENTER_LEFT);
-        sp.setPrefSize(totalW, h);
-        sp.setMaxSize(totalW, h);
-        sp.setMinSize(totalW, h);
+        sp.setPrefSize(totalW, h); sp.setMaxSize(totalW, h); sp.setMinSize(totalW, h);
         return sp;
     }
 
@@ -347,12 +388,89 @@ public class GameScreen {
         return b;
     }
 
-    // ── MAP card ────────────────────────────────────────────────────────────
+    // ── COMBAT LOG card ───────────────────────────────────────────────────────
+    private void buildLogPanel() {
+        paneLog.getChildren().clear();
+        paneLog.setStyle("-fx-background-color:transparent;");
+
+        // Wave narrative header
+        Wave wave = gc.getCurrentRoom().getCurrentWave();
+        if (wave != null) {
+            // Wave title
+            Label waveTitle = new Label(wave.getName().toUpperCase());
+            waveTitle.setFont(pixelFontTiny);
+            waveTitle.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+            waveTitle.setWrapText(true);
+            waveTitle.setMaxWidth(COL_RIGHT - 24);
+
+            // Narrative description
+            Label desc = new Label(wave.getDescription());
+            desc.setFont(pixelFontTiny);
+            desc.setStyle("-fx-text-fill:" + WHITE + ";-fx-line-spacing:3;");
+            desc.setWrapText(true);
+            desc.setMaxWidth(COL_RIGHT - 24);
+
+            VBox header = new VBox(6, waveTitle, desc);
+            header.setPadding(new Insets(10, 12, 8, 12));
+
+            // Separator
+            Region sep = new Region();
+            sep.setPrefHeight(1);
+            sep.setMaxWidth(Double.MAX_VALUE);
+            sep.setStyle("-fx-background-color:" + BORDER + ";-fx-opacity:0.4;");
+            sep.setMaxWidth(COL_RIGHT - 24);
+            VBox.setMargin(sep, new Insets(0, 12, 0, 12));
+
+            paneLog.getChildren().addAll(header, sep);
+        }
+
+        // Scrollable log entries (battle messages)
+        VBox entriesBox = new VBox(4);
+        entriesBox.setPadding(new Insets(6, 12, 8, 12));
+
+        if (logEntries.isEmpty()) {
+            Label hint = new Label("— waiting for action —");
+            hint.setFont(pixelFontTiny);
+            hint.setStyle("-fx-text-fill:#555566;");
+            hint.setWrapText(true);
+            hint.setMaxWidth(COL_RIGHT - 24);
+            entriesBox.getChildren().add(hint);
+        } else {
+            // Show last N entries that fit (newest at bottom)
+            int start = Math.max(0, logEntries.size() - 12);
+            for (int i = start; i < logEntries.size(); i++) {
+                String entry = logEntries.get(i);
+                String color = entry.startsWith(">") ? "#f44336"
+                             : entry.startsWith("✦") ? LABEL_FG
+                             : WHITE;
+                Label lbl = new Label(entry);
+                lbl.setFont(pixelFontTiny);
+                lbl.setStyle("-fx-text-fill:" + color + ";");
+                lbl.setWrapText(true);
+                lbl.setMaxWidth(COL_RIGHT - 24);
+                entriesBox.getChildren().add(lbl);
+            }
+        }
+
+        ScrollPane scroll = new ScrollPane(entriesBox);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background:transparent;-fx-background-color:transparent;-fx-border-color:transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        // Auto-scroll to bottom
+        entriesBox.heightProperty().addListener((obs, o, n) ->
+            scroll.setVvalue(1.0));
+
+        paneLog.getChildren().add(scroll);
+    }
+
+    // ── MAP card ──────────────────────────────────────────────────────────────
     private void buildMapPanel() {
         paneRightTop.getChildren().clear();
         paneRightTop.setStyle("-fx-background-color:transparent;");
 
-        // ── FIX: getDungeonMap() lives on GameState, not on GameController ──
         List<Room> rooms = gc.getGameState().getDungeonMap().getRooms();
         Room currentRoom  = gc.getCurrentRoom();
         int  currentWaveI = currentRoom.getWaveIndex();
@@ -392,13 +510,11 @@ public class GameScreen {
             }
 
             Color dotFill = isCurrent ? colGold : isPast ? colCleared : colDim;
-            Color textCol = dotFill;
-
             g.setFill(dotFill);
             g.fillOval(lineX - dotR, y + areaH / 2 - dotR, dotR * 2, dotR * 2);
 
             String areaName = ROOM_NAMES_EN.getOrDefault(roomId, room.getName()).toUpperCase();
-            g.setFill(textCol);
+            g.setFill(dotFill);
             g.setFont(pixelFontSmall != null ? pixelFontSmall : Font.font("Courier New", FontWeight.BOLD, 10));
             g.fillText(areaName, textOffX, y + areaH / 2 + 4);
             y += areaH;
@@ -417,7 +533,6 @@ public class GameScreen {
                 g.setStroke(lineColor);
                 g.setLineWidth(1);
                 g.strokeLine(lineX, y + waveH / 2, indentX - waveDotR - 2, y + waveH / 2);
-
                 g.setFill(waveDotCol);
                 g.fillOval(indentX - waveDotR, y + waveH / 2 - waveDotR, waveDotR * 2, waveDotR * 2);
 
@@ -435,6 +550,8 @@ public class GameScreen {
 
     private String waveLabel(int index, int total, String originalName) {
         String lower = originalName.toLowerCase();
+        if (lower.contains("bastone"))  return "✦ Magic Staff";
+        if (lower.contains("spadone"))  return "✦ Greatsword";
         if (lower.contains("boss") || lower.contains("miniboss")) {
             if (lower.contains("finale") || lower.contains("final")) return "Final Boss";
             if (lower.contains("re goblin") || lower.contains("king")) return "Miniboss: Goblin King";
@@ -451,7 +568,7 @@ public class GameScreen {
         return 0;
     }
 
-    // ── CHARACTER card ─────────────────────────────────────────────────────
+    // ── CHARACTER card ────────────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
@@ -513,7 +630,7 @@ public class GameScreen {
         paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    // ── ACTION card ──────────────────────────────────────────────────────────
+    // ── ACTION card ───────────────────────────────────────────────────────────
     private void buildActionPanel() {
         paneAction.getChildren().clear();
         paneAction.setAlignment(Pos.CENTER);
@@ -595,7 +712,6 @@ public class GameScreen {
             if (!content.getChildren().isEmpty() && iconWhite != null)
                 content.getChildren().set(0, iconWhite);
         });
-
         return btn;
     }
 
@@ -646,11 +762,10 @@ public class GameScreen {
             if (!content.getChildren().isEmpty() && iconGold != null)
                 content.getChildren().set(0, iconGold);
         });
-
         return btn;
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
     private HBox equipRow(String label, String value) {
         Label lbl = new Label(label + ": ");
         lbl.setFont(pixelFontSmall);
@@ -684,7 +799,7 @@ public class GameScreen {
 
     private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
 
-    // ── Layout principale ────────────────────────────────────────────────────
+    // ── Layout principale ─────────────────────────────────────────────────────
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);

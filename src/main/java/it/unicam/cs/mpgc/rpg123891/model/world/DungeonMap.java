@@ -10,10 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Mappa del dungeon: 5 stanze + Boss Finale, costruite secondo GAME_SPEC.md.
- * Ogni Wave ha una description narrativa mostrata nel log centrale.
- */
 public class DungeonMap implements Serializable {
 
     @Serial
@@ -26,10 +22,6 @@ public class DungeonMap implements Serializable {
     public DungeonMap() {
         buildDungeon();
     }
-
-    // -------------------------------------------------------------------------
-    // Costruzione stanze
-    // -------------------------------------------------------------------------
 
     private void buildDungeon() {
         rooms.add(buildForest());
@@ -45,7 +37,15 @@ public class DungeonMap implements Serializable {
                 "Alberi contorti ti circondano. Qualcosa si agita tra i cespugli. " +
                 "Un vecchio bastone intagliato è appoggiato a un tronco — " +
                 "sembra aspettarti.");
-        room.addEntryLoot(new MagicStaff());
+
+        // ── Stanza loot: Bastone Magico (nessun nemico) ──────────────────────
+        Wave waveLootBastone = new Wave("Stanza del Bastone", true,
+                "Tra le radici di un albero secolare scorgi un bagliore dorato. " +
+                "Un antico bastone magico giace lì, come se ti stesse aspettando da secoli. " +
+                "Lo raccogli: la magia vibra tra le tue dita.");
+        waveLootBastone.addLoot(new MagicStaff());
+        // Nessun nemico: la wave si considera cleared immediatamente.
+        room.addWave(waveLootBastone);
 
         Wave waveA = new Wave("Ondata A", true,
                 "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
@@ -87,7 +87,6 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addLoot(new Sword());
-        // Scudo o Armatura: drop condizionale aggiunto da GameController
         room.addWave(waveB);
 
         Wave waveC = new Wave("Miniboss: Re Goblin", false,
@@ -115,15 +114,13 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createScheletro());
         room.addWave(waveA);
 
-        // Stanza vuota con Spadone: nessun nemico, Wave cleared automaticamente
-        Wave waveStatua = new Wave("Sala della Statua", true,
+        // ── Stanza loot: Spadone (nessun nemico) ─────────────────────────────
+        Wave waveStatua = new Wave("Stanza dello Spadone", true,
                 "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
                 "di un guerriero in armatura piena — alta il doppio di un uomo. " +
                 "Tra le sue mani di pietra stringe uno SPADONE enorme. " +
                 "Lentamente, le dita si aprono. La spada cade ai tuoi piedi con un rimbombo.");
-        // Nessun nemico: la wave si considera cleared immediatamente.
         waveStatua.addLoot(new Greatsword());
-        // Rimuoviamo l'entryLoot Greatsword: ora e' qui nella wave narrativa
         room.addWave(waveStatua);
 
         Wave waveB = new Wave("Ondata B", true,
@@ -133,7 +130,6 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createScheletro());
         waveB.addEnemy(EnemyFactory.createScheletro());
         waveB.addEnemy(EnemyFactory.createScheletroGuardia());
-        // Drop condizionale (Scudo o Armatura mancante): aggiunto da GameController
         room.addWave(waveB);
 
         Wave waveC = new Wave("Miniboss: Strega", false,
@@ -198,10 +194,6 @@ public class DungeonMap implements Serializable {
 
         return room;
     }
-
-    // -------------------------------------------------------------------------
-    // Navigazione
-    // -------------------------------------------------------------------------
 
     public Room getCurrentRoom()    { return rooms.get(currentRoomIndex); }
     public boolean hasNextRoom()    { return currentRoomIndex < rooms.size() - 1; }
