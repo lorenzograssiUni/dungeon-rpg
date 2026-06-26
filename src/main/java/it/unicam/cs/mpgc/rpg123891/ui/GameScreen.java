@@ -2,9 +2,11 @@ package it.unicam.cs.mpgc.rpg123891.ui;
 
 import it.unicam.cs.mpgc.rpg123891.controller.GameController;
 import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
+import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipSlot;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
 import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
+import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -21,6 +23,10 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class GameScreen {
 
@@ -65,6 +71,10 @@ public class GameScreen {
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
 
+    // Dimensione sprite nemici nella card Encounter
+    private static final double ENEMY_SPRITE_H = 130;
+    private static final double ENEMY_SPRITE_W = 110;
+
     private Font pixelFont;
     private Font pixelFontSmall;
     private Font pixelFontAction;
@@ -82,6 +92,33 @@ public class GameScreen {
     private final VBox      paneRightTop   = new VBox();
     private final VBox      paneLog        = new VBox();
 
+    // Mappa nome-nemico → lista di path sprite (varianti)
+    private static final Map<String, List<String>> ENEMY_SPRITES = new HashMap<>();
+    static {
+        ENEMY_SPRITES.put("Cinghiale",       List.of("/assets/enemies/Cinghiale1.png", "/assets/enemies/cinghiale2.png"));
+        ENEMY_SPRITES.put("Lupo",            List.of("/assets/enemies/lupo.png"));
+        ENEMY_SPRITES.put("Goblin",          List.of("/assets/enemies/Goblin.png", "/assets/enemies/Goblin2.png"));
+        ENEMY_SPRITES.put("Goblin Guardia",  List.of("/assets/enemies/goblinGuard.png", "/assets/enemies/goblinGuard2.png"));
+        ENEMY_SPRITES.put("Re Goblin",       List.of("/assets/enemies/regoblin.png"));
+        ENEMY_SPRITES.put("Scheletro",       List.of("/assets/enemies/scheletro.png", "/assets/enemies/scheletro2.png"));
+        ENEMY_SPRITES.put("Scheletro Guardia",List.of("/assets/enemies/scheletroGuardia.png", "/assets/enemies/scheletroGuardia2.png"));
+        ENEMY_SPRITES.put("Strega",          List.of("/assets/enemies/Strega.png"));
+        ENEMY_SPRITES.put("Uovo",            List.of("/assets/enemies/uovo1.png", "/assets/enemies/uovo2.png"));
+        ENEMY_SPRITES.put("Cucciolo Drago",  List.of("/assets/enemies/cucciolo1.png", "/assets/enemies/cucciolo2.png"));
+        ENEMY_SPRITES.put("Cucciolo Uovo",   List.of("/assets/enemies/cuccioloUovo1.png", "/assets/enemies/cuccioloUovo2.png"));
+        ENEMY_SPRITES.put("L'Ultimo Drago",  List.of("/assets/enemies/UltimoDrago.png"));
+    }
+
+    // Mappa room-id → background
+    private static final Map<String, String> ROOM_BG = new HashMap<>();
+    static {
+        ROOM_BG.put("r1", "/assets/backgrounds/foresta.png");
+        ROOM_BG.put("r2", "/assets/backgrounds/GoblinVillage.png");
+        ROOM_BG.put("r3", "/assets/backgrounds/catacombe.png");
+        ROOM_BG.put("r4", "/assets/backgrounds/Caverne.png");
+        ROOM_BG.put("r5", "/assets/backgrounds/StanzaFinale.png");
+    }
+
     public GameScreen(GameController gc, Stage stage, FxApp app) {
         this.gc               = gc;
         this.stage            = stage;
@@ -92,6 +129,7 @@ public class GameScreen {
         buildLayout();
         buildCharacterPanel();
         buildActionPanel();
+        buildEncounterPanel();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
@@ -111,7 +149,79 @@ public class GameScreen {
         if (pixelFontAction == null) pixelFontAction = Font.font("Courier New", FontWeight.BOLD, ACTION_FONT_SIZE);
     }
 
-    // ── CHARACTER card ─────────────────────────────────────────────
+    // ── ENCOUNTER card ──────────────────────────────────────────────────────
+    private void buildEncounterPanel() {
+        paneEncounter.getChildren().clear();
+        paneEncounter.setStyle("-fx-background-color:transparent;");
+
+        // Background della stanza corrente
+        String roomId  = gc.getCurrentRoom().getId();
+        String bgPath  = ROOM_BG.getOrDefault(roomId, "/assets/backgrounds/foresta.png");
+        ImageView bg   = loadImage(bgPath, COL_LEFT, ROW_TOP);
+        if (bg != null) {
+            bg.setFitWidth(COL_LEFT);
+            bg.setFitHeight(ROW_TOP);
+            bg.setPreserveRatio(false);
+            bg.setOpacity(0.75);
+            StackPane.setAlignment(bg, Pos.CENTER);
+            paneEncounter.getChildren().add(bg);
+        }
+
+        // Sprite dei nemici vivi nella wave corrente
+        Wave wave = gc.getCurrentRoom().getCurrentWave();
+        List<Enemy> alive = wave == null ? List.of() :
+            wave.getEnemies().stream().filter(Enemy::isAlive).toList();
+
+        if (!alive.isEmpty()) {
+            HBox enemyRow = buildEnemyRow(alive);
+            StackPane.setAlignment(enemyRow, Pos.BOTTOM_CENTER);
+            paneEncounter.getChildren().add(enemyRow);
+        }
+    }
+
+    /**
+     * Costruisce la riga orizzontale degli sprite nemici.
+     * Nemici uguali ricevono sprite varianti diverse in sequenza ciclica.
+     */
+    private HBox buildEnemyRow(List<Enemy> enemies) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.BOTTOM_CENTER);
+        row.setPadding(new Insets(0, 8, 10, 8));
+
+        // Conta quante volte abbiamo già usato ogni nome per ruotare le varianti
+        Map<String, Integer> usageCount = new HashMap<>();
+
+        for (Enemy enemy : enemies) {
+            String name = enemy.getName();
+            int used    = usageCount.getOrDefault(name, 0);
+            usageCount.put(name, used + 1);
+
+            List<String> variants = ENEMY_SPRITES.getOrDefault(name, List.of());
+            if (variants.isEmpty()) continue;
+
+            String spritePath = variants.get(used % variants.size());
+            ImageView iv      = loadImage(spritePath, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+            if (iv == null) continue;
+
+            // Ombra sotto lo sprite
+            StackPane spriteBox = new StackPane();
+            spriteBox.setAlignment(Pos.BOTTOM_CENTER);
+            spriteBox.getChildren().add(iv);
+
+            // Nome nemico sotto lo sprite
+            Label nameLbl = new Label(name);
+            nameLbl.setFont(pixelFontSmall);
+            nameLbl.setStyle("-fx-text-fill:" + WHITE + ";-fx-effect:dropshadow(gaussian,black,4,0.8,0,0);");
+
+            VBox spriteCol = new VBox(4, spriteBox, nameLbl);
+            spriteCol.setAlignment(Pos.BOTTOM_CENTER);
+            row.getChildren().add(spriteCol);
+        }
+
+        return row;
+    }
+
+    // ── CHARACTER card ──────────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
@@ -181,15 +291,13 @@ public class GameScreen {
         paneAction.setPadding(new Insets(18, 20, 14, 20));
         paneAction.setSpacing(10);
 
-        // Riga 1: ATTACK (sinistra) | S. ATTACK (destra)
-        Button btnAttack  = makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg", false);
-        Button btnSAttack = makeTextButtonWithIcon("S.ATTACK", "/assets/icons/arrow.svg", true);
-        btnAttack .setOnAction(e -> { /* TODO */ });
-        btnSAttack.setOnAction(e -> { /* TODO */ });
-
-        // Riga 2: INVENTORY (sinistra) | RUN (destra)
+        Button btnAttack    = makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg", false);
+        Button btnSAttack   = makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg", true);
         Button btnInventory = makeTextButtonWithIcon("INVENTORY", "/assets/icons/arrow.svg", false);
         Button btnRun       = makeTextButtonWithIcon("RUN",        "/assets/icons/arrow.svg", true);
+
+        btnAttack   .setOnAction(e -> { /* TODO */ });
+        btnSAttack  .setOnAction(e -> { /* TODO */ });
         btnInventory.setOnAction(e -> { /* TODO */ });
         btnRun      .setOnAction(e -> { /* TODO */ });
 
@@ -200,10 +308,6 @@ public class GameScreen {
         );
     }
 
-    /**
-     * Riga con spacer centrale: left va a sinistra, right va a destra.
-     * Entrambi hanno icona a sinistra del testo.
-     */
     private HBox makeSplitRow(Button left, Button right) {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -216,7 +320,7 @@ public class GameScreen {
     private HBox makeSaveMenuRow() {
         Button btnSave = makeBorderedButtonWithIcon("SAVE", "/assets/icons/save.svg");
         Button btnMenu = makeBorderedButtonWithIcon("MENU", "/assets/icons/exit.svg");
-        btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
+        btnSave.setOnAction(e -> { /* TODO */ });
         btnMenu.setOnAction(e -> app.showMenu(stage));
         btnSave.setMaxWidth(Double.MAX_VALUE);
         btnMenu.setMaxWidth(Double.MAX_VALUE);
@@ -227,11 +331,6 @@ public class GameScreen {
         return row;
     }
 
-    /**
-     * Pulsante azione: icona arrow SEMPRE a sinistra del testo.
-     * @param pushRight  true = il pulsante viene spinto a destra dal spacer nella riga
-     *                   (non cambia l'ordine interno icona/testo)
-     */
     private Button makeTextButtonWithIcon(String text, String iconPath, boolean pushRight) {
         String baseStyle =
             "-fx-background-color:transparent;" +
@@ -247,7 +346,6 @@ public class GameScreen {
         lbl.setFont(pixelFontAction);
         lbl.setStyle("-fx-text-fill:" + WHITE + ";");
 
-        // icona sempre a sinistra, testo a destra
         HBox content = new HBox(8);
         content.setAlignment(Pos.CENTER_LEFT);
         if (iconWhite != null) content.getChildren().add(iconWhite);
@@ -271,7 +369,6 @@ public class GameScreen {
         return btn;
     }
 
-    // ── Pulsante con bordo + icona a sinistra (SAVE, MENU) ────────────────
     private Button makeBorderedButtonWithIcon(String text, String iconPath) {
         String base =
             "-fx-background-color:" + CARD_BG + ";" +
@@ -357,7 +454,7 @@ public class GameScreen {
 
     private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
 
-    // ── Layout principale ───────────────────────────────────────────────────
+    // ── Layout principale ────────────────────────────────────────────────────
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
