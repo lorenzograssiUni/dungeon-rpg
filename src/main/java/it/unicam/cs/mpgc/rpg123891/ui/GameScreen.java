@@ -57,6 +57,7 @@ public class GameScreen {
     private static final String WHITE        = "#cccccc";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
+    private static final double ICON_SIZE    = 14;
 
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
@@ -176,23 +177,21 @@ public class GameScreen {
         paneAction.setPadding(new Insets(18, 16, 14, 16));
         paneAction.setSpacing(10);
 
-        // Riga 1: ATTACK  |  S. ATTACK
-        Button btnAttack  = makeTextButton("ATTACK");
-        Button btnSAttack = makeTextButton("S. ATTACK");
-        btnAttack .setOnAction(e -> { /* TODO: gc.playerAttack() */ });
-        btnSAttack.setOnAction(e -> { /* TODO: gc.playerSpecialAttack() */ });
-        HBox row1 = makeButtonRow(btnAttack, btnSAttack);
+        // Riga 1: ATTACK | S. ATTACK
+        HBox row1 = makeButtonRow(
+            makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg"),
+            makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg")
+        );
 
-        // Riga 2: INVENTORY  |  RUN
-        Button btnInventory = makeTextButton("INVENTORY");
-        Button btnRun       = makeTextButton("RUN");
-        btnInventory.setOnAction(e -> { /* TODO: gc.openInventory() */ });
-        btnRun      .setOnAction(e -> { /* TODO: gc.playerRun()    */ });
-        HBox row2 = makeButtonRow(btnInventory, btnRun);
+        // Riga 2: INVENTORY | RUN
+        HBox row2 = makeButtonRow(
+            makeTextButtonWithIcon("INVENTORY", "/assets/icons/arrow.svg"),
+            makeTextButtonWithIcon("RUN",        "/assets/icons/arrow.svg")
+        );
 
-        // Riga 3: SAVE  |  MENU  (con bordo, stile card)
-        Button btnSave = makeBorderedButton("SAVE");
-        Button btnMenu = makeBorderedButton("MENU");
+        // Riga 3: SAVE | MENU  (con bordo + icona)
+        Button btnSave = makeBorderedButtonWithIcon("SAVE", "/assets/icons/save.svg");
+        Button btnMenu = makeBorderedButtonWithIcon("MENU", "/assets/icons/exit.svg");
         btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
         btnMenu.setOnAction(e -> app.showMenu(stage));
         btnSave.setMaxWidth(Double.MAX_VALUE);
@@ -205,7 +204,100 @@ public class GameScreen {
         paneAction.getChildren().addAll(row1, row2, row3);
     }
 
-    // Due pulsanti affiancati, larghezza uguale
+    // ── Pulsante testo con icona arrow a sinistra ─────────────────────────
+    // Restituisce un Button che contiene un HBox (icona + label)
+    private Button makeTextButtonWithIcon(String text, String iconPath) {
+        String baseStyle =
+            "-fx-background-color:transparent;" +
+            "-fx-border-color:transparent;" +
+            "-fx-border-width:0;" +
+            "-fx-padding:8 4;" +
+            "-fx-cursor:hand;";
+
+        ImageView iconWhite = SvgUtil.load(iconPath, WHITE,    ICON_SIZE);
+        ImageView iconGold  = SvgUtil.load(iconPath, LABEL_FG, ICON_SIZE);
+
+        Label lbl = new Label(text);
+        lbl.setFont(pixelFontSmall);
+        lbl.setStyle("-fx-text-fill:" + WHITE + ";");
+
+        HBox content = new HBox(6);
+        content.setAlignment(Pos.CENTER_LEFT);
+        if (iconWhite != null) content.getChildren().add(iconWhite);
+        content.getChildren().add(lbl);
+
+        Button btn = new Button();
+        btn.setGraphic(content);
+        btn.setStyle(baseStyle);
+        btn.setMaxWidth(Double.MAX_VALUE);
+
+        btn.setOnMouseEntered(e -> {
+            lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+            content.getChildren().remove(0);
+            if (iconGold != null) content.getChildren().add(0, iconGold);
+        });
+        btn.setOnMouseExited(e -> {
+            lbl.setStyle("-fx-text-fill:" + WHITE + ";");
+            content.getChildren().remove(0);
+            if (iconWhite != null) content.getChildren().add(0, iconWhite);
+        });
+
+        return btn;
+    }
+
+    // ── Pulsante con bordo + icona a sinistra (SAVE, MENU) ────────────────
+    private Button makeBorderedButtonWithIcon(String text, String iconPath) {
+        String base =
+            "-fx-background-color:" + CARD_BG + ";" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:2;" +
+            "-fx-border-radius:" + RADIUS + ";" +
+            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-padding:6 10;" +
+            "-fx-cursor:hand;";
+        String hover =
+            "-fx-background-color:#1e1640;" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:2;" +
+            "-fx-border-radius:" + RADIUS + ";" +
+            "-fx-background-radius:" + RADIUS + ";" +
+            "-fx-padding:6 10;" +
+            "-fx-cursor:hand;";
+
+        ImageView iconGold  = SvgUtil.load(iconPath, LABEL_FG, ICON_SIZE);
+        ImageView iconWhite = SvgUtil.load(iconPath, WHITE,    ICON_SIZE);
+
+        Label lbl = new Label(text);
+        lbl.setFont(pixelFontSmall);
+        lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+
+        HBox content = new HBox(6);
+        content.setAlignment(Pos.CENTER);
+        if (iconGold != null) content.getChildren().add(iconGold);
+        content.getChildren().add(lbl);
+
+        Button btn = new Button();
+        btn.setGraphic(content);
+        btn.setStyle(base);
+        btn.setMaxWidth(Double.MAX_VALUE);
+
+        btn.setOnMouseEntered(e -> {
+            btn.setStyle(hover);
+            lbl.setStyle("-fx-text-fill:" + WHITE + ";");
+            if (!content.getChildren().isEmpty()) content.getChildren().remove(0);
+            if (iconWhite != null) content.getChildren().add(0, iconWhite);
+        });
+        btn.setOnMouseExited(e -> {
+            btn.setStyle(base);
+            lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+            if (!content.getChildren().isEmpty()) content.getChildren().remove(0);
+            if (iconGold != null) content.getChildren().add(0, iconGold);
+        });
+
+        return btn;
+    }
+
+    // ── Due pulsanti affiancati, larghezza uguale ──────────────────────────
     private HBox makeButtonRow(Button left, Button right) {
         left .setMaxWidth(Double.MAX_VALUE);
         right.setMaxWidth(Double.MAX_VALUE);
@@ -214,60 +306,6 @@ public class GameScreen {
         HBox.setHgrow(left,  Priority.ALWAYS);
         HBox.setHgrow(right, Priority.ALWAYS);
         return row;
-    }
-
-    // Pulsante testo (niente bordo): bianco a riposo, oro all'hover
-    private Button makeTextButton(String text) {
-        String base =
-            "-fx-background-color:transparent;" +
-            "-fx-text-fill:" + WHITE + ";" +
-            "-fx-border-color:transparent;" +
-            "-fx-border-width:0;" +
-            "-fx-padding:8 0;" +
-            "-fx-cursor:hand;" +
-            "-fx-alignment:center;";
-        String hover =
-            "-fx-background-color:transparent;" +
-            "-fx-text-fill:" + LABEL_FG + ";" +
-            "-fx-border-color:transparent;" +
-            "-fx-border-width:0;" +
-            "-fx-padding:8 0;" +
-            "-fx-cursor:hand;" +
-            "-fx-alignment:center;";
-        Button btn = new Button(text);
-        btn.setFont(pixelFontSmall);
-        btn.setStyle(base);
-        btn.setOnMouseEntered(e -> btn.setStyle(hover));
-        btn.setOnMouseExited(e  -> btn.setStyle(base));
-        return btn;
-    }
-
-    // Pulsante con bordo (stile card): per SAVE e MENU
-    private Button makeBorderedButton(String text) {
-        String base =
-            "-fx-background-color:" + CARD_BG + ";" +
-            "-fx-text-fill:" + LABEL_FG + ";" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:2;" +
-            "-fx-border-radius:" + RADIUS + ";" +
-            "-fx-background-radius:" + RADIUS + ";" +
-            "-fx-padding:6 14;" +
-            "-fx-cursor:hand;";
-        String hover =
-            "-fx-background-color:#1e1640;" +
-            "-fx-text-fill:" + WHITE + ";" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-width:2;" +
-            "-fx-border-radius:" + RADIUS + ";" +
-            "-fx-background-radius:" + RADIUS + ";" +
-            "-fx-padding:6 14;" +
-            "-fx-cursor:hand;";
-        Button btn = new Button(text);
-        btn.setFont(pixelFontSmall);
-        btn.setStyle(base);
-        btn.setOnMouseEntered(e -> btn.setStyle(hover));
-        btn.setOnMouseExited(e  -> btn.setStyle(base));
-        return btn;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

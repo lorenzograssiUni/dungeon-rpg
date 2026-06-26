@@ -14,7 +14,7 @@ java {
 
 javafx {
     version = '21'
-    modules = ['javafx.controls', 'javafx.fxml']
+    modules = ['javafx.controls', 'javafx.fxml', 'javafx.swing']
 }
 
 application {
@@ -27,6 +27,9 @@ repositories {
 
 dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
+    // SVG rasterizer (Batik)
+    implementation 'org.apache.xmlgraphics:batik-transcoder:1.17'
+    implementation 'org.apache.xmlgraphics:batik-codec:1.17'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
