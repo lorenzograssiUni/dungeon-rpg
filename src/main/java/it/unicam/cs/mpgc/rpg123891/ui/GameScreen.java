@@ -18,12 +18,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +71,6 @@ public class GameScreen {
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
 
-    // Dimensione sprite nemici nella card Encounter
     private static final double ENEMY_SPRITE_H = 130;
     private static final double ENEMY_SPRITE_W = 110;
 
@@ -92,24 +91,22 @@ public class GameScreen {
     private final VBox      paneRightTop   = new VBox();
     private final VBox      paneLog        = new VBox();
 
-    // Mappa nome-nemico → lista di path sprite (varianti)
     private static final Map<String, List<String>> ENEMY_SPRITES = new HashMap<>();
     static {
-        ENEMY_SPRITES.put("Cinghiale",       List.of("/assets/enemies/Cinghiale1.png", "/assets/enemies/cinghiale2.png"));
-        ENEMY_SPRITES.put("Lupo",            List.of("/assets/enemies/lupo.png"));
-        ENEMY_SPRITES.put("Goblin",          List.of("/assets/enemies/Goblin.png", "/assets/enemies/Goblin2.png"));
-        ENEMY_SPRITES.put("Goblin Guardia",  List.of("/assets/enemies/goblinGuard.png", "/assets/enemies/goblinGuard2.png"));
-        ENEMY_SPRITES.put("Re Goblin",       List.of("/assets/enemies/regoblin.png"));
-        ENEMY_SPRITES.put("Scheletro",       List.of("/assets/enemies/scheletro.png", "/assets/enemies/scheletro2.png"));
+        ENEMY_SPRITES.put("Cinghiale",        List.of("/assets/enemies/Cinghiale1.png", "/assets/enemies/cinghiale2.png"));
+        ENEMY_SPRITES.put("Lupo",             List.of("/assets/enemies/lupo.png"));
+        ENEMY_SPRITES.put("Goblin",           List.of("/assets/enemies/Goblin.png", "/assets/enemies/Goblin2.png"));
+        ENEMY_SPRITES.put("Goblin Guardia",   List.of("/assets/enemies/goblinGuard.png", "/assets/enemies/goblinGuard2.png"));
+        ENEMY_SPRITES.put("Re Goblin",        List.of("/assets/enemies/regoblin.png"));
+        ENEMY_SPRITES.put("Scheletro",        List.of("/assets/enemies/scheletro.png", "/assets/enemies/scheletro2.png"));
         ENEMY_SPRITES.put("Scheletro Guardia",List.of("/assets/enemies/scheletroGuardia.png", "/assets/enemies/scheletroGuardia2.png"));
-        ENEMY_SPRITES.put("Strega",          List.of("/assets/enemies/Strega.png"));
-        ENEMY_SPRITES.put("Uovo",            List.of("/assets/enemies/uovo1.png", "/assets/enemies/uovo2.png"));
-        ENEMY_SPRITES.put("Cucciolo Drago",  List.of("/assets/enemies/cucciolo1.png", "/assets/enemies/cucciolo2.png"));
-        ENEMY_SPRITES.put("Cucciolo Uovo",   List.of("/assets/enemies/cuccioloUovo1.png", "/assets/enemies/cuccioloUovo2.png"));
-        ENEMY_SPRITES.put("L'Ultimo Drago",  List.of("/assets/enemies/UltimoDrago.png"));
+        ENEMY_SPRITES.put("Strega",           List.of("/assets/enemies/Strega.png"));
+        ENEMY_SPRITES.put("Uovo",             List.of("/assets/enemies/uovo1.png", "/assets/enemies/uovo2.png"));
+        ENEMY_SPRITES.put("Cucciolo Drago",   List.of("/assets/enemies/cucciolo1.png", "/assets/enemies/cucciolo2.png"));
+        ENEMY_SPRITES.put("Cucciolo Uovo",    List.of("/assets/enemies/cuccioloUovo1.png", "/assets/enemies/cuccioloUovo2.png"));
+        ENEMY_SPRITES.put("L'Ultimo Drago",   List.of("/assets/enemies/UltimoDrago.png"));
     }
 
-    // Mappa room-id → background
     private static final Map<String, String> ROOM_BG = new HashMap<>();
     static {
         ROOM_BG.put("r1", "/assets/backgrounds/foresta.png");
@@ -149,25 +146,41 @@ public class GameScreen {
         if (pixelFontAction == null) pixelFontAction = Font.font("Courier New", FontWeight.BOLD, ACTION_FONT_SIZE);
     }
 
-    // ── ENCOUNTER card ──────────────────────────────────────────────────────
+    // ── ENCOUNTER card ───────────────────────────────────────────────
     private void buildEncounterPanel() {
         paneEncounter.getChildren().clear();
         paneEncounter.setStyle("-fx-background-color:transparent;");
 
-        // Background della stanza corrente
-        String roomId  = gc.getCurrentRoom().getId();
-        String bgPath  = ROOM_BG.getOrDefault(roomId, "/assets/backgrounds/foresta.png");
-        ImageView bg   = loadImage(bgPath, COL_LEFT, ROW_TOP);
-        if (bg != null) {
-            bg.setFitWidth(COL_LEFT);
-            bg.setFitHeight(ROW_TOP);
-            bg.setPreserveRatio(false);
-            bg.setOpacity(0.75);
-            StackPane.setAlignment(bg, Pos.CENTER);
-            paneEncounter.getChildren().add(bg);
-        }
+        // ─ Background con clip arrotondato (inset = BORDER_W) ─
+        // Così il bg rimane dentro il bordo della card, che rimane visibile
+        double clipInset = BORDER_W;
+        double clipW     = COL_LEFT  - clipInset * 2;
+        double clipH     = ROW_TOP   - clipInset * 2;
 
-        // Sprite dei nemici vivi nella wave corrente
+        String roomId = gc.getCurrentRoom().getId();
+        String bgPath = ROOM_BG.getOrDefault(roomId, "/assets/backgrounds/foresta.png");
+
+        try (InputStream is = getClass().getResourceAsStream(bgPath)) {
+            if (is != null) {
+                Image bgImg  = new Image(is, COL_LEFT, ROW_TOP, false, true);
+                ImageView bg = new ImageView(bgImg);
+                bg.setFitWidth(COL_LEFT);
+                bg.setFitHeight(ROW_TOP);
+                bg.setPreserveRatio(false);
+                bg.setOpacity(0.80);
+
+                // Clip arrotondato che rispetta il border della card
+                Rectangle clip = new Rectangle(clipInset, clipInset, clipW, clipH);
+                clip.setArcWidth(RADIUS * 2);
+                clip.setArcHeight(RADIUS * 2);
+                bg.setClip(clip);
+
+                StackPane.setAlignment(bg, Pos.CENTER);
+                paneEncounter.getChildren().add(bg);
+            }
+        } catch (Exception ignored) {}
+
+        // ─ Sprite nemici vivi ─
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         List<Enemy> alive = wave == null ? List.of() :
             wave.getEnemies().stream().filter(Enemy::isAlive).toList();
@@ -179,18 +192,12 @@ public class GameScreen {
         }
     }
 
-    /**
-     * Costruisce la riga orizzontale degli sprite nemici.
-     * Nemici uguali ricevono sprite varianti diverse in sequenza ciclica.
-     */
     private HBox buildEnemyRow(List<Enemy> enemies) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.BOTTOM_CENTER);
         row.setPadding(new Insets(0, 8, 10, 8));
 
-        // Conta quante volte abbiamo già usato ogni nome per ruotare le varianti
         Map<String, Integer> usageCount = new HashMap<>();
-
         for (Enemy enemy : enemies) {
             String name = enemy.getName();
             int used    = usageCount.getOrDefault(name, 0);
@@ -203,25 +210,12 @@ public class GameScreen {
             ImageView iv      = loadImage(spritePath, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
             if (iv == null) continue;
 
-            // Ombra sotto lo sprite
-            StackPane spriteBox = new StackPane();
-            spriteBox.setAlignment(Pos.BOTTOM_CENTER);
-            spriteBox.getChildren().add(iv);
-
-            // Nome nemico sotto lo sprite
-            Label nameLbl = new Label(name);
-            nameLbl.setFont(pixelFontSmall);
-            nameLbl.setStyle("-fx-text-fill:" + WHITE + ";-fx-effect:dropshadow(gaussian,black,4,0.8,0,0);");
-
-            VBox spriteCol = new VBox(4, spriteBox, nameLbl);
-            spriteCol.setAlignment(Pos.BOTTOM_CENTER);
-            row.getChildren().add(spriteCol);
+            row.getChildren().add(iv);
         }
-
         return row;
     }
 
-    // ── CHARACTER card ──────────────────────────────────────────────────────
+    // ── CHARACTER card ─────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
@@ -283,7 +277,7 @@ public class GameScreen {
         paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    // ── ACTION card ─────────────────────────────────────────────────────────
+    // ── ACTION card ─────────────────────────────────────────────────────
     private void buildActionPanel() {
         paneAction.getChildren().clear();
         paneAction.setAlignment(Pos.CENTER);
@@ -420,7 +414,7 @@ public class GameScreen {
         return btn;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────
     private HBox equipRow(String label, String value) {
         Label lbl = new Label(label + ": ");
         lbl.setFont(pixelFontSmall);
@@ -454,7 +448,7 @@ public class GameScreen {
 
     private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
 
-    // ── Layout principale ────────────────────────────────────────────────────
+    // ── Layout principale ────────────────────────────────────────────────
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
@@ -517,8 +511,8 @@ public class GameScreen {
         double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
         double ySys  = yBot2 + ROW_BOT + GAP + LABEL_OFFSET;
 
+        // Encounter (r1) escluso dall'overlay della griglia
         Canvas gridOverlay = buildGridOverlay(new double[][]{
-            {xOff,                                  yTop2, COL_LEFT,  ROW_TOP},
             {xOff + COL_LEFT + GAP,                 yTop2, COL_MID,   ROW_TOP},
             {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
             {xOff,                                  yBot2, COL_LEFT,  ROW_BOT},
