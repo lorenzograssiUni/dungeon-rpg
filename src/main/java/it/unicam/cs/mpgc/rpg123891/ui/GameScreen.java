@@ -183,7 +183,7 @@ public class GameScreen {
 
         // Riga 1: ATTACK (sinistra) | S. ATTACK (destra)
         Button btnAttack  = makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg", false);
-        Button btnSAttack = makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg", true);
+        Button btnSAttack = makeTextButtonWithIcon("S.ATTACK", "/assets/icons/arrow.svg", true);
         btnAttack .setOnAction(e -> { /* TODO */ });
         btnSAttack.setOnAction(e -> { /* TODO */ });
 
