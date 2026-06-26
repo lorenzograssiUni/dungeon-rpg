@@ -6,6 +6,7 @@ import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipSlot;
 import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
 import it.unicam.cs.mpgc.rpg123891.model.item.Weapon;
+import it.unicam.cs.mpgc.rpg123891.model.world.Room;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -88,6 +89,15 @@ public class GameScreen {
     // Larghezza utile della card ENEMY STATS
     private static final double ENEMY_ROW_W = COL_LEFT - 28.0;
 
+    // Map card — English area names keyed by room ID
+    private static final Map<String, String> ROOM_NAMES_EN = Map.of(
+        "r1", "Forest",
+        "r2", "Goblin Village",
+        "r3", "Catacombs",
+        "r4", "Treasure Room",
+        "r5", "Dragon's Lair"
+    );
+
     private Font pixelFont;
     private Font pixelFontSmall;
     private Font pixelFontAction;
@@ -103,7 +113,7 @@ public class GameScreen {
     private final VBox      paneEnemyStats = new VBox();
     private final VBox      paneCharacter  = new VBox();
     private final VBox      paneAction     = new VBox();
-    private final VBox      paneRightTop   = new VBox();
+    private final StackPane paneRightTop   = new StackPane();
     private final VBox      paneLog        = new VBox();
 
     private static final Map<String, List<String>> ENEMY_SPRITES = new HashMap<>();
@@ -143,6 +153,7 @@ public class GameScreen {
         buildActionPanel();
         buildEncounterPanel();
         buildEnemyStatsPanel();
+        buildMapPanel();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
@@ -165,7 +176,7 @@ public class GameScreen {
         if (pixelFontTiny   == null) pixelFontTiny   = Font.font("Courier New", FontWeight.BOLD, 8);
     }
 
-    // ── ENCOUNTER card ────────────────────────────────────────────────────
+    // ── ENCOUNTER card ────────────────────────────────────────────────
     private void buildEncounterPanel() {
         paneEncounter.getChildren().clear();
         paneEncounter.setStyle("-fx-background-color:transparent;");
@@ -230,10 +241,10 @@ public class GameScreen {
         return row;
     }
 
-    // ── ENEMY STATS card ────────────────────────────────────────────────────
+    // ── ENEMY STATS card ──────────────────────────────────────────────
     private void buildEnemyStatsPanel() {
         paneEnemyStats.getChildren().clear();
-        paneEnemyStats.setAlignment(Pos.CENTER);          // centrato verticalmente
+        paneEnemyStats.setAlignment(Pos.CENTER);
         paneEnemyStats.setStyle("-fx-background-color:transparent;");
         paneEnemyStats.setPadding(new Insets(14, 20, 10, 20));
         paneEnemyStats.setSpacing(12);
@@ -255,22 +266,15 @@ public class GameScreen {
         }
     }
 
-    /**
-     * Riga centrata per un nemico:
-     *   Riga 1 (centrata): Nome  BOSS?  EGG?  STUN?  IMMUNE?
-     *   Riga 2 (centrata): [HP bar full-width]
-     *   Riga 3 (centrata): ATK xx  DEF xx  AGI xx  CRIT xx%
-     */
     private VBox buildEnemyStatRow(Enemy enemy) {
         double rowW = ENEMY_ROW_W;
 
-        // ─ Riga 1: nome centrato + badge ─
         HBox nameRow = new HBox(6);
         nameRow.setAlignment(Pos.CENTER);
         nameRow.setMaxWidth(rowW);
 
         Label nameLbl = new Label(enemy.getName());
-        nameLbl.setFont(pixelFontSmall);   // più grande: 10px invece di 8px
+        nameLbl.setFont(pixelFontSmall);
         nameLbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
 
         nameRow.getChildren().add(nameLbl);
@@ -279,7 +283,6 @@ public class GameScreen {
         if (enemy.isStunned()) nameRow.getChildren().add(badge("STUN",   BADGE_STUN));
         if (enemy.isImmune())  nameRow.getChildren().add(badge("IMMUNE", BADGE_IMMUNE));
 
-        // ─ Riga 2: HP bar full-width ─
         double hpRatio  = (double) enemy.getCurrentHp() / Math.max(1, enemy.getMaxHp());
         String barColor = hpRatio > 0.5 ? HP_BAR_FG_HIGH
                         : hpRatio > 0.25 ? HP_BAR_FG_MID
@@ -287,7 +290,6 @@ public class GameScreen {
         double fillW    = Math.max(1, hpRatio * rowW);
         StackPane hpBar = buildBar(rowW, HP_BAR_H, fillW, HP_BAR_BG, barColor);
 
-        // ─ Riga 3: chips stats centrati ─
         HBox statsRow = new HBox(16,
             statChip("ATK", String.valueOf(enemy.getAttack())),
             statChip("DEF", String.valueOf(enemy.getDefense())),
@@ -303,7 +305,6 @@ public class GameScreen {
         return row;
     }
 
-    /** Barra colorata con sfondo. */
     private StackPane buildBar(double totalW, double h, double fillW,
                                String bgColor, String fgColor) {
         Rectangle bg   = new Rectangle(totalW, h);
@@ -322,20 +323,18 @@ public class GameScreen {
         return sp;
     }
 
-    /** Chip inline centrato: label grigia sopra, valore bianco sotto. */
     private VBox statChip(String key, String val) {
         Label k = new Label(key);
         k.setFont(pixelFontTiny);
         k.setStyle("-fx-text-fill:#888888;");
         Label v = new Label(val);
-        v.setFont(pixelFontSmall);   // più grande: 10px
+        v.setFont(pixelFontSmall);
         v.setStyle("-fx-text-fill:" + WHITE + ";");
         VBox chip = new VBox(2, k, v);
         chip.setAlignment(Pos.CENTER);
         return chip;
     }
 
-    /** Badge colorato con testo. */
     private Label badge(String text, String color) {
         Label b = new Label(text);
         b.setFont(pixelFontTiny);
@@ -348,7 +347,178 @@ public class GameScreen {
         return b;
     }
 
-    // ── CHARACTER card ──────────────────────────────────────────────────────
+    // ── MAP card ────────────────────────────────────────────────────────────
+    /**
+     * Draws a vertical linear guide inside paneRightTop:
+     *
+     *   ●  FOREST            ← area node (gold if current, dim grey if future)
+     *      • Wave 1
+     *      • Wave 2
+     *   |                    ← connector line
+     *   ●  GOBLIN VILLAGE
+     *      • Wave 1
+     *      • Wave 2
+     *      • Miniboss
+     *   ...
+     *
+     * Active room: gold dot + gold text.
+     * Active wave inside active room: gold small dot + gold text.
+     * Cleared / past items: muted grey.
+     * Future items: dim grey.
+     */
+    private void buildMapPanel() {
+        paneRightTop.getChildren().clear();
+        paneRightTop.setStyle("-fx-background-color:transparent;");
+
+        List<Room> rooms = gc.getDungeonMap().getRooms();
+        Room currentRoom  = gc.getCurrentRoom();
+        int  currentWaveI = currentRoom.getWaveIndex();
+
+        // ── layout constants ──────────────────────────────────────────────
+        double cardW      = COL_RIGHT;
+        double cardH      = ROW_TOP;
+        double marginL    = 22;   // left margin for the vertical line
+        double lineX      = marginL + 6;  // centre of the vertical connector line
+        double dotR       = 5;    // radius of area node dot
+        double waveDotR   = 3;    // radius of wave sub-dot
+        double textOffX   = lineX + dotR + 10;  // x where label text starts
+        double topPad     = 20;   // vertical padding from card top
+        double botPad     = 12;
+
+        // Compute total entry count to distribute vertical space
+        // Each room = 1 area node; each wave inside = 1 sub-entry; connector line between rooms
+        int totalEntries = 0;
+        for (Room r : rooms) totalEntries += 1 + r.getTotalWaves();
+        // +connector slots between rooms
+        int connectors = rooms.size() - 1;
+        double availH  = cardH - topPad - botPad;
+        // Assign heights: area-node row = 18, wave row = 14, connector = 10
+        double areaH  = 18;
+        double waveH  = 14;
+        double connH  = 10;
+        // We'll just stack them and scroll is not needed (fits in ~280px for 5 rooms + 13 waves)
+
+        Canvas canvas = new Canvas(cardW, cardH);
+        GraphicsContext g = canvas.getGraphicsContext2D();
+
+        // pre-compute colours
+        Color colGold    = Color.web(LABEL_FG);
+        Color colWhite   = Color.web(WHITE);
+        Color colDim     = Color.web("#555566");
+        Color colCleared = Color.web("#447744");
+        Color lineColor  = Color.web("#443355");
+
+        double y = topPad;
+
+        for (int ri = 0; ri < rooms.size(); ri++) {
+            Room   room      = rooms.get(ri);
+            String roomId    = room.getId();
+            boolean isCurrent = roomId.equals(currentRoom.getId());
+            boolean isPast    = ri < indexOf(rooms, currentRoom);
+            boolean isFuture  = ri > indexOf(rooms, currentRoom);
+
+            // ── vertical connector from previous room ─────────────────────
+            if (ri > 0) {
+                g.setStroke(lineColor);
+                g.setLineWidth(2);
+                g.strokeLine(lineX, y, lineX, y + connH);
+                y += connH;
+            }
+
+            // ── area node dot ─────────────────────────────────────────────
+            Color dotFill;
+            Color textCol;
+            if (isCurrent) {
+                dotFill = colGold;
+                textCol = colGold;
+            } else if (isPast) {
+                dotFill = colCleared;
+                textCol = colCleared;
+            } else {
+                dotFill = colDim;
+                textCol = colDim;
+            }
+
+            // dot
+            g.setFill(dotFill);
+            g.fillOval(lineX - dotR, y + areaH / 2 - dotR, dotR * 2, dotR * 2);
+
+            // area label
+            String areaName = ROOM_NAMES_EN.getOrDefault(roomId, room.getName()).toUpperCase();
+            g.setFill(textCol);
+            g.setFont(pixelFontSmall != null ? pixelFontSmall : Font.font("Courier New", FontWeight.BOLD, 10));
+            g.fillText(areaName, textOffX, y + areaH / 2 + 4);
+
+            y += areaH;
+
+            // ── wave sub-dots ─────────────────────────────────────────────
+            List<Wave> waves = room.getWaves();
+            for (int wi = 0; wi < waves.size(); wi++) {
+                Wave    wave    = waves.get(wi);
+                boolean isActiveWave = isCurrent && wi == currentWaveI;
+                boolean isWaveCleared = wave.isCleared();
+
+                Color waveDotCol;
+                Color waveTxtCol;
+                if (isActiveWave) {
+                    waveDotCol = colGold;
+                    waveTxtCol = colGold;
+                } else if (isWaveCleared || isPast) {
+                    waveDotCol = colCleared;
+                    waveTxtCol = colCleared;
+                } else {
+                    waveDotCol = colDim;
+                    waveTxtCol = colDim;
+                }
+
+                // small indent line from main axis to sub-dot
+                double indentX = lineX + 12;
+                g.setStroke(lineColor);
+                g.setLineWidth(1);
+                g.strokeLine(lineX, y + waveH / 2, indentX - waveDotR - 2, y + waveH / 2);
+
+                // wave dot
+                g.setFill(waveDotCol);
+                g.fillOval(indentX - waveDotR, y + waveH / 2 - waveDotR, waveDotR * 2, waveDotR * 2);
+
+                // wave label — use wave name, truncate if needed
+                String waveName = waveLabel(wi, waves.size(), wave.getName());
+                g.setFill(waveTxtCol);
+                g.setFont(pixelFontTiny != null ? pixelFontTiny : Font.font("Courier New", FontWeight.BOLD, 8));
+                g.fillText(waveName, indentX + waveDotR + 6, y + waveH / 2 + 3);
+
+                y += waveH;
+            }
+        }
+
+        paneRightTop.getChildren().add(canvas);
+        StackPane.setAlignment(canvas, Pos.TOP_LEFT);
+    }
+
+    /**
+     * Produces a short English label for a wave.
+     * Boss/miniboss waves keep their original name; regular waves become "Wave N".
+     */
+    private String waveLabel(int index, int total, String originalName) {
+        String lower = originalName.toLowerCase();
+        if (lower.contains("boss") || lower.contains("miniboss")) {
+            if (lower.contains("finale") || lower.contains("final")) return "Final Boss";
+            if (lower.contains("re goblin") || lower.contains("king"))  return "Miniboss: Goblin King";
+            if (lower.contains("strega") || lower.contains("witch"))    return "Miniboss: Witch";
+            return "Boss";
+        }
+        if (lower.contains("statua") || lower.contains("statue")) return "Statue Hall";
+        return "Wave " + (index + 1);
+    }
+
+    /** Returns the index of a room inside the list (by id). */
+    private int indexOf(List<Room> rooms, Room target) {
+        for (int i = 0; i < rooms.size(); i++)
+            if (rooms.get(i).getId().equals(target.getId())) return i;
+        return 0;
+    }
+
+    // ── CHARACTER card ─────────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
@@ -547,7 +717,7 @@ public class GameScreen {
         return btn;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ─────────────────────────────────────────────────────────────
     private HBox equipRow(String label, String value) {
         Label lbl = new Label(label + ": ");
         lbl.setFont(pixelFontSmall);
@@ -581,7 +751,7 @@ public class GameScreen {
 
     private GameCharacter player() { return (GameCharacter) gc.getPlayer(); }
 
-    // ── Layout principale ─────────────────────────────────────────────────────
+    // ── Layout principale ────────────────────────────────────────────────────
     private void buildLayout() {
         Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
         drawGrid(bgCanvas);
@@ -589,7 +759,7 @@ public class GameScreen {
 
         StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",  paneEncounter,  COL_LEFT,  ROW_TOP);
         StackPane cardCharacter  = makeCardWithTitle("CHARACTER",  paneCharacter,  COL_MID,   ROW_TOP);
-        StackPane cardRightTop   = makeCardWithTitle("Map",         paneRightTop,   COL_RIGHT, ROW_TOP);
+        StackPane cardRightTop   = makeCardWithTitle("MAP",         paneRightTop,   COL_RIGHT, ROW_TOP);
         StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS", paneEnemyStats, COL_LEFT,  ROW_BOT);
         StackPane cardAction     = makeCardWithTitle("ACTION",      paneAction,     COL_MID,   ROW_BOT);
         StackPane cardLog        = makeCardWithTitle("COMBAT LOG",  paneLog,        COL_RIGHT, ROW_BOT);
