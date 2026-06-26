@@ -38,14 +38,9 @@ public class DungeonMap implements Serializable {
                 "Un vecchio bastone intagliato è appoggiato a un tronco — " +
                 "sembra aspettarti.");
 
-        // ── Stanza loot: Bastone Magico (nessun nemico) ──────────────────────
-        Wave waveLootBastone = new Wave("Stanza del Bastone", true,
-                "Tra le radici di un albero secolare scorgi un bagliore dorato. " +
-                "Un antico bastone magico giace lì, come se ti stesse aspettando da secoli. " +
-                "Lo raccogli: la magia vibra tra le tue dita.");
-        waveLootBastone.addLoot(new MagicStaff());
-        // Nessun nemico: la wave si considera cleared immediatamente.
-        room.addWave(waveLootBastone);
+        // Il Bastone Magico è entry loot: viene consegnato appena si entra nella stanza,
+        // prima che cominci il combattimento.
+        room.addEntryLoot(new MagicStaff());
 
         Wave waveA = new Wave("Ondata A", true,
                 "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
@@ -114,7 +109,7 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createScheletro());
         room.addWave(waveA);
 
-        // ── Stanza loot: Spadone (nessun nemico) ─────────────────────────────
+        // Stanza loot: Spadone (nessun nemico)
         Wave waveStatua = new Wave("Stanza dello Spadone", true,
                 "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
                 "di un guerriero in armatura piena — alta il doppio di un uomo. " +
