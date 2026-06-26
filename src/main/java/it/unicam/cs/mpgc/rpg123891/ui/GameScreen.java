@@ -33,11 +33,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Schermata principale di gioco JavaFX.
- * Gestisce l'intero loop di combattimento, la UI, l'inventario,
- * il salvataggio e le transizioni vittoria/game-over.
  */
 public class GameScreen {
 
@@ -75,15 +74,24 @@ public class GameScreen {
     private static final int    GRID_SIZE    = 24;
 
     // ── Sprite sizes ──────────────────────────────────────────────────
-    private static final double ACTION_ICON_SIZE = 20;
-    private static final int    ACTION_FONT_SIZE = 13;
-    private static final double ICON_SIZE        = 14;
-    private static final double PORTRAIT_SIZE    = 140;
-    private static final double PORTRAIT_RADIUS  = 12;
-    private static final double ENEMY_SPRITE_H   = 130;
-    private static final double ENEMY_SPRITE_W   = 110;
-    private static final double LOOT_SPRITE_H    = 160;
-    private static final double LOOT_SPRITE_W    = 120;
+    private static final double ACTION_ICON_SIZE  = 20;
+    private static final int    ACTION_FONT_SIZE  = 13;
+    private static final double ICON_SIZE         = 14;
+    private static final double PORTRAIT_SIZE     = 140;
+    private static final double PORTRAIT_RADIUS   = 12;
+    private static final double ENEMY_SPRITE_H    = 130;
+    private static final double ENEMY_SPRITE_W    = 110;
+    private static final double MINIBOSS_SPRITE_H = 190;
+    private static final double MINIBOSS_SPRITE_W = 160;
+    private static final double DRAGON_SPRITE_H   = 220;
+    private static final double DRAGON_SPRITE_W   = 200;
+    private static final double LOOT_SPRITE_H     = 160;
+    private static final double LOOT_SPRITE_W     = 120;
+
+    /** Nemici che usano le dimensioni miniboss */
+    private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo Drago", "Cucciolo Uovo");
+    /** Nemici che usano le dimensioni drago */
+    private static final Set<String> DRAGON_NAMES   = Set.of("L'Ultimo Drago");
 
     // ── HP bar ────────────────────────────────────────────────────────
     private static final double HP_BAR_H       = 8;
@@ -412,7 +420,6 @@ public class GameScreen {
             addLogEntry("[!] Solo le armi possono essere equipaggiate.");
             return;
         }
-        // equip() returns EquipResult — use .success() to check outcome
         EquipmentManager.EquipResult result = equipmentManager.equip(w);
         if (result.success()) {
             addLogEntry("\u2726 Hai equipaggiato: " + w.getName());
@@ -545,7 +552,18 @@ public class GameScreen {
             usageCount.put(name, used + 1);
             List<String> variants = ENEMY_SPRITES.getOrDefault(name, List.of());
             if (variants.isEmpty()) continue;
-            ImageView iv = loadImage(variants.get(used % variants.size()), ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+            double spriteW, spriteH;
+            if (DRAGON_NAMES.contains(name)) {
+                spriteW = DRAGON_SPRITE_W;
+                spriteH = DRAGON_SPRITE_H;
+            } else if (MINIBOSS_NAMES.contains(name)) {
+                spriteW = MINIBOSS_SPRITE_W;
+                spriteH = MINIBOSS_SPRITE_H;
+            } else {
+                spriteW = ENEMY_SPRITE_W;
+                spriteH = ENEMY_SPRITE_H;
+            }
+            ImageView iv = loadImage(variants.get(used % variants.size()), spriteW, spriteH);
             if (iv != null) row.getChildren().add(iv);
         }
         return row;
@@ -555,53 +573,72 @@ public class GameScreen {
         paneEnemyStats.getChildren().clear();
         paneEnemyStats.setAlignment(Pos.CENTER);
         paneEnemyStats.setStyle("-fx-background-color:transparent;");
-        paneEnemyStats.setPadding(new Insets(14, 20, 10, 20));
-        paneEnemyStats.setSpacing(12);
         Wave wave  = gc.getCurrentRoom().getCurrentWave();
         List<Enemy> alive = wave == null ? List.of() :
             wave.getEnemies().stream().filter(Enemy::isAlive).toList();
         if (alive.isEmpty()) {
+            paneEnemyStats.setPadding(new Insets(14, 20, 10, 20));
+            paneEnemyStats.setSpacing(12);
             Label empty = new Label(wave != null && wave.isCleared() ? "Ondata completata!" : "Nessun nemico");
             empty.setFont(pixelFontSmall);
             empty.setStyle("-fx-text-fill:" + WHITE + ";");
             paneEnemyStats.getChildren().add(empty);
             return;
         }
+        // Compact mode when more than 3 enemies are alive
+        boolean compact = alive.size() > 3;
+        double vPad  = compact ? 6  : 14;
+        double vGap  = compact ? 5  : 12;
+        double hPad  = compact ? 10 : 20;
+        paneEnemyStats.setPadding(new Insets(vPad, hPad, vPad, hPad));
+        paneEnemyStats.setSpacing(vGap);
         for (Enemy enemy : alive)
-            paneEnemyStats.getChildren().add(buildEnemyStatRow(enemy));
+            paneEnemyStats.getChildren().add(buildEnemyStatRow(enemy, compact));
     }
 
-    private VBox buildEnemyStatRow(Enemy enemy) {
-        double rowW = ENEMY_ROW_W;
-        HBox nameRow = new HBox(6);
+    private VBox buildEnemyStatRow(Enemy enemy, boolean compact) {
+        double rowW    = ENEMY_ROW_W;
+        Font nameFont  = compact ? pixelFontTiny  : pixelFontSmall;
+        Font statFont  = compact ? pixelFontTiny  : pixelFontSmall;
+        double barH    = compact ? 5  : HP_BAR_H;
+        double rowGap  = compact ? 3  : 5;
+        double statsGap = compact ? 8 : 16;
+
+        HBox nameRow = new HBox(compact ? 4 : 6);
         nameRow.setAlignment(Pos.CENTER);
         nameRow.setMaxWidth(rowW);
         Label nameLbl = new Label(enemy.getName());
-        nameLbl.setFont(pixelFontSmall);
+        nameLbl.setFont(nameFont);
         nameLbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
         nameRow.getChildren().add(nameLbl);
         if (enemy.isBoss())    nameRow.getChildren().add(badge("BOSS",   BADGE_BOSS));
         if (enemy.isEgg())     nameRow.getChildren().add(badge("EGG",    BADGE_EGG));
         if (enemy.isStunned()) nameRow.getChildren().add(badge("STUN",   BADGE_STUN));
         if (enemy.isImmune())  nameRow.getChildren().add(badge("IMMUNE", BADGE_IMMUNE));
+
         double hpRatio  = (double) enemy.getCurrentHp() / Math.max(1, enemy.getMaxHp());
         String barColor = hpRatio > 0.5 ? HP_BAR_FG_HIGH : hpRatio > 0.25 ? HP_BAR_FG_MID : HP_BAR_FG_LOW;
-        StackPane hpBar = buildBar(rowW, HP_BAR_H, Math.max(1, hpRatio * rowW), HP_BAR_BG, barColor);
-        HBox statsRow = new HBox(16,
-            statChip("ATK",  String.valueOf(enemy.getAttack())),
-            statChip("DEF",  String.valueOf(enemy.getDefense())),
-            statChip("AGI",  String.valueOf(enemy.getAgility())),
-            statChip("CRIT", String.format("%.0f%%", enemy.getCritChance() * 100))
+        StackPane hpBar = buildBar(rowW, barH, Math.max(1, hpRatio * rowW), HP_BAR_BG, barColor);
+
+        HBox statsRow = new HBox(statsGap,
+            statChipSmall("ATK",  String.valueOf(enemy.getAttack()),  statFont),
+            statChipSmall("DEF",  String.valueOf(enemy.getDefense()), statFont),
+            statChipSmall("AGI",  String.valueOf(enemy.getAgility()), statFont),
+            statChipSmall("CRIT", String.format("%.0f%%", enemy.getCritChance() * 100), statFont)
         );
-        statsRow.setAlignment(Pos.CENTER); statsRow.setMaxWidth(rowW);
-        VBox row = new VBox(5, nameRow, hpBar, statsRow);
-        row.setAlignment(Pos.CENTER); row.setMaxWidth(rowW);
+        statsRow.setAlignment(Pos.CENTER);
+        statsRow.setMaxWidth(rowW);
+
+        VBox row = new VBox(rowGap, nameRow, hpBar, statsRow);
+        row.setAlignment(Pos.CENTER);
+        row.setMaxWidth(rowW);
         return row;
     }
 
     private void buildLogPanel() {
         paneLog.getChildren().clear();
         paneLog.setStyle("-fx-background-color:transparent;");
+        paneLog.setAlignment(Pos.TOP_CENTER);
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         if (wave != null) {
             Label waveTitle = new Label(wave.getName().toUpperCase());
@@ -609,13 +646,18 @@ public class GameScreen {
             waveTitle.setStyle("-fx-text-fill:" + LABEL_FG + ";");
             waveTitle.setWrapText(true);
             waveTitle.setMaxWidth(COL_RIGHT - 24);
+            waveTitle.setAlignment(Pos.CENTER);
+            waveTitle.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
             Label desc = new Label(wave.getDescription());
             desc.setFont(pixelFontTiny);
             desc.setStyle("-fx-text-fill:" + WHITE + ";-fx-line-spacing:3;");
             desc.setWrapText(true);
             desc.setMaxWidth(COL_RIGHT - 24);
+            desc.setAlignment(Pos.CENTER);
+            desc.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
             VBox header = new VBox(6, waveTitle, desc);
             header.setPadding(new Insets(10, 12, 8, 12));
+            header.setAlignment(Pos.CENTER);
             Region sep = new Region();
             sep.setPrefHeight(1); sep.setMaxWidth(COL_RIGHT - 24);
             sep.setStyle("-fx-background-color:" + BORDER + ";-fx-opacity:0.4;");
@@ -624,11 +666,15 @@ public class GameScreen {
         }
         VBox entriesBox = new VBox(4);
         entriesBox.setPadding(new Insets(6, 12, 8, 12));
+        entriesBox.setAlignment(Pos.TOP_CENTER);
         if (logEntries.isEmpty()) {
             Label hint = new Label("\u2014 in attesa di azione \u2014");
             hint.setFont(pixelFontTiny);
             hint.setStyle("-fx-text-fill:#555566;");
-            hint.setWrapText(true); hint.setMaxWidth(COL_RIGHT - 24);
+            hint.setWrapText(true);
+            hint.setMaxWidth(COL_RIGHT - 24);
+            hint.setAlignment(Pos.CENTER);
+            hint.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
             entriesBox.getChildren().add(hint);
         } else {
             int start = Math.max(0, logEntries.size() - 12);
@@ -640,7 +686,10 @@ public class GameScreen {
                 Label lbl = new Label(entry);
                 lbl.setFont(pixelFontTiny);
                 lbl.setStyle("-fx-text-fill:" + color + ";");
-                lbl.setWrapText(true); lbl.setMaxWidth(COL_RIGHT - 24);
+                lbl.setWrapText(true);
+                lbl.setMaxWidth(COL_RIGHT - 24);
+                lbl.setAlignment(Pos.CENTER);
+                lbl.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
                 entriesBox.getChildren().add(lbl);
             }
         }
@@ -1005,6 +1054,14 @@ public class GameScreen {
         Label k = new Label(key); k.setFont(pixelFontTiny); k.setStyle("-fx-text-fill:#888888;");
         Label v = new Label(val); v.setFont(pixelFontSmall); v.setStyle("-fx-text-fill:" + WHITE + ";");
         VBox chip = new VBox(2, k, v); chip.setAlignment(Pos.CENTER);
+        return chip;
+    }
+
+    /** Variante di statChip con font configurabile, usata in compact mode */
+    private VBox statChipSmall(String key, String val, Font valFont) {
+        Label k = new Label(key); k.setFont(pixelFontTiny); k.setStyle("-fx-text-fill:#888888;");
+        Label v = new Label(val); v.setFont(valFont);        v.setStyle("-fx-text-fill:" + WHITE + ";");
+        VBox chip = new VBox(1, k, v); chip.setAlignment(Pos.CENTER);
         return chip;
     }
 
