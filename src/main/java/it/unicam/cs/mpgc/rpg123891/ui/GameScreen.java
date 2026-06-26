@@ -57,13 +57,18 @@ public class GameScreen {
     private static final String WHITE        = "#cccccc";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
-    private static final double ICON_SIZE    = 14;
+
+    // Icone e font ingranditi per i pulsanti azione
+    private static final double ACTION_ICON_SIZE = 20;
+    private static final int    ACTION_FONT_SIZE = 13;
+    private static final double ICON_SIZE        = 14; // per SAVE/MENU
 
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
 
     private Font pixelFont;
     private Font pixelFontSmall;
+    private Font pixelFontAction; // font più grande per i pulsanti azione
 
     private final BorderPane       root;
     private final GameController   gc;
@@ -99,12 +104,15 @@ public class GameScreen {
                 getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), FONT_SIZE);
             pixelFontSmall = Font.loadFont(
                 getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10);
+            pixelFontAction = Font.loadFont(
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), ACTION_FONT_SIZE);
         } catch (Exception ignored) {}
-        if (pixelFont      == null) pixelFont      = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
-        if (pixelFontSmall == null) pixelFontSmall = Font.font("Courier New", FontWeight.BOLD, 10);
+        if (pixelFont       == null) pixelFont       = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
+        if (pixelFontSmall  == null) pixelFontSmall  = Font.font("Courier New", FontWeight.BOLD, 10);
+        if (pixelFontAction == null) pixelFontAction = Font.font("Courier New", FontWeight.BOLD, ACTION_FONT_SIZE);
     }
 
-    // ── CHARACTER card ─────────────────────────────────────────────
+    // ── CHARACTER card ──────────────────────────────────────────────────────
     private void buildCharacterPanel() {
         paneCharacter.getChildren().clear();
         paneCharacter.setAlignment(Pos.TOP_LEFT);
@@ -113,7 +121,6 @@ public class GameScreen {
 
         GameCharacter p = player();
 
-        // ── Portrait
         StackPane portraitBox = new StackPane();
         portraitBox.setPrefSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         portraitBox.setMinSize(PORTRAIT_SIZE, PORTRAIT_SIZE);
@@ -134,7 +141,6 @@ public class GameScreen {
         ImageView portrait = loadImage(spritePath, PORTRAIT_SIZE - 10, PORTRAIT_SIZE - 10);
         if (portrait != null) portraitBox.getChildren().add(portrait);
 
-        // ── Stats
         VBox statsBox = new VBox(6);
         statsBox.setAlignment(Pos.TOP_LEFT);
         statsBox.setPadding(new Insets(4, 0, 0, 10));
@@ -152,7 +158,6 @@ public class GameScreen {
         HBox topRow = new HBox(0, portraitBox, statsBox);
         topRow.setAlignment(Pos.TOP_LEFT);
 
-        // ── Equipment
         String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
         String lh = equipmentManager.getEquipped(EquipSlot.OFF_HAND).map(Weapon::getName).orElse("none");
         String ar = equipmentManager.getEquipped(EquipSlot.BODY).map(Weapon::getName).orElse("none");
@@ -169,27 +174,29 @@ public class GameScreen {
         paneCharacter.getChildren().addAll(topRow, equipBox);
     }
 
-    // ── ACTION card ───────────────────────────────────────────────────
+    // ── ACTION card ─────────────────────────────────────────────────────────
     private void buildActionPanel() {
         paneAction.getChildren().clear();
         paneAction.setAlignment(Pos.CENTER);
         paneAction.setStyle("-fx-background-color:transparent;");
-        paneAction.setPadding(new Insets(18, 16, 14, 16));
+        paneAction.setPadding(new Insets(18, 20, 14, 20));
         paneAction.setSpacing(10);
 
-        // Riga 1: ATTACK | S. ATTACK
-        HBox row1 = makeButtonRow(
-            makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg"),
-            makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg")
-        );
+        // Riga 1: ATTACK (sinistra) | S. ATTACK (destra)
+        Button btnAttack  = makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg", Pos.CENTER_LEFT);
+        Button btnSAttack = makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg", Pos.CENTER_RIGHT);
+        btnAttack .setOnAction(e -> { /* TODO: gc.playerAttack()        */ });
+        btnSAttack.setOnAction(e -> { /* TODO: gc.playerSpecialAttack() */ });
+        HBox row1 = makeSplitRow(btnAttack, btnSAttack);
 
-        // Riga 2: INVENTORY | RUN
-        HBox row2 = makeButtonRow(
-            makeTextButtonWithIcon("INVENTORY", "/assets/icons/arrow.svg"),
-            makeTextButtonWithIcon("RUN",        "/assets/icons/arrow.svg")
-        );
+        // Riga 2: INVENTORY (sinistra) | RUN (destra)
+        Button btnInventory = makeTextButtonWithIcon("INVENTORY", "/assets/icons/arrow.svg", Pos.CENTER_LEFT);
+        Button btnRun       = makeTextButtonWithIcon("RUN",        "/assets/icons/arrow.svg", Pos.CENTER_RIGHT);
+        btnInventory.setOnAction(e -> { /* TODO: gc.openInventory() */ });
+        btnRun      .setOnAction(e -> { /* TODO: gc.playerRun()     */ });
+        HBox row2 = makeSplitRow(btnInventory, btnRun);
 
-        // Riga 3: SAVE | MENU  (con bordo + icona)
+        // Riga 3: SAVE | MENU (con bordo)
         Button btnSave = makeBorderedButtonWithIcon("SAVE", "/assets/icons/save.svg");
         Button btnMenu = makeBorderedButtonWithIcon("MENU", "/assets/icons/exit.svg");
         btnSave.setOnAction(e -> { /* TODO: salvataggio */ });
@@ -204,9 +211,27 @@ public class GameScreen {
         paneAction.getChildren().addAll(row1, row2, row3);
     }
 
-    // ── Pulsante testo con icona arrow a sinistra ─────────────────────────
-    // Restituisce un Button che contiene un HBox (icona + label)
-    private Button makeTextButtonWithIcon(String text, String iconPath) {
+    /**
+     * Riga con pulsante sinistro allineato a sinistra e pulsante destro allineato a destra.
+     * Uno Spacer (Region) spinge i due pulsanti verso i bordi opposti.
+     */
+    private HBox makeSplitRow(Button left, Button right) {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox row = new HBox(spacer);
+        row.getChildren().add(0, left);
+        row.getChildren().add(right);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setMaxWidth(Double.MAX_VALUE);
+        return row;
+    }
+
+    /**
+     * Pulsante testo con icona arrow.
+     * @param align Pos.CENTER_LEFT  → icona+testo allineati a sinistra
+     *              Pos.CENTER_RIGHT → testo+icona allineati a destra (ordine invertito)
+     */
+    private Button makeTextButtonWithIcon(String text, String iconPath, Pos align) {
         String baseStyle =
             "-fx-background-color:transparent;" +
             "-fx-border-color:transparent;" +
@@ -214,32 +239,50 @@ public class GameScreen {
             "-fx-padding:8 4;" +
             "-fx-cursor:hand;";
 
-        ImageView iconWhite = SvgUtil.load(iconPath, WHITE,    ICON_SIZE);
-        ImageView iconGold  = SvgUtil.load(iconPath, LABEL_FG, ICON_SIZE);
+        ImageView iconWhite = SvgUtil.load(iconPath, WHITE,    ACTION_ICON_SIZE);
+        ImageView iconGold  = SvgUtil.load(iconPath, LABEL_FG, ACTION_ICON_SIZE);
 
         Label lbl = new Label(text);
-        lbl.setFont(pixelFontSmall);
+        lbl.setFont(pixelFontAction);
         lbl.setStyle("-fx-text-fill:" + WHITE + ";");
 
-        HBox content = new HBox(6);
-        content.setAlignment(Pos.CENTER_LEFT);
-        if (iconWhite != null) content.getChildren().add(iconWhite);
-        content.getChildren().add(lbl);
+        HBox content = new HBox(8);
+        content.setAlignment(align);
+
+        boolean isRight = align == Pos.CENTER_RIGHT;
+        if (!isRight) {
+            // sinistra: icona → testo
+            if (iconWhite != null) content.getChildren().add(iconWhite);
+            content.getChildren().add(lbl);
+        } else {
+            // destra: testo → icona
+            content.getChildren().add(lbl);
+            if (iconWhite != null) content.getChildren().add(iconWhite);
+        }
 
         Button btn = new Button();
         btn.setGraphic(content);
         btn.setStyle(baseStyle);
-        btn.setMaxWidth(Double.MAX_VALUE);
 
         btn.setOnMouseEntered(e -> {
             lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-            content.getChildren().remove(0);
-            if (iconGold != null) content.getChildren().add(0, iconGold);
+            if (!isRight) {
+                if (!content.getChildren().isEmpty()) content.getChildren().set(0,
+                    iconGold != null ? iconGold : content.getChildren().get(0));
+            } else {
+                int last = content.getChildren().size() - 1;
+                if (last >= 0 && iconGold != null) content.getChildren().set(last, iconGold);
+            }
         });
         btn.setOnMouseExited(e -> {
             lbl.setStyle("-fx-text-fill:" + WHITE + ";");
-            content.getChildren().remove(0);
-            if (iconWhite != null) content.getChildren().add(0, iconWhite);
+            if (!isRight) {
+                if (!content.getChildren().isEmpty()) content.getChildren().set(0,
+                    iconWhite != null ? iconWhite : content.getChildren().get(0));
+            } else {
+                int last = content.getChildren().size() - 1;
+                if (last >= 0 && iconWhite != null) content.getChildren().set(last, iconWhite);
+            }
         });
 
         return btn;
@@ -284,31 +327,20 @@ public class GameScreen {
         btn.setOnMouseEntered(e -> {
             btn.setStyle(hover);
             lbl.setStyle("-fx-text-fill:" + WHITE + ";");
-            if (!content.getChildren().isEmpty()) content.getChildren().remove(0);
-            if (iconWhite != null) content.getChildren().add(0, iconWhite);
+            if (!content.getChildren().isEmpty()) content.getChildren().set(0,
+                iconWhite != null ? iconWhite : content.getChildren().get(0));
         });
         btn.setOnMouseExited(e -> {
             btn.setStyle(base);
             lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-            if (!content.getChildren().isEmpty()) content.getChildren().remove(0);
-            if (iconGold != null) content.getChildren().add(0, iconGold);
+            if (!content.getChildren().isEmpty()) content.getChildren().set(0,
+                iconGold != null ? iconGold : content.getChildren().get(0));
         });
 
         return btn;
     }
 
-    // ── Due pulsanti affiancati, larghezza uguale ──────────────────────────
-    private HBox makeButtonRow(Button left, Button right) {
-        left .setMaxWidth(Double.MAX_VALUE);
-        right.setMaxWidth(Double.MAX_VALUE);
-        HBox row = new HBox(10, left, right);
-        row.setAlignment(Pos.CENTER);
-        HBox.setHgrow(left,  Priority.ALWAYS);
-        HBox.setHgrow(right, Priority.ALWAYS);
-        return row;
-    }
-
-    // ── Helpers ─────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
     private HBox equipRow(String label, String value) {
         Label lbl = new Label(label + ": ");
         lbl.setFont(pixelFontSmall);
