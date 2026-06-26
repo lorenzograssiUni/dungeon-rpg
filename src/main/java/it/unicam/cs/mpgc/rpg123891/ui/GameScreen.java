@@ -71,12 +71,25 @@ public class GameScreen {
     private static final double PORTRAIT_SIZE   = 140;
     private static final double PORTRAIT_RADIUS = 12;
 
-    private static final double ENEMY_SPRITE_H = 130;
-    private static final double ENEMY_SPRITE_W = 110;
+    private static final double ENEMY_SPRITE_H  = 130;
+    private static final double ENEMY_SPRITE_W  = 110;
+
+    // HP bar
+    private static final double HP_BAR_W        = 90;
+    private static final double HP_BAR_H        = 7;
+    private static final String HP_BAR_BG       = "#3a1a1a";
+    private static final String HP_BAR_FG_HIGH  = "#4caf50";
+    private static final String HP_BAR_FG_MID   = "#ff9800";
+    private static final String HP_BAR_FG_LOW   = "#f44336";
+    private static final String BADGE_STUN      = "#a855f7";
+    private static final String BADGE_IMMUNE     = "#2196f3";
+    private static final String BADGE_BOSS       = "#c0392b";
+    private static final String BADGE_EGG        = "#78909c";
 
     private Font pixelFont;
     private Font pixelFontSmall;
     private Font pixelFontAction;
+    private Font pixelFontTiny;
 
     private final BorderPane       root;
     private final GameController   gc;
@@ -127,6 +140,7 @@ public class GameScreen {
         buildCharacterPanel();
         buildActionPanel();
         buildEncounterPanel();
+        buildEnemyStatsPanel();
         stage.setOnCloseRequest(e -> Platform.exit());
     }
 
@@ -140,10 +154,13 @@ public class GameScreen {
                 getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 10);
             pixelFontAction = Font.loadFont(
                 getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), ACTION_FONT_SIZE);
+            pixelFontTiny = Font.loadFont(
+                getClass().getResourceAsStream("/assets/fonts/PressStart2P-Regular.ttf"), 8);
         } catch (Exception ignored) {}
         if (pixelFont       == null) pixelFont       = Font.font("Courier New", FontWeight.BOLD, FONT_SIZE);
         if (pixelFontSmall  == null) pixelFontSmall  = Font.font("Courier New", FontWeight.BOLD, 10);
         if (pixelFontAction == null) pixelFontAction = Font.font("Courier New", FontWeight.BOLD, ACTION_FONT_SIZE);
+        if (pixelFontTiny   == null) pixelFontTiny   = Font.font("Courier New", FontWeight.BOLD, 8);
     }
 
     // ── ENCOUNTER card ───────────────────────────────────────────────
@@ -151,8 +168,6 @@ public class GameScreen {
         paneEncounter.getChildren().clear();
         paneEncounter.setStyle("-fx-background-color:transparent;");
 
-        // ─ Background con clip arrotondato (inset = BORDER_W) ─
-        // Così il bg rimane dentro il bordo della card, che rimane visibile
         double clipInset = BORDER_W;
         double clipW     = COL_LEFT  - clipInset * 2;
         double clipH     = ROW_TOP   - clipInset * 2;
@@ -169,7 +184,6 @@ public class GameScreen {
                 bg.setPreserveRatio(false);
                 bg.setOpacity(0.80);
 
-                // Clip arrotondato che rispetta il border della card
                 Rectangle clip = new Rectangle(clipInset, clipInset, clipW, clipH);
                 clip.setArcWidth(RADIUS * 2);
                 clip.setArcHeight(RADIUS * 2);
@@ -180,7 +194,6 @@ public class GameScreen {
             }
         } catch (Exception ignored) {}
 
-        // ─ Sprite nemici vivi ─
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         List<Enemy> alive = wave == null ? List.of() :
             wave.getEnemies().stream().filter(Enemy::isAlive).toList();
@@ -213,6 +226,159 @@ public class GameScreen {
             row.getChildren().add(iv);
         }
         return row;
+    }
+
+    // ── ENEMY STATS card ────────────────────────────────────────────
+    private void buildEnemyStatsPanel() {
+        paneEnemyStats.getChildren().clear();
+        paneEnemyStats.setAlignment(Pos.TOP_LEFT);
+        paneEnemyStats.setStyle("-fx-background-color:transparent;");
+        paneEnemyStats.setPadding(new Insets(14, 14, 10, 14));
+        paneEnemyStats.setSpacing(10);
+
+        Wave wave = gc.getCurrentRoom().getCurrentWave();
+        List<Enemy> alive = wave == null ? List.of() :
+            wave.getEnemies().stream().filter(Enemy::isAlive).toList();
+
+        if (alive.isEmpty()) {
+            Label empty = new Label("No enemies");
+            empty.setFont(pixelFontSmall);
+            empty.setStyle("-fx-text-fill:" + WHITE + ";");
+            paneEnemyStats.getChildren().add(empty);
+            return;
+        }
+
+        // Scroll orizzontale se i nemici sono molti: usa HBox
+        // Ma la card ha larghezza fissa COL_LEFT, usiamo un layout a colonne
+        // Calcolo colonne: max 4 nemici visibili per riga
+        int cols    = Math.min(alive.size(), 4);
+        double colW = (COL_LEFT - 28.0 - (cols - 1) * 10.0) / cols;
+
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.TOP_LEFT);
+
+        for (Enemy enemy : alive) {
+            VBox card = buildEnemyStatCard(enemy, colW);
+            row.getChildren().add(card);
+        }
+
+        paneEnemyStats.getChildren().add(row);
+    }
+
+    /**
+     * Mini-card per un singolo nemico nella card ENEMY STATS.
+     * Mostra: nome, HP bar, stats inline, badge stato.
+     */
+    private VBox buildEnemyStatCard(Enemy enemy, double cardW) {
+        VBox card = new VBox(5);
+        card.setPrefWidth(cardW);
+        card.setMaxWidth(cardW);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setStyle(
+            "-fx-background-color:#1a1035;" +
+            "-fx-border-color:" + BORDER + ";" +
+            "-fx-border-width:1.5;" +
+            "-fx-border-radius:6;" +
+            "-fx-background-radius:6;" +
+            "-fx-padding:7 8 7 8;"
+        );
+
+        // ─ Nome + badge boss/uovo ─
+        HBox nameRow = new HBox(5);
+        nameRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label nameLbl = new Label(enemy.getName());
+        nameLbl.setFont(pixelFontTiny);
+        nameLbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
+        nameLbl.setMaxWidth(cardW - 60);
+        nameLbl.setWrapText(false);
+        nameRow.getChildren().add(nameLbl);
+
+        if (enemy.isBoss()) {
+            nameRow.getChildren().add(badge("BOSS", BADGE_BOSS));
+        }
+        if (enemy.isEgg()) {
+            nameRow.getChildren().add(badge("EGG", BADGE_EGG));
+        }
+
+        // ─ HP bar ─
+        double hpRatio    = (double) enemy.getCurrentHp() / Math.max(1, enemy.getMaxHp());
+        String barColor   = hpRatio > 0.5 ? HP_BAR_FG_HIGH
+                          : hpRatio > 0.25 ? HP_BAR_FG_MID
+                          : HP_BAR_FG_LOW;
+        double barFillW   = Math.max(1, hpRatio * (cardW - 16));
+
+        StackPane hpBar = buildBar(cardW - 16, HP_BAR_H, barFillW, HP_BAR_BG, barColor);
+
+        Label hpLbl = new Label("HP " + enemy.getCurrentHp() + "/" + enemy.getMaxHp());
+        hpLbl.setFont(pixelFontTiny);
+        hpLbl.setStyle("-fx-text-fill:" + WHITE + ";");
+
+        // ─ Stats inline ─
+        HBox statsRow = new HBox(8);
+        statsRow.setAlignment(Pos.CENTER_LEFT);
+        statsRow.getChildren().addAll(
+            statChip("ATK", String.valueOf(enemy.getAttack())),
+            statChip("DEF", String.valueOf(enemy.getDefense())),
+            statChip("AGI", String.valueOf(enemy.getAgility())),
+            statChip("CRI", String.format("%.0f%%", enemy.getCritChance() * 100))
+        );
+
+        // ─ Badge stato ─
+        HBox badgeRow = new HBox(4);
+        badgeRow.setAlignment(Pos.CENTER_LEFT);
+        if (enemy.isStunned()) badgeRow.getChildren().add(badge("STUN",   BADGE_STUN));
+        if (enemy.isImmune())  badgeRow.getChildren().add(badge("IMMUNE", BADGE_IMMUNE));
+
+        card.getChildren().addAll(nameRow, hpBar, hpLbl, statsRow);
+        if (!badgeRow.getChildren().isEmpty()) card.getChildren().add(badgeRow);
+
+        return card;
+    }
+
+    /** Barra colorata con sfondo. */
+    private StackPane buildBar(double totalW, double h, double fillW,
+                               String bgColor, String fgColor) {
+        Rectangle bg   = new Rectangle(totalW, h);
+        bg.setFill(Color.web(bgColor));
+        bg.setArcWidth(h); bg.setArcHeight(h);
+
+        Rectangle fill = new Rectangle(fillW, h);
+        fill.setFill(Color.web(fgColor));
+        fill.setArcWidth(h); fill.setArcHeight(h);
+
+        StackPane sp = new StackPane(bg, fill);
+        sp.setAlignment(Pos.CENTER_LEFT);
+        sp.setPrefSize(totalW, h);
+        sp.setMaxSize(totalW, h);
+        sp.setMinSize(totalW, h);
+        return sp;
+    }
+
+    /** Chip statistiche (es. ATK 12). */
+    private VBox statChip(String key, String val) {
+        Label k = new Label(key);
+        k.setFont(pixelFontTiny);
+        k.setStyle("-fx-text-fill:#888888;");
+        Label v = new Label(val);
+        v.setFont(pixelFontTiny);
+        v.setStyle("-fx-text-fill:" + WHITE + ";");
+        VBox chip = new VBox(1, k, v);
+        chip.setAlignment(Pos.CENTER);
+        return chip;
+    }
+
+    /** Badge colorato con testo. */
+    private Label badge(String text, String color) {
+        Label b = new Label(text);
+        b.setFont(pixelFontTiny);
+        b.setStyle(
+            "-fx-text-fill:#ffffff;" +
+            "-fx-background-color:" + color + ";" +
+            "-fx-background-radius:3;" +
+            "-fx-padding:1 4;"
+        );
+        return b;
     }
 
     // ── CHARACTER card ─────────────────────────────────────────────
@@ -511,7 +677,6 @@ public class GameScreen {
         double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
         double ySys  = yBot2 + ROW_BOT + GAP + LABEL_OFFSET;
 
-        // Encounter (r1) escluso dall'overlay della griglia
         Canvas gridOverlay = buildGridOverlay(new double[][]{
             {xOff + COL_LEFT + GAP,                 yTop2, COL_MID,   ROW_TOP},
             {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
