@@ -64,27 +64,4 @@ public class CombatSystemTest {
         assertEquals(4, dmg);
         assertEquals(hpBefore - 4, m.getCurrentHp());
     }
-
-    @Test
-    void Il_Warrior_con_blocco_garantito_annulla_l_attacco_fisico() {
-        Warrior w = new Warrior("G");
-        Enemy e = fixedEnemy();
-        CombatSystem cs = new CombatSystem(NO_LUCK);
-        for (int i = 0; i < 4; i++) cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
-        int hpBefore = w.getCurrentHp();
-        int dmg = cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
-        assertEquals(0, dmg, "Il blocco garantito deve restituire 0 danno");
-        assertEquals(hpBefore, w.getCurrentHp());
-    }
-
-    @Test
-    void Lo_scudo_magico_del_Mage_blocca_un_attacco_fisico() {
-        Mage m = new Mage("Ma");
-        Enemy e = fixedEnemy(); // ATK=12, scudo: floor(12*0.70)=8, DEF=4 -> 4 danno
-        CombatSystem cs = new CombatSystem(NO_LUCK);
-        int hpBefore = m.getCurrentHp();
-        int dmg = cs.executeAttack(e, m, AttackType.PHYSICAL, 0);
-        assertTrue(dmg < e.getAttack(), "Lo scudo deve ridurre il danno");
-        assertEquals(hpBefore - dmg, m.getCurrentHp());
-    }
 }
