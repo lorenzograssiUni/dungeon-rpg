@@ -40,7 +40,6 @@ public class DungeonMap implements Serializable {
 
         room.addEntryLoot(new MagicStaff());
 
-        // Wave 0 — Stanza del Bastone: nessun nemico, solo loot narrativo.
         Wave waveLootBastone = new Wave("Stanza del Bastone", true,
                 "Tra le radici di un albero secolare scorgi un bagliore dorato. " +
                 "Un antico bastone magico giace l\u00ec, come se ti stesse aspettando da secoli. " +
@@ -48,7 +47,6 @@ public class DungeonMap implements Serializable {
         waveLootBastone.addLoot(new MagicStaff());
         room.addWave(waveLootBastone);
 
-        // Wave 1
         Wave waveA = new Wave("Ondata A", true,
                 "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
         waveA.addEnemy(EnemyFactory.createCinghiale());
@@ -56,7 +54,6 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createCinghiale());
         room.addWave(waveA);
 
-        // Wave 2
         Wave waveB = new Wave("Ondata B", true,
                 "Non hai fatto in tempo a rifiatare. Due cinghiali e un lupo solitario " +
                 "sbucano dall'ombra, denti scoperti.");
@@ -109,16 +106,7 @@ public class DungeonMap implements Serializable {
                 "L'eco dei tuoi passi si moltiplica nell'oscurit\u00e0. " +
                 "L'odore di pietra umida e morte vecchia appesta l'aria.");
 
-        // Wave 0 — Stanza dello Spadone: nessun nemico, solo loot narrativo.
-        // Mostrata come card Encounter con sprite statua.png, poi auto-avanza.
-        Wave waveStatua = new Wave("Stanza dello Spadone", true,
-                "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
-                "di un guerriero in armatura piena \u2014 alta il doppio di un uomo. " +
-                "Tra le sue mani di pietra stringe uno SPADONE enorme. " +
-                "Lentamente, le dita si aprono. La spada cade ai tuoi piedi con un rimbombo.");
-        waveStatua.addLoot(new Greatsword());
-        room.addWave(waveStatua);
-
+        // Wave 0 — combattimento iniziale
         Wave waveA = new Wave("Ondata A", true,
                 "Tre scheletri si svegliano dalle nicchie scavate nelle pareti. " +
                 "Le loro orbite vuote brillano di luce bluastra. Le ossa scricchiolano mentre avanzano.");
@@ -127,6 +115,17 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createScheletro());
         room.addWave(waveA);
 
+        // Wave 1 — Stanza dello Spadone: nessun nemico, loot narrativo.
+        // handleLootWaveAutoAdvance() la intercetta dopo waveA e mostra la card con statua.png.
+        Wave waveStatua = new Wave("Stanza dello Spadone", true,
+                "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
+                "di un guerriero in armatura piena \u2014 alta il doppio di un uomo. " +
+                "Tra le sue mani di pietra stringe uno SPADONE enorme. " +
+                "Lentamente, le dita si aprono. La spada cade ai tuoi piedi con un rimbombo.");
+        waveStatua.addLoot(new Greatsword());
+        room.addWave(waveStatua);
+
+        // Wave 2
         Wave waveB = new Wave("Ondata B", true,
                 "Dalle pareti emergono altri scheletri, stavolta tre comuni e uno corazzato " +
                 "con scudo e armatura. Si muovono con sincronia innaturale.");
@@ -136,6 +135,7 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createScheletroGuardia());
         room.addWave(waveB);
 
+        // Wave 3 — Miniboss
         Wave waveC = new Wave("Miniboss: Strega", false,
                 "Una risata acuta echeggia dalle volte. Candele si accendono da sole. " +
                 "La Strega scende lentamente dal soffitto, circondata da un alone verdastro. " +
