@@ -90,7 +90,8 @@ public class GameScreen {
     private static final double LOOT_SPRITE_W     = 120;
     private static final double LOOT_SPRITE_OFFSET_Y = 10;
 
-    private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo Drago", "Cucciolo Uovo");
+    // FIX: nomi corretti dal modello ("Cucciolo di Drago", rimosso "Cucciolo Uovo" che non esiste)
+    private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo di Drago");
     private static final Set<String> DRAGON_NAMES   = Set.of("L'Ultimo Drago");
 
     // ── HP bar ────────────────────────────────────────────────────────
@@ -130,9 +131,10 @@ public class GameScreen {
         ENEMY_SPRITES.put("Scheletro",         List.of("/assets/enemies/scheletro.png","/assets/enemies/scheletro2.png"));
         ENEMY_SPRITES.put("Scheletro Guardia", List.of("/assets/enemies/scheletroGuardia.png","/assets/enemies/scheletroGuardia2.png"));
         ENEMY_SPRITES.put("Strega",            List.of("/assets/enemies/Strega.png"));
-        ENEMY_SPRITES.put("Uovo",              List.of("/assets/enemies/uovo1.png","/assets/enemies/uovo2.png"));
-        ENEMY_SPRITES.put("Cucciolo Drago",    List.of("/assets/enemies/cucciolo1.png","/assets/enemies/cucciolo2.png"));
-        ENEMY_SPRITES.put("Cucciolo Uovo",     List.of("/assets/enemies/cuccioloUovo1.png","/assets/enemies/cuccioloUovo2.png"));
+        // FIX: "Uovo" usa cuccioloUovo1/2 (sprite dell'uovo che si sta per schiudere)
+        ENEMY_SPRITES.put("Uovo",              List.of("/assets/enemies/cuccioloUovo1.png","/assets/enemies/cuccioloUovo2.png"));
+        // FIX: "Cucciolo di Drago" (nome esatto dal modello) usa cucciolo1/2
+        ENEMY_SPRITES.put("Cucciolo di Drago", List.of("/assets/enemies/cucciolo1.png","/assets/enemies/cucciolo2.png"));
         ENEMY_SPRITES.put("L'Ultimo Drago",    List.of("/assets/enemies/UltimoDrago.png"));
     }
 
@@ -517,16 +519,12 @@ public class GameScreen {
         int current = map.getCurrentRoomIndex();
         if (targetIndex == current) return;
         if (targetIndex < current) {
-            // Non si può tornare indietro — avvisa solo nel log
             addLogEntry("[DEBUG] Impossibile tornare a una stanza precedente.");
             return;
         }
-        // Marca tutte le stanze intermedie come cleared per sbloccare advanceToNextRoom
         for (int i = current; i < targetIndex; i++) {
             Room r = map.getRooms().get(i);
-            // Marca tutte le wave come cleared
             r.getWaves().forEach(w -> w.setCleared(true));
-            // Forza il wave index all'ultima wave così isCleared() ritorna true
             while (r.hasMoreWaves()) r.advanceWave();
             map.advanceToNextRoom();
         }
@@ -657,7 +655,6 @@ public class GameScreen {
         for (Enemy enemy : alive) {
             VBox row = buildEnemyStatRow(enemy, compact);
             boolean isSelected = enemy == selectedTarget;
-            // Stile della riga: highlight se selezionato, hover cursor hand
             String rowStyle = isSelected
                 ? "-fx-background-color:" + SEL_BG + ";-fx-border-color:" + LABEL_FG +
                   ";-fx-border-width:1;-fx-border-radius:6;-fx-background-radius:6;-fx-padding:4 6;-fx-cursor:hand;"
@@ -666,7 +663,7 @@ public class GameScreen {
             row.setStyle(rowStyle);
             row.setOnMouseClicked(e -> {
                 selectedTarget = enemy;
-                buildEnemyStatsPanel(); // ridisegna solo questo panel
+                buildEnemyStatsPanel();
             });
             row.setOnMouseEntered(e -> {
                 if (enemy != selectedTarget)
@@ -683,7 +680,7 @@ public class GameScreen {
     }
 
     private VBox buildEnemyStatRow(Enemy enemy, boolean compact) {
-        double rowW    = ENEMY_ROW_W - 16; // -16 per il padding del wrapper
+        double rowW    = ENEMY_ROW_W - 16;
         Font nameFont  = compact ? pixelFontTiny  : pixelFontSmall;
         Font statFont  = compact ? pixelFontTiny  : pixelFontSmall;
         double barH    = compact ? 5  : HP_BAR_H;
@@ -807,8 +804,6 @@ public class GameScreen {
         double textOffX = lineX + dotR + 10;
         double topPad   = 20, areaH = 18, waveH = 14, connH = 10;
 
-        // Calcola l'altezza di ogni room nel canvas per posizionare le hit areas
-        // stessa logica del disegno
         double[] roomY = new double[rooms.size()];
         {
             double y = topPad;
@@ -842,7 +837,7 @@ public class GameScreen {
             g.fillOval(lineX - dotR, y + areaH / 2 - dotR, dotR * 2, dotR * 2);
             g.setFont(pixelFontSmall != null ? pixelFontSmall : Font.font("Courier New", 10));
             String roomLabel = ROOM_NAMES_EN.getOrDefault(room.getId(), room.getName()).toUpperCase();
-            if (isFut) roomLabel = "\u25ba " + roomLabel; // freccia per le stanze saltabili
+            if (isFut) roomLabel = "\u25ba " + roomLabel;
             g.fillText(roomLabel, textOffX, y + areaH / 2 + 4);
             y += areaH;
             for (int wi = 0; wi < room.getWaves().size(); wi++) {
@@ -862,7 +857,6 @@ public class GameScreen {
         paneRightTop.getChildren().add(canvas);
         StackPane.setAlignment(canvas, Pos.TOP_LEFT);
 
-        // Overlay trasparente con hit areas cliccabili per le stanze future (debug jump)
         for (int ri = currentRoomIdx + 1; ri < rooms.size(); ri++) {
             final int targetIdx = ri;
             double ry = roomY[ri];
