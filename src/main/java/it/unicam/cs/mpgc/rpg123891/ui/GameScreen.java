@@ -40,7 +40,7 @@ import java.util.Set;
  */
 public class GameScreen {
 
-    // ── Layout constants ──────────────────────────────────────────────
+    // ── Layout constants ────────────────────────────────────────────────────
     private static final double COL_LEFT     = 390;
     private static final double COL_MID      = 310;
     private static final double COL_RIGHT    = 280;
@@ -62,7 +62,7 @@ public class GameScreen {
         + LABEL_OFFSET + ROW_BOT + GAP
         + LABEL_OFFSET + SYS_H + PAD;
 
-    // ── Colours ───────────────────────────────────────────────────────
+    // ── Colours ─────────────────────────────────────────────────────────────
     private static final String BG           = "#212121";
     private static final String CARD_BG      = "#140E2C";
     private static final String SYS_BG       = "#000000";
@@ -74,7 +74,7 @@ public class GameScreen {
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
-    // ── Sprite sizes ──────────────────────────────────────────────────
+    // ── Sprite sizes ──────────────────────────────────────────────────────
     private static final double ACTION_ICON_SIZE  = 20;
     private static final int    ACTION_FONT_SIZE  = 13;
     private static final double ICON_SIZE         = 14;
@@ -93,7 +93,7 @@ public class GameScreen {
     private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo di Drago");
     private static final Set<String> DRAGON_NAMES   = Set.of("L'Ultimo Drago");
 
-    // ── HP bar ────────────────────────────────────────────────────────
+    // ── HP bar ─────────────────────────────────────────────────────────────
     private static final double HP_BAR_H       = 8;
     private static final String HP_BAR_BG      = "#3a1a1a";
     private static final String HP_BAR_FG_HIGH = "#4caf50";
@@ -105,7 +105,7 @@ public class GameScreen {
     private static final String BADGE_EGG      = "#78909c";
     private static final double ENEMY_ROW_W    = COL_LEFT - 28.0;
 
-    // ── Static data ───────────────────────────────────────────────────
+    // ── Static data ─────────────────────────────────────────────────────────
     private static final Map<String, String> ROOM_NAMES_EN = Map.of(
         "r1", "Forest",
         "r2", "Goblin Village",
@@ -130,9 +130,7 @@ public class GameScreen {
         ENEMY_SPRITES.put("Scheletro",         List.of("/assets/enemies/scheletro.png","/assets/enemies/scheletro2.png"));
         ENEMY_SPRITES.put("Scheletro Guardia", List.of("/assets/enemies/scheletroGuardia.png","/assets/enemies/scheletroGuardia2.png"));
         ENEMY_SPRITES.put("Strega",            List.of("/assets/enemies/Strega.png"));
-        // Uovo: sprite base (non ancora schiuso)
         ENEMY_SPRITES.put("Uovo",              List.of("/assets/enemies/uovo1.png","/assets/enemies/uovo2.png"));
-        // Sprite uovo schiuso (usato quando hatchCounter >= turnsToHatch)
         ENEMY_SPRITES.put("Uovo_hatching",     List.of("/assets/enemies/cuccioloUovo1.png","/assets/enemies/cuccioloUovo2.png"));
         ENEMY_SPRITES.put("Cucciolo di Drago", List.of("/assets/enemies/cucciolo1.png","/assets/enemies/cucciolo2.png"));
         ENEMY_SPRITES.put("L'Ultimo Drago",    List.of("/assets/enemies/UltimoDrago.png"));
@@ -147,7 +145,7 @@ public class GameScreen {
         ROOM_BG.put("r5", "/assets/backgrounds/StanzaFinale.png");
     }
 
-    // ── State ─────────────────────────────────────────────────────────
+    // ── State ──────────────────────────────────────────────────────────────────
     private Font pixelFont;
     private Font pixelFontSmall;
     private Font pixelFontAction;
@@ -172,7 +170,7 @@ public class GameScreen {
     /** Bersaglio attualmente selezionato nella card Enemy Stats. */
     private Enemy selectedTarget = null;
 
-    // ── Constructor ───────────────────────────────────────────────────
+    // ── Constructor ─────────────────────────────────────────────────────────────
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
         this.gc               = gc;
@@ -192,7 +190,7 @@ public class GameScreen {
 
     public BorderPane getRoot() { return root; }
 
-    // ── Public refresh ────────────────────────────────────────────────
+    // ── Public refresh ────────────────────────────────────────────────────────────
 
     public void refresh() {
         Wave curWave = gc.getCurrentRoom().getCurrentWave();
@@ -215,7 +213,7 @@ public class GameScreen {
         buildLogPanel();
     }
 
-    // ── Font loader ───────────────────────────────────────────────────
+    // ── Font loader ─────────────────────────────────────────────────────────────
 
     private void loadFont() {
         try {
@@ -270,7 +268,7 @@ public class GameScreen {
         addLogEntry("\u2726 Partita salvata.");
     }
 
-    // ── Execute a turn result ─────────────────────────────────────────
+    // ── Execute a turn result ─────────────────────────────────────────────────
 
     private void executeTurn(CombatController.TurnResult result) {
         if (result == null) return;
@@ -316,7 +314,7 @@ public class GameScreen {
         buildActionPanel();
     }
 
-    // ── Dialogs ───────────────────────────────────────────────────────
+    // ── Dialogs ───────────────────────────────────────────────────────────────
 
     private void showTargetDialog(List<Enemy> targets, java.util.function.Consumer<Enemy> callback) {
         Alert dlg = new Alert(Alert.AlertType.NONE);
@@ -485,7 +483,7 @@ public class GameScreen {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private List<Enemy> aliveTargets(Wave wave) {
         return wave.getEnemies().stream()
@@ -600,7 +598,6 @@ public class GameScreen {
             int used    = usageCount.getOrDefault(name, 0);
             usageCount.put(name, used + 1);
 
-            // Scegli la chiave sprite: se è un uovo pronto a schiudersi usa Uovo_hatching
             String spriteKey = name;
             if ("Uovo".equals(name) && enemy.isEgg() && enemy.isReadyToHatch()) {
                 spriteKey = "Uovo_hatching";
@@ -910,320 +907,5 @@ public class GameScreen {
             statLine("AGI: " + p.getAgility(),                                    WHITE,    pixelFontSmall),
             statLine("CRI: " + String.format("%.0f%%", p.getCritChance() * 100), WHITE,    pixelFontSmall)
         );
-        if (p instanceof Mage m && m.isMagicShieldActive())
-            statsBox.getChildren().add(badge("MAGIC SHIELD", "#2196f3"));
         if (p instanceof Thief t && t.isStealthBonusActive())
-            statsBox.getChildren().add(badge("STEALTH", "#a855f7"));
-        HBox topRow = new HBox(0, portraitBox, statsBox);
-        topRow.setAlignment(Pos.TOP_LEFT);
-        String rh = equipmentManager.getEquipped(EquipSlot.MAIN_HAND).map(Weapon::getName).orElse("none");
-        String lh = equipmentManager.getEquipped(EquipSlot.OFF_HAND).map(Weapon::getName).orElse("none");
-        String ar = equipmentManager.getEquipped(EquipSlot.BODY).map(Weapon::getName).orElse("none");
-        VBox equipBox = new VBox(8);
-        equipBox.setAlignment(Pos.TOP_LEFT);
-        equipBox.setPadding(new Insets(14, 0, 0, 0));
-        equipBox.getChildren().addAll(
-            equipRow("Right Hand", rh),
-            equipRow("Left Hand",  lh),
-            equipRow("Armour",     ar)
-        );
-        paneCharacter.getChildren().addAll(topRow, equipBox);
-    }
-
-    private void buildActionPanel() {
-        paneAction.getChildren().clear();
-        paneAction.setAlignment(Pos.CENTER);
-        paneAction.setStyle("-fx-background-color:transparent;");
-        paneAction.setPadding(new Insets(18, 20, 14, 20));
-        paneAction.setSpacing(10);
-        Room currentRoom = gc.getCurrentRoom();
-        Wave currentWave = currentRoom.getCurrentWave();
-        boolean isLootWave = currentWave != null
-            && currentWave.getEnemies().isEmpty()
-            && currentWave.isCleared();
-        boolean roomCleared = currentRoom.isCleared();
-        if (roomCleared && gc.getGameState().getDungeonMap().hasNextRoom()) {
-            Button btnAdvance = makeBorderedButtonWithIcon("AVANZA", "/assets/icons/arrow.svg");
-            btnAdvance.setMaxWidth(Double.MAX_VALUE);
-            btnAdvance.setOnAction(e -> {
-                gc.advanceRoom();
-                logEntries.clear();
-                addLogEntry("\u2726 Sei entrato in: " + gc.getCurrentRoom().getName());
-                refresh();
-                handleLootWaveAutoAdvance();
-            });
-            paneAction.getChildren().add(btnAdvance);
-        } else if (isLootWave) {
-            Button btnNext = makeBorderedButtonWithIcon("PROCEDI", "/assets/icons/arrow.svg");
-            btnNext.setMaxWidth(Double.MAX_VALUE);
-            btnNext.setOnAction(e -> {
-                gc.checkWaveCleared();
-                refresh();
-            });
-            paneAction.getChildren().add(btnNext);
-        } else {
-            long potions = gc.countPotions();
-            Button btnAttack    = makeTextButtonWithIcon("ATTACK",    "/assets/icons/arrow.svg", false);
-            Button btnSAttack   = makeTextButtonWithIcon("S. ATTACK", "/assets/icons/arrow.svg", true);
-            Button btnInventory = makeTextButtonWithIcon("INVENTORY (" + potions + ")", "/assets/icons/arrow.svg", false);
-            Button btnRun       = makeTextButtonWithIcon("RUN",        "/assets/icons/arrow.svg", true);
-            btnRun.setDisable(!gc.canFlee());
-            btnAttack   .setOnAction(e -> onAttack());
-            btnSAttack  .setOnAction(e -> onSpecialAttack());
-            btnInventory.setOnAction(e -> onInventory());
-            btnRun      .setOnAction(e -> onRun());
-            paneAction.getChildren().addAll(
-                makeSplitRow(btnAttack, btnSAttack),
-                makeSplitRow(btnInventory, btnRun),
-                makeSaveMenuRow()
-            );
-        }
-    }
-
-    // =========================================================================
-    // LAYOUT
-    // =========================================================================
-
-    private void buildLayout() {
-        Canvas bgCanvas = new Canvas(WIN_W, WIN_H);
-        drawGrid(bgCanvas);
-        bgCanvas.setMouseTransparent(true);
-        StackPane cardEncounter  = makeCardWithTitle("ENCOUNTER",   paneEncounter,  COL_LEFT,  ROW_TOP);
-        StackPane cardCharacter  = makeCardWithTitle("CHARACTER",   paneCharacter,  COL_MID,   ROW_TOP);
-        StackPane cardRightTop   = makeCardWithTitle("MAP",          paneRightTop,   COL_RIGHT, ROW_TOP);
-        StackPane cardEnemyStats = makeCardWithTitle("ENEMY STATS",  paneEnemyStats, COL_LEFT,  ROW_BOT);
-        StackPane cardAction     = makeCardWithTitle("ACTION",       paneAction,     COL_MID,   ROW_BOT);
-        StackPane cardLog        = makeCardWithTitle("COMBAT LOG",   paneLog,        COL_RIGHT, ROW_BOT);
-        HBox rowTop = new HBox(GAP, cardEncounter, cardCharacter, cardRightTop);
-        rowTop.setAlignment(Pos.BOTTOM_LEFT);
-        rowTop.setPrefHeight(ROW_TOP + LABEL_OFFSET);
-        rowTop.setMinHeight(ROW_TOP + LABEL_OFFSET);
-        rowTop.setMaxHeight(ROW_TOP + LABEL_OFFSET);
-        HBox rowBot = new HBox(GAP, cardEnemyStats, cardAction, cardLog);
-        rowBot.setAlignment(Pos.BOTTOM_LEFT);
-        rowBot.setPrefHeight(ROW_BOT + LABEL_OFFSET);
-        rowBot.setMinHeight(ROW_BOT + LABEL_OFFSET);
-        rowBot.setMaxHeight(ROW_BOT + LABEL_OFFSET);
-        Label sysContent = new Label("DUNGEON RPG  v1.0  \u2014  by Lorenzo Grassi");
-        sysContent.setFont(pixelFontSmall);
-        sysContent.setStyle("-fx-text-fill:" + SYS_TEXT + ";");
-        sysContent.setAlignment(Pos.CENTER); sysContent.setMaxWidth(Double.MAX_VALUE);
-        StackPane sysInner = new StackPane(sysContent);
-        sysInner.setPrefSize(TOTAL_W, SYS_H); sysInner.setMinSize(TOTAL_W, SYS_H); sysInner.setMaxSize(TOTAL_W, SYS_H);
-        StackPane sysCard = new StackPane(sysInner);
-        sysCard.setPrefSize(TOTAL_W, SYS_H); sysCard.setMinSize(TOTAL_W, SYS_H); sysCard.setMaxSize(TOTAL_W, SYS_H);
-        sysCard.setStyle("-fx-background-color:" + SYS_BG + ";-fx-border-color:" + BORDER +
-            ";-fx-border-width:" + BORDER_W + ";-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS + ";");
-        Label sysTitle = new Label("  SYSTEM INFO  ");
-        sysTitle.setFont(pixelFont); sysTitle.setPrefHeight(LABEL_H);
-        sysTitle.setStyle("-fx-text-fill:" + LABEL_FG + ";-fx-background-color:" + SYS_BG +
-            ";-fx-border-color:" + BORDER + ";-fx-border-width:" + BORDER_W +
-            ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
-        StackPane sysWrapper = new StackPane();
-        sysWrapper.setPrefSize(TOTAL_W, SYS_H + LABEL_OFFSET);
-        sysWrapper.setMinSize(TOTAL_W, SYS_H + LABEL_OFFSET);
-        sysWrapper.setMaxSize(TOTAL_W, SYS_H + LABEL_OFFSET);
-        StackPane.setAlignment(sysCard,  Pos.BOTTOM_CENTER);
-        StackPane.setAlignment(sysTitle, Pos.TOP_CENTER);
-        sysWrapper.getChildren().addAll(sysCard, sysTitle);
-        VBox mainBox = new VBox(GAP, rowTop, rowBot, sysWrapper);
-        mainBox.setPadding(new Insets(PAD + LABEL_OFFSET, PAD, PAD, PAD));
-        mainBox.setAlignment(Pos.TOP_CENTER);
-        mainBox.setPrefSize(WIN_W, WIN_H); mainBox.setMinSize(WIN_W, WIN_H); mainBox.setMaxSize(WIN_W, WIN_H);
-        mainBox.setStyle("-fx-background-color:transparent;");
-        double xOff  = PAD;
-        double yTop2 = PAD + LABEL_OFFSET;
-        double yBot2 = yTop2 + ROW_TOP + GAP + LABEL_OFFSET;
-        Canvas gridOverlay = buildGridOverlay(new double[][]{
-            {xOff + COL_LEFT + GAP,                 yTop2, COL_MID,   ROW_TOP},
-            {xOff + COL_LEFT + GAP + COL_MID + GAP, yTop2, COL_RIGHT, ROW_TOP},
-            {xOff,                                  yBot2, COL_LEFT,  ROW_BOT},
-            {xOff + COL_LEFT + GAP,                 yBot2, COL_MID,   ROW_BOT},
-            {xOff + COL_LEFT + GAP + COL_MID + GAP, yBot2, COL_RIGHT, ROW_BOT}
-        });
-        gridOverlay.setMouseTransparent(true);
-        StackPane stack = new StackPane(bgCanvas, mainBox, gridOverlay);
-        stack.setPrefSize(WIN_W, WIN_H); stack.setMinSize(WIN_W, WIN_H); stack.setMaxSize(WIN_W, WIN_H);
-        stack.setAlignment(Pos.TOP_LEFT);
-        stack.setStyle("-fx-background-color:" + BG + ";");
-        root.setCenter(stack);
-    }
-
-    // ── Widget factories ──────────────────────────────────────────────
-
-    private StackPane makeCardWithTitle(String title, Region content, double w, double h) {
-        content.setPrefSize(w, h); content.setMinSize(w, h); content.setMaxSize(w, h);
-        StackPane card = new StackPane(content);
-        card.setPrefSize(w, h); card.setMinSize(w, h); card.setMaxSize(w, h);
-        card.setStyle("-fx-background-color:" + CARD_BG + ";-fx-border-color:" + BORDER +
-            ";-fx-border-width:" + BORDER_W + ";-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS + ";");
-        Label lbl = new Label("  " + title + "  ");
-        lbl.setFont(pixelFont); lbl.setPrefHeight(LABEL_H);
-        lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";-fx-background-color:" + CARD_BG +
-            ";-fx-border-color:" + BORDER + ";-fx-border-width:" + BORDER_W +
-            ";-fx-border-radius:6;-fx-background-radius:6;-fx-padding:3 12;");
-        StackPane wrapper = new StackPane();
-        wrapper.setPrefSize(w, h + LABEL_OFFSET);
-        wrapper.setMinSize(w, h + LABEL_OFFSET);
-        wrapper.setMaxSize(w, h + LABEL_OFFSET);
-        StackPane.setAlignment(card, Pos.BOTTOM_CENTER);
-        StackPane.setAlignment(lbl,  Pos.TOP_CENTER);
-        wrapper.getChildren().addAll(card, lbl);
-        return wrapper;
-    }
-
-    private HBox makeSplitRow(Button left, Button right) {
-        Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox row = new HBox(left, spacer, right);
-        row.setAlignment(Pos.CENTER_LEFT); row.setMaxWidth(Double.MAX_VALUE);
-        return row;
-    }
-
-    private HBox makeSaveMenuRow() {
-        Button btnSave = makeBorderedButtonWithIcon("SAVE", "/assets/icons/save.svg");
-        Button btnMenu = makeBorderedButtonWithIcon("MENU", "/assets/icons/exit.svg");
-        btnSave.setOnAction(e -> onSave());
-        btnMenu.setOnAction(e -> app.showMenu(stage));
-        btnSave.setMaxWidth(Double.MAX_VALUE); btnMenu.setMaxWidth(Double.MAX_VALUE);
-        HBox row = new HBox(10, btnSave, btnMenu);
-        row.setAlignment(Pos.CENTER);
-        HBox.setHgrow(btnSave, Priority.ALWAYS); HBox.setHgrow(btnMenu, Priority.ALWAYS);
-        return row;
-    }
-
-    private Button makeTextButtonWithIcon(String text, String iconPath, boolean pushRight) {
-        String baseStyle = "-fx-background-color:transparent;-fx-border-color:transparent;" +
-            "-fx-border-width:0;-fx-padding:8 4;-fx-cursor:hand;";
-        ImageView iconWhite = SvgUtil.load(iconPath, WHITE,    ACTION_ICON_SIZE);
-        ImageView iconGold  = SvgUtil.load(iconPath, LABEL_FG, ACTION_ICON_SIZE);
-        Label lbl = new Label(text);
-        lbl.setFont(pixelFontAction);
-        lbl.setStyle("-fx-text-fill:" + WHITE + ";");
-        HBox content = new HBox(8);
-        content.setAlignment(Pos.CENTER_LEFT);
-        if (iconWhite != null) content.getChildren().add(iconWhite);
-        content.getChildren().add(lbl);
-        Button btn = new Button(); btn.setGraphic(content); btn.setStyle(baseStyle);
-        btn.setOnMouseEntered(e -> {
-            lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-            if (!content.getChildren().isEmpty() && iconGold != null)
-                content.getChildren().set(0, iconGold);
-        });
-        btn.setOnMouseExited(e -> {
-            lbl.setStyle("-fx-text-fill:" + WHITE + ";");
-            if (!content.getChildren().isEmpty() && iconWhite != null)
-                content.getChildren().set(0, iconWhite);
-        });
-        return btn;
-    }
-
-    private Button makeBorderedButtonWithIcon(String text, String iconPath) {
-        String base  = "-fx-background-color:" + CARD_BG + ";-fx-border-color:" + BORDER +
-            ";-fx-border-width:2;-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS +
-            ";-fx-padding:6 10;-fx-cursor:hand;";
-        String hover = "-fx-background-color:#1e1640;-fx-border-color:" + BORDER +
-            ";-fx-border-width:2;-fx-border-radius:" + RADIUS + ";-fx-background-radius:" + RADIUS +
-            ";-fx-padding:6 10;-fx-cursor:hand;";
-        ImageView iconGold  = SvgUtil.load(iconPath, LABEL_FG, ICON_SIZE);
-        ImageView iconWhite = SvgUtil.load(iconPath, WHITE,    ICON_SIZE);
-        Label lbl = new Label(text); lbl.setFont(pixelFontSmall);
-        lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-        HBox content = new HBox(6); content.setAlignment(Pos.CENTER);
-        if (iconGold != null) content.getChildren().add(iconGold);
-        content.getChildren().add(lbl);
-        Button btn = new Button(); btn.setGraphic(content); btn.setStyle(base); btn.setMaxWidth(Double.MAX_VALUE);
-        btn.setOnMouseEntered(e -> {
-            btn.setStyle(hover); lbl.setStyle("-fx-text-fill:" + WHITE + ";");
-            if (!content.getChildren().isEmpty() && iconWhite != null) content.getChildren().set(0, iconWhite);
-        });
-        btn.setOnMouseExited(e -> {
-            btn.setStyle(base); lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-            if (!content.getChildren().isEmpty() && iconGold != null) content.getChildren().set(0, iconGold);
-        });
-        return btn;
-    }
-
-    // ── Small helpers ─────────────────────────────────────────────────
-
-    private HBox equipRow(String label, String value) {
-        Label lbl = new Label(label + ": "); lbl.setFont(pixelFontSmall); lbl.setStyle("-fx-text-fill:" + LABEL_FG + ";");
-        Label val = new Label(value);         val.setFont(pixelFontSmall); val.setStyle("-fx-text-fill:" + WHITE + ";");
-        HBox row = new HBox(0, lbl, val); row.setAlignment(Pos.CENTER_LEFT);
-        return row;
-    }
-
-    private Label statLine(String text, String color, Font font) {
-        Label l = new Label(text); l.setFont(font);
-        l.setStyle("-fx-text-fill:" + color + ";"); l.setWrapText(false);
-        return l;
-    }
-
-    private VBox statChipSmall(String key, String val, Font valFont) {
-        Label k = new Label(key); k.setFont(pixelFontTiny); k.setStyle("-fx-text-fill:#888888;");
-        Label v = new Label(val); v.setFont(valFont);        v.setStyle("-fx-text-fill:" + WHITE + ";");
-        VBox chip = new VBox(1, k, v); chip.setAlignment(Pos.CENTER);
-        return chip;
-    }
-
-    private Label badge(String text, String color) {
-        Label b = new Label(text); b.setFont(pixelFontTiny);
-        b.setStyle("-fx-text-fill:#ffffff;-fx-background-color:" + color +
-            ";-fx-background-radius:3;-fx-padding:1 4;");
-        return b;
-    }
-
-    private StackPane buildBar(double totalW, double h, double fillW, String bgColor, String fgColor) {
-        Rectangle bg   = new Rectangle(totalW, h); bg.setFill(Color.web(bgColor)); bg.setArcWidth(h); bg.setArcHeight(h);
-        Rectangle fill = new Rectangle(fillW,  h); fill.setFill(Color.web(fgColor)); fill.setArcWidth(h); fill.setArcHeight(h);
-        StackPane sp = new StackPane(bg, fill); sp.setAlignment(Pos.CENTER_LEFT);
-        sp.setPrefSize(totalW, h); sp.setMaxSize(totalW, h); sp.setMinSize(totalW, h);
-        return sp;
-    }
-
-    private ImageView loadImage(String path, double w, double h) {
-        if (path == null) return null;
-        try (InputStream is = getClass().getResourceAsStream(path)) {
-            if (is == null) return null;
-            Image img = new Image(is, w, h, true, true);
-            ImageView iv = new ImageView(img);
-            iv.setFitWidth(w); iv.setFitHeight(h); iv.setPreserveRatio(true);
-            return iv;
-        } catch (Exception e) { return null; }
-    }
-
-    private void drawGrid(Canvas canvas) {
-        GraphicsContext g = canvas.getGraphicsContext2D();
-        g.setFill(Color.web(BG)); g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        g.setStroke(Color.web("#ffffff", GRID_OPACITY)); g.setLineWidth(1);
-        for (double x = 0; x <= canvas.getWidth();  x += GRID_SIZE) g.strokeLine(x, 0, x, canvas.getHeight());
-        for (double y = 0; y <= canvas.getHeight(); y += GRID_SIZE) g.strokeLine(0, y, canvas.getWidth(), y);
-    }
-
-    private Canvas buildGridOverlay(double[][] cards) {
-        Canvas canvas = new Canvas(WIN_W, WIN_H);
-        GraphicsContext g = canvas.getGraphicsContext2D();
-        for (double[] c : cards) {
-            double cx = c[0], cy = c[1], cw = c[2], ch = c[3], inset = BORDER_W + 1;
-            g.save(); g.beginPath();
-            g.moveTo(cx + inset + RADIUS, cy + inset);
-            g.arcTo(cx + cw - inset, cy + inset,      cx + cw - inset, cy + ch - inset, RADIUS);
-            g.arcTo(cx + cw - inset, cy + ch - inset, cx + inset,      cy + ch - inset, RADIUS);
-            g.arcTo(cx + inset,      cy + ch - inset, cx + inset,      cy + inset,      RADIUS);
-            g.arcTo(cx + inset,      cy + inset,      cx + cw - inset, cy + inset,      RADIUS);
-            g.closePath(); g.clip();
-            g.setStroke(Color.web("#ffffff", GRID_OPACITY)); g.setLineWidth(1);
-            for (double x = cx - (cx % GRID_SIZE); x <= cx + cw; x += GRID_SIZE)
-                g.strokeLine(x, cy + inset, x, cy + ch - inset);
-            for (double y = cy - (cy % GRID_SIZE); y <= cy + ch; y += GRID_SIZE)
-                g.strokeLine(cx + inset, y, cx + cw - inset, y);
-            g.restore();
-        }
-        return canvas;
-    }
-
-    // ── CombatListener ────────────────────────────────────────────────
-    private class CombatListenerImpl implements CombatController.CombatListener {
-        @Override public void onEvent(String msg) { addLogEntry(msg); }
-        @Override public void onTurnEnd(List<String> log, boolean pd, boolean wc) {}
-    }
-}
+         
