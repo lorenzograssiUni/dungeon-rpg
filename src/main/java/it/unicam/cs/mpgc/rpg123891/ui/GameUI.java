@@ -79,7 +79,7 @@ public class GameUI {
         println("  1. Guerriero  (HP:120 ATK:22 DEF:8  AGI:4  STA:8  CRIT:5%)");
         println("     Passive: blocco 20% fisici, +5DEF +20MaxHP a ogni stanza");
         println("  2. Mago       (HP:75  ATK:15 DEF:4  AGI:6  STA:10 CRIT:5%)");
-        println("     Passive: scudo magico assorbe 1 fisico, +30% danno magico subito");
+        println("     Passive: scudo magico -30% danno fisico, +30% danno magico subito");
         println("  3. Ladro      (HP:90  ATK:18 DEF:6  AGI:8  STA:12 CRIT:25%)");
         println("     Passive: 1' attacco sempre critico, +2% crit per attacco (max 50%)");
         String choice = prompt("  Scelta: ");
@@ -231,21 +231,22 @@ public class GameUI {
     }
 
     private boolean isAoe(SpecialAttack s) {
-        return s.getName().equals("Onda Magica") || s.getName().equals("Spazzatutto");
+        return s.getName().equals("Onda Magica")
+            || s.getName().equals("Tempesta di Lame");
     }
 
     private Enemy selectTarget(Wave wave) {
-        List<Enemy> alive = wave.getEnemies().stream()
-                .filter(e -> e.isAlive() && !e.isImmune()).toList();
-        if (alive.isEmpty()) { println("  [!] Nessun bersaglio valido."); return null; }
+        List<Enemy> alive = wave.getEnemies().stream().filter(Enemy::isAlive).toList();
+        if (alive.isEmpty()) return null;
         if (alive.size() == 1) return alive.get(0);
         println("  Scegli bersaglio:");
         for (int i = 0; i < alive.size(); i++) {
             Enemy e = alive.get(i);
-            println(String.format("  %d. %s (HP: %d/%d)", i+1, e.getName(), e.getCurrentHp(), e.getMaxHp()));
+            println(String.format("  %d. %s  HP:%d/%d", i+1, e.getName(), e.getCurrentHp(), e.getMaxHp()));
         }
+        String input = prompt("  Bersaglio: ");
         try {
-            int idx = Integer.parseInt(prompt("  Scelta: ").trim()) - 1;
+            int idx = Integer.parseInt(input) - 1;
             if (idx >= 0 && idx < alive.size()) return alive.get(idx);
         } catch (NumberFormatException ignored) {}
         return alive.get(0);
@@ -296,7 +297,6 @@ public class GameUI {
                 p.getName(), hpBar(p.getCurrentHp(), p.getMaxHp()),
                 p.getCurrentStamina(), p.getMaxStamina(),
                 p.getAgility(), p.getCritChance() * 100));
-        if (p instanceof Mage m && m.isMagicShieldActive())    println("  [SCUDO MAGICO ATTIVO]");
         if (p instanceof Thief t && t.isStealthBonusActive())  println("  [STEALTH: critico garantito]");
         if (combatController.getActiveBurn() != null) {
             println(String.format("  [BRUCIATURA: %d dmg/t, %d turni]",
@@ -352,10 +352,6 @@ public class GameUI {
     // I/O helpers
     // =========================================================================
 
-    /**
-     * Stampa msg senza newline, svuota il buffer, poi legge la riga.
-     * Unico punto di ingresso per tutta la lettura da stdin.
-     */
     private String prompt(String msg) {
         System.out.print(msg);
         System.out.flush();
