@@ -29,4 +29,13 @@ public class Mage extends GameCharacter implements PlayerCharacter {
 
     @Override
     public CharacterClass getCharacterClass() { return CharacterClass.MAGE; }
+
+    /**
+     * Lo scudo magico del Mage e' un passive PERMANENTE:
+     * riduce sempre del 30% i danni fisici in arrivo.
+     * Restituisce sempre true perche' e' sempre attivo.
+     */
+    public boolean isMagicShieldActive() {
+        return true;
+    }
 }
