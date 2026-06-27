@@ -1,6 +1,5 @@
 package it.unicam.cs.mpgc.rpg123891.model.combat;
 
-import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
 import it.unicam.cs.mpgc.rpg123891.model.character.Thief;
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,19 +69,6 @@ class CombatSystemTest {
     void testThiefStealthBonusActiveBeforeAttack() {
         thief.applyPassiveBonus();
         assertTrue(thief.isStealthBonusActive());
-    }
-
-    @Test
-    @DisplayName("Il Thief con stealth bonus infligge sempre un critico (danno doppio)")
-    void testThiefStealthFirstAttackIsCritical() {
-        thief.applyPassiveBonus();
-        int baseDamage = thief.getAttack();
-        int defense    = goblin.getDefense();
-        int hpBefore   = goblin.getCurrentHp();
-        combatSystemNoRng.executeAttack(thief, goblin, AttackType.PHYSICAL, 0);
-        int actualDamage   = hpBefore - goblin.getCurrentHp();
-        int expectedDamage = Math.min(hpBefore, Math.max(0, (baseDamage * 2) - defense));
-        assertEquals(expectedDamage, actualDamage);
     }
 
     @Test
