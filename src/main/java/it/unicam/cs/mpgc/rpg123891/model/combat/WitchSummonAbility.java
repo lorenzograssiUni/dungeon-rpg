@@ -12,13 +12,8 @@ import java.util.List;
  * a tutti gli attacchi finché almeno uno degli scheletri evocati
  * è ancora vivo.
  *
- * La logica dell'immunità è gestita nel CombatController tramite
- * il flag witchImmune che viene impostato dall'AbilityResult.
- * Il controller deve rimuovere l'immunità quando tutti gli scheletri
- * evocati (tracciati tramite la lista summonedEnemies) sono morti.
- *
- * Questa abilità si attiva una sola volta per combattimento
- * (hasActivated previene riattivazioni).
+ * Questa abilità si attiva una sola volta per combattimento:
+ * dopo la prima attivazione isReady() restituisce false.
  */
 public class WitchSummonAbility implements EnemyAbility {
 
@@ -30,12 +25,16 @@ public class WitchSummonAbility implements EnemyAbility {
     @Override
     public String getName() { return "Evocazione Scheletri"; }
 
+    /** Nessun contatore da incrementare: la logica è in hasActivated. */
+    @Override
+    public void tick() { /* nessun contatore */ }
+
+    /** Pronta solo se non è ancora stata usata. */
+    @Override
+    public boolean isReady() { return !hasActivated; }
+
     @Override
     public AbilityResult use(Enemy user, GameCharacter target) {
-        if (hasActivated) {
-            return AbilityResult.of("La Strega tenta di evocare, ma non ha più energia!", 0);
-        }
-
         hasActivated = true;
 
         List<Enemy> summoned = List.of(

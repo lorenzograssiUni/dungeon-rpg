@@ -13,12 +13,9 @@ import java.util.Random;
  *   - Danno per turno: 5-8 HP
  *   - Durata: 3-5 turni
  *   - Il danno ignora la difesa (applicato via applyBurnDamage)
- *   - Il tick viene chiamato dal controller a fine di ogni turno del boss
  *
- * Se il giocatore è già in fiamme, la bruciatura viene SOVRASCRITTA
- * (la nuova sostituisce la vecchia — il controller gestisce questo).
- *
- * Questa abilità può attivarsi più volte (non ha flag hasActivated).
+ * Questa abilità non ha cooldown: il drago può usarla ogni turno
+ * (isReady() restituisce sempre true).
  */
 public class DragonBreathAbility implements EnemyAbility {
 
@@ -37,6 +34,14 @@ public class DragonBreathAbility implements EnemyAbility {
 
     @Override
     public String getName() { return "Soffio del Drago"; }
+
+    /** Nessun cooldown: il Drago può usare il soffio ogni turno. */
+    @Override
+    public void tick() { /* nessun contatore */ }
+
+    /** Sempre pronta. */
+    @Override
+    public boolean isReady() { return true; }
 
     @Override
     public AbilityResult use(Enemy user, GameCharacter target) {

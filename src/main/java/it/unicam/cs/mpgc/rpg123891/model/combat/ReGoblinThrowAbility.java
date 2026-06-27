@@ -9,12 +9,10 @@ import java.util.List;
  * Abilità speciale del Re Goblin: "3 Lanci".
  *
  * Infligge 3 attacchi separati da 20 ATK ciascuno al giocatore.
- * Ogni lancio bypassa la difesa (danno diretto) secondo la spec.
- * Il danno totale è 3 × 20 = 60 HP (al lordo delle protezioni speciali
- * di classe come blocco Warrior o scudo Mage, gestite nel CombatSystem).
+ * Ogni lancio bypassa la difesa (danno diretto).
  *
- * NOTA: i 3 lanci sono attacchi fisici separati — il blocco Warrior
- * e lo scudo Mage si applicano solo al PRIMO lancio che li attiva.
+ * Nessun cooldown: il Re Goblin può usarla ogni turno
+ * (isReady() restituisce sempre true).
  */
 public class ReGoblinThrowAbility implements EnemyAbility {
 
@@ -26,6 +24,14 @@ public class ReGoblinThrowAbility implements EnemyAbility {
 
     @Override
     public String getName() { return "3 Lanci"; }
+
+    /** Nessun cooldown. */
+    @Override
+    public void tick() { /* nessun contatore */ }
+
+    /** Sempre pronta. */
+    @Override
+    public boolean isReady() { return true; }
 
     @Override
     public AbilityResult use(Enemy user, GameCharacter target) {
