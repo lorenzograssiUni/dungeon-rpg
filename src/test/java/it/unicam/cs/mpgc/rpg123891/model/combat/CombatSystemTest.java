@@ -28,7 +28,6 @@ class CombatSystemTest {
 
     private CombatSystem combatSystemNoRng;
     private Warrior warrior;
-    private Mage mage;
     private Thief thief;
     private Enemy goblin;
 
@@ -36,7 +35,6 @@ class CombatSystemTest {
     void setUp() {
         combatSystemNoRng = new CombatSystem(NO_RNG);
         warrior = new Warrior("Eroe");
-        mage    = new Mage("Gandalf");
         thief   = new Thief("Ombra");
         goblin  = new Enemy("Goblin", 30, 10, 2, AttackType.PHYSICAL, 0.0);
     }
