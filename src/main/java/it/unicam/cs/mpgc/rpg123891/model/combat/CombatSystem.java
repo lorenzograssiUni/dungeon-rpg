@@ -61,7 +61,8 @@ public class CombatSystem {
      *   3. Danno lordo
      *   4. Blocco Warrior (20% su fisico, 5o garantito) — usa random iniettato
      *   5. Passive Mago: -30% su fisico / +30% su magico (sempre attivo)
-     *   6. takeDamage()
+     *   6. Sottrazione difesa (netDamage)
+     *   7. takeDamage()
      *
      * @return danno effettivamente inflitto
      */
@@ -98,7 +99,10 @@ public class CombatSystem {
         damage = applyMagePassive(defender, attackType, damage);
         if (damage < 0) return 0;
 
-        // 6. Danno netto
+        // 6. Sottrazione difesa
+        damage = netDamage(damage, defender.getDefense());
+
+        // 7. Danno netto
         int hpBefore = defender.getCurrentHp();
         defender.takeDamage(damage);
         return hpBefore - defender.getCurrentHp();
