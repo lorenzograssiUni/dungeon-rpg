@@ -7,6 +7,7 @@ import it.unicam.cs.mpgc.rpg123891.model.item.weapons.*;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class DungeonMap implements Serializable {
@@ -166,13 +167,13 @@ public class DungeonMap implements Serializable {
                 "e i cuccioli gi\u00e0 schiusi. Attento: il drago osserva.");
         waveUova.addEnemy(EnemyFactory.createUovo());
         waveUova.addEnemy(EnemyFactory.createUovo());
-        waveUova.addEnemy(EnemyFactory.createCucciolo());
+        waveUova.addEnemy(EnemyFactory.createCuccioloDrago());
         room.addWave(waveUova);
 
         Wave waveDrago = new Wave("Boss: L'Ultimo Drago", false,
                 "L'Ultimo Drago si alza in piedi. La sua ombra copre l'intera caverna. " +
                 "\"Piccolo insetto... osi sfidarmi?\"");
-        waveDrago.addEnemy(EnemyFactory.createDrago());
+        waveDrago.addEnemy(EnemyFactory.createUltimoDrago());
         room.addWave(waveDrago);
 
         return room;
@@ -185,6 +186,9 @@ public class DungeonMap implements Serializable {
     public Room getCurrentRoom()      { return rooms.get(currentRoomIndex); }
     public int  getCurrentRoomIndex() { return currentRoomIndex; }
     public int  getTotalRooms()       { return rooms.size(); }
+
+    /** Restituisce una vista non modificabile di tutte le stanze (usato da GameScreen). */
+    public List<Room> getRooms() { return Collections.unmodifiableList(rooms); }
 
     public boolean hasNextRoom() {
         return currentRoomIndex < rooms.size() - 1;
