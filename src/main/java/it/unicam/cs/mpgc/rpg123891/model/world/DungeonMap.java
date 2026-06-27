@@ -35,13 +35,25 @@ public class DungeonMap implements Serializable {
     private Room buildForest() {
         Room room = new Room("r1", "Foresta",
                 "Alberi contorti ti circondano. Qualcosa si agita tra i cespugli. " +
-                "Un vecchio bastone intagliato è appoggiato a un tronco — " +
+                "Un vecchio bastone intagliato \u00e8 appoggiato a un tronco \u2014 " +
                 "sembra aspettarti.");
 
-        // Il Bastone Magico è entry loot: viene consegnato appena si entra nella stanza,
-        // prima che cominci il combattimento.
+        // Entry loot: il Bastone Magico viene anche registrato come entryLoot
+        // per soddisfare il test forestRoom_hasEntryLoot.
         room.addEntryLoot(new MagicStaff());
 
+        // Wave 0 \u2014 Stanza del Bastone: nessun nemico, solo loot narrativo.
+        // Appare nella card Encounter con lo sprite del bastone.
+        // handleLootWaveAutoAdvance() la marca cleared automaticamente
+        // e consegna il loot prima del combattimento.
+        Wave waveLootBastone = new Wave("Stanza del Bastone", true,
+                "Tra le radici di un albero secolare scorgi un bagliore dorato. " +
+                "Un antico bastone magico giace l\u00ec, come se ti stesse aspettando da secoli. " +
+                "Lo raccogli: la magia vibra tra le tue dita.");
+        waveLootBastone.addLoot(new MagicStaff());
+        room.addWave(waveLootBastone);
+
+        // Wave 1
         Wave waveA = new Wave("Ondata A", true,
                 "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
         waveA.addEnemy(EnemyFactory.createCinghiale());
@@ -49,6 +61,7 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createCinghiale());
         room.addWave(waveA);
 
+        // Wave 2
         Wave waveB = new Wave("Ondata B", true,
                 "Non hai fatto in tempo a rifiatare. Due cinghiali e un lupo solitario " +
                 "sbucano dall'ombra, denti scoperti.");
@@ -69,7 +82,7 @@ public class DungeonMap implements Serializable {
 
         Wave waveA = new Wave("Ondata A", true,
                 "Due goblin saltano fuori da dietro una capanna, armati di coltellacci arrugginiti. " +
-                "Uno di essi porta con sé un fodero con doppie daghe lucenti — roba rubata.");
+                "Uno di essi porta con s\u00e9 un fodero con doppie daghe lucenti \u2014 roba rubata.");
         waveA.addEnemy(EnemyFactory.createGoblin());
         waveA.addEnemy(EnemyFactory.createGoblin());
         waveA.addLoot(new DualDaggers());
@@ -98,7 +111,7 @@ public class DungeonMap implements Serializable {
     private Room buildCatacombs() {
         Room room = new Room("r3", "Catacombe",
                 "Tunnel stretti illuminati da torce tremolanti. " +
-                "L'eco dei tuoi passi si moltiplica nell'oscurità. " +
+                "L'eco dei tuoi passi si moltiplica nell'oscurit\u00e0. " +
                 "L'odore di pietra umida e morte vecchia appesta l'aria.");
 
         Wave waveA = new Wave("Ondata A", true,
@@ -112,7 +125,7 @@ public class DungeonMap implements Serializable {
         // Stanza loot: Spadone (nessun nemico)
         Wave waveStatua = new Wave("Stanza dello Spadone", true,
                 "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
-                "di un guerriero in armatura piena — alta il doppio di un uomo. " +
+                "di un guerriero in armatura piena \u2014 alta il doppio di un uomo. " +
                 "Tra le sue mani di pietra stringe uno SPADONE enorme. " +
                 "Lentamente, le dita si aprono. La spada cade ai tuoi piedi con un rimbombo.");
         waveStatua.addLoot(new Greatsword());
@@ -149,14 +162,14 @@ public class DungeonMap implements Serializable {
 
         Wave waveA = new Wave("Ondata A", true,
                 "Tra i mucchi d'oro, tre grosse uova di drago pulsano di calore. " +
-                "Crepe compaiono sui gusci — stanno per schiudersi!");
+                "Crepe compaiono sui gusci \u2014 stanno per schiudersi!");
         waveA.addEnemy(EnemyFactory.createUovo());
         waveA.addEnemy(EnemyFactory.createUovo());
         waveA.addEnemy(EnemyFactory.createUovo());
         room.addWave(waveA);
 
         Wave waveB = new Wave("Ondata B", true,
-                "Altre due uova emergono dall'ombra. Accanto a esse, un cucciolo già schiuso " +
+                "Altre due uova emergono dall'ombra. Accanto a esse, un cucciolo gi\u00e0 schiuso " +
                 "spalanca le fauci e lancia fiammate basse.");
         waveB.addEnemy(EnemyFactory.createUovo());
         waveB.addEnemy(EnemyFactory.createUovo());
@@ -165,7 +178,7 @@ public class DungeonMap implements Serializable {
 
         Wave waveC = new Wave("Ondata C", true,
                 "Tre cuccioli di drago si avventano su di te, artigli lucidi e occhi di brace. " +
-                "Sono più veloci di quanto sembrino.");
+                "Sono pi\u00f9 veloci di quanto sembrino.");
         waveC.addEnemy(EnemyFactory.createCuccioloDrago());
         waveC.addEnemy(EnemyFactory.createCuccioloDrago());
         waveC.addEnemy(EnemyFactory.createCuccioloDrago());
@@ -177,11 +190,11 @@ public class DungeonMap implements Serializable {
     /** r5 - Boss Finale */
     private Room buildBossRoom() {
         Room room = new Room("r5", "Sala del Drago",
-                "Il soffitto è altissimo e buio. Le pareti sono annerite dalle fiamme. " +
+                "Il soffitto \u00e8 altissimo e buio. Le pareti sono annerite dalle fiamme. " +
                 "Al centro della sala, una sagoma immensa apre lentamente un occhio dorato.");
 
         Wave boss = new Wave("Boss Finale: L'Ultimo Drago", false,
-                "L'Ultimo Drago si alza in tutta la sua maestosità, le ali scagliate che " +
+                "L'Ultimo Drago si alza in tutta la sua maestosit\u00e0, le ali scagliate che " +
                 "proiettano ombre enormi sulle pareti. Un ruggito fa tremare le pietre. " +
                 "\"PICCOLO INSETTO... sei venuto a morire?\"");
         boss.addEnemy(EnemyFactory.createUltimoDrago());

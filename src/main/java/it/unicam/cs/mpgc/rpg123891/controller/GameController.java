@@ -47,7 +47,9 @@ public class GameController {
         gc.addItem(new Potion());
         gc.addItem(new Potion());
         gc.addItem(new Potion());
-        collectEntryLoot();
+        // NON chiamiamo collectEntryLoot() all'avvio: la prima wave della foresta
+        // (Stanza del Bastone) viene mostrata in UI e il loot viene consegnato
+        // tramite handleLootWaveAutoAdvance() in GameScreen.
     }
 
     // -------------------------------------------------------------------------
@@ -107,7 +109,7 @@ public class GameController {
     public boolean isCaricaActive() { return caricaActive; }
 
     // -------------------------------------------------------------------------
-    // Fuga — semplificata: possibile se wave.canFlee() e ci sono nemici vivi
+    // Fuga
     // -------------------------------------------------------------------------
 
     public boolean canFlee() {
@@ -168,12 +170,6 @@ public class GameController {
         return true;
     }
 
-    /**
-     * Drop condizionali aggiornati:
-     *   r2 Ondata B  → Armatura (garantita, se non già in inventario)
-     *   r3 Ondata B  → Scudo    (garantito, se non già in inventario)
-     *   r3 Ondata C  → item ancora mancante tra Scudo e Armatura
-     */
     public boolean checkWaveCleared() {
         Room room = getCurrentRoom();
         Wave wave = room.getCurrentWave();
@@ -205,17 +201,14 @@ public class GameController {
 
         switch (room.getId()) {
             case "r2" -> {
-                // Ondata B: drop garantito Armatura (primo incontro con nemici corazzati)
                 if (wave.getName().equals("Ondata B") && !hasArmor) {
                     wave.addLoot(new Armor());
                 }
             }
             case "r3" -> {
-                // Ondata B: drop garantito Scudo
                 if (wave.getName().equals("Ondata B") && !hasShield) {
                     wave.addLoot(new Shield());
                 }
-                // Ondata C: drop item ancora mancante
                 if (wave.getName().equals("Ondata C")) {
                     if (!hasShield)     wave.addLoot(new Shield());
                     else if (!hasArmor) wave.addLoot(new Armor());

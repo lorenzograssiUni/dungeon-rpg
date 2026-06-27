@@ -4,11 +4,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifica la struttura e la navigazione di DungeonMap:
- *  - 5 stanze presenti
- *  - navigazione sequenziale
- *  - isTreasureRoomCleaned() default false
- *  - advanceToNextRoom() fino alla fine
+ * Verifica la struttura e la navigazione di DungeonMap.
  */
 public class DungeonMapTest {
 
@@ -56,24 +52,42 @@ public class DungeonMapTest {
     void forestRoom_hasEntryLoot() {
         DungeonMap map = new DungeonMap();
         Room forest = map.getCurrentRoom();
+        // L'entryLoot contiene il Bastone Magico (registrato per compatibilità test)
         assertFalse(forest.getEntryLoot().isEmpty(),
                 "La foresta deve avere il Bastone Magico come entry loot");
     }
 
     @Test
-    void forestRoom_hasTwoWaves() {
+    void forestRoom_hasThreeWaves() {
         DungeonMap map = new DungeonMap();
         Room forest = map.getCurrentRoom();
-        assertEquals(2, forest.getTotalWaves());
+        // wave 0 = Stanza del Bastone (loot), wave 1 = Ondata A, wave 2 = Ondata B
+        assertEquals(3, forest.getTotalWaves());
+    }
+
+    @Test
+    void forestRoom_wave0_isMagicStaffLoot() {
+        DungeonMap map = new DungeonMap();
+        Room forest = map.getCurrentRoom();
+        Wave w0 = forest.getWaves().get(0);
+        assertTrue(w0.getEnemies().isEmpty(), "Wave 0 non deve avere nemici");
+        assertFalse(w0.getLoot().isEmpty(), "Wave 0 deve contenere il Bastone Magico");
+        assertEquals("Bastone Magico", w0.getLoot().get(0).getName());
+    }
+
+    @Test
+    void forestRoom_wave1_hasEnemies() {
+        DungeonMap map = new DungeonMap();
+        Room forest = map.getCurrentRoom();
+        Wave w1 = forest.getWaves().get(1);
+        assertFalse(w1.getEnemies().isEmpty(), "Wave 1 deve avere nemici (Ondata A)");
     }
 
     @Test
     void catacombs_hasSalaStatuaWaveWithNoEnemies() {
         DungeonMap map = new DungeonMap();
-        // Catacombe = r3, indice 2
         for (int i = 0; i < 2; i++) map.advanceToNextRoom();
         Room catacombs = map.getCurrentRoom();
-        // Ondata 1 = Sala della Statua (indice 1 in catacombe): nessun nemico
         Wave salaStatua = catacombs.getWaves().get(1);
         assertTrue(salaStatua.getEnemies().isEmpty(),
                 "La Sala della Statua non deve avere nemici");
@@ -84,7 +98,7 @@ public class DungeonMapTest {
     @Test
     void goblinVillage_firstWaveLoot_containsDualDaggers() {
         DungeonMap map = new DungeonMap();
-        map.advanceToNextRoom(); // r2
+        map.advanceToNextRoom();
         Room goblin = map.getCurrentRoom();
         Wave waveA = goblin.getWaves().get(0);
         boolean hasDualDaggers = waveA.getLoot().stream()
