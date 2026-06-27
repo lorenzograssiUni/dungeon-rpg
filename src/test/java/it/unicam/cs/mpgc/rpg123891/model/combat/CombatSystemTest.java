@@ -14,27 +14,29 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test per CombatSystem.
  * Verifica la logica di combattimento: calcolo danno, gestione critico,
- * interazioni speciali tra classi (Warrior block, Mage shield, Thief stealth).
+ * interazioni speciali tra classi (Warrior block, Mage passive, Thief stealth).
  *
  * Tutti i test che coinvolgono RNG usano un Random a seed fisso o
- * un Random che restituisce sempre 1.0 (nessun critico, nessun blocco)
+ * un Random che restituisce sempre 0.9999 (nessun critico, nessun blocco)
  * per garantire determinismo.
+ *
+ * Nota GAME_SPEC:
+ *   - Il blocco Warrior e' probabilistico (20%) oppure garantito al 5o attacco.
+ *     I test verificano il comportamento del counter, non il singolo blocco casuale.
+ *   - Lo scudo Mage e' una passive PERMANENTE (-30% danno fisico), non un'abilita' on/off.
  */
 class CombatSystemTest {
 
     /**
-     * Random che restituisce sempre il valore massimo (0.9999...):
-     * - nessun critico (serve nextDouble < critChance)
-     * - nessun blocco Warrior (serve nextDouble < blockChance)
+     * Random che restituisce sempre 0.9999: nessun critico, nessun blocco random.
      */
     private static final Random NO_RNG = new Random() {
         @Override public double nextDouble() { return 0.9999999999; }
     };
 
     /**
-     * Random che restituisce sempre 0.0:
-     * - critico garantito
-     * - blocco Warrior garantito
+     * Random che restituisce sempre 0.0: critico garantito al primo attacco.
+     * NON usato per il blocco Warrior (il blocco si attiva sempre a 0.0 < 0.20).
      */
     private static final Random ALWAYS_RNG = new Random() {
         @Override public double nextDouble() { return 0.0; }
@@ -55,6 +57,10 @@ class CombatSystemTest {
         goblin  = new Enemy("Goblin", 30, 10, 2, AttackType.PHYSICAL, 0.0);
     }
 
+    // -------------------------------------------------------------------------
+    // Attacco base
+    // -------------------------------------------------------------------------
+
     @Test
     @DisplayName("Un attacco fisico riduce gli HP del difensore")
     void testAttackReducesDefenderHp() {
@@ -66,7 +72,6 @@ class CombatSystemTest {
     @Test
     @DisplayName("Un attacco non porta mai gli HP sotto zero")
     void testHpNeverNegativeAfterAttack() {
-        // Attacca finche' il goblin e' vivo E il warrior ha stamina disponibile
         while (goblin.isAlive() && warrior.canAttack()) {
             combatSystemNoRng.executeAttack(warrior, goblin, AttackType.PHYSICAL, 0);
         }
@@ -118,16 +123,24 @@ class CombatSystemTest {
     }
 
     // -------------------------------------------------------------------------
-    // Warrior - block
+    // Warrior - block counter
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Il Warrior con blocco garantito annulla l'attacco fisico")
-    void testWarriorBlockCancelsPhysicalAttack() {
-        CombatSystem alwaysBlock = new CombatSystem(ALWAYS_RNG);
+    @DisplayName("Il Warrior blocca al 5o attacco fisico consecutivo (garantito)")
+    void testWarriorBlockGuaranteedAtFifthHit() {
+        // Usa NO_RNG (0.9999): il blocco casuale (20%) non scatta mai.
+        // Dopo 4 attacchi il counter e' 4; il 5o deve essere bloccato.
+        CombatSystem cs = new CombatSystem(NO_RNG);
+        Enemy e = new Enemy("TestEnemy", 200, 12, 0, AttackType.PHYSICAL, 0.0);
+        for (int i = 0; i < 4; i++) {
+            cs.executeAttack(e, warrior, AttackType.PHYSICAL, 0);
+        }
+        assertEquals(4, warrior.getBlockStreak(), "Dopo 4 attacchi non bloccati il counter deve essere 4");
         int hpBefore = warrior.getCurrentHp();
-        alwaysBlock.executeAttack(goblin, warrior, AttackType.PHYSICAL, 0);
-        assertEquals(hpBefore, warrior.getCurrentHp());
+        cs.executeAttack(e, warrior, AttackType.PHYSICAL, 0);
+        assertEquals(hpBefore, warrior.getCurrentHp(), "Il 5o attacco deve essere bloccato (garantito)");
+        assertEquals(0, warrior.getBlockStreak(), "Dopo un blocco il counter si azzera");
     }
 
     @Test
@@ -141,17 +154,19 @@ class CombatSystemTest {
     }
 
     // -------------------------------------------------------------------------
-    // Mage - shield e vulnerabilita' magica
+    // Mage - passive permanente (GAME_SPEC)
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Lo scudo magico del Mage blocca un attacco fisico")
-    void testMagicShieldBlocksPhysicalAttack() {
-        mage.setMagicShieldActive(true);
+    @DisplayName("Il Mage subisce il 70% del danno fisico (scudo passivo -30%)")
+    void testMagePhysicalDamageReduced() {
         int hpBefore = mage.getCurrentHp();
         combatSystemNoRng.executeAttack(goblin, mage, AttackType.PHYSICAL, 0);
-        assertEquals(hpBefore, mage.getCurrentHp());
-        assertFalse(mage.isMagicShieldActive());
+        int damage      = hpBefore - mage.getCurrentHp();
+        // danno lordo ridotto del 30%, poi sottratta la difesa del mago
+        int reducedRaw  = (int)(goblin.getAttack() * 0.70);
+        int expectedDmg = Math.max(0, reducedRaw - mage.getDefense());
+        assertEquals(expectedDmg, damage, "Il Mage deve subire il 70% del danno fisico lordo (scudo passivo)");
     }
 
     @Test

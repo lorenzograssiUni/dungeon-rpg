@@ -15,11 +15,11 @@ import java.util.Random;
  *
  *   WARRIOR (difensiva):
  *     - 20% chance blocco per ogni attacco FISICO ricevuto.
- *     - Il 5° attacco consecutivo senza blocco blocca sicuramente.
+ *     - Il 5o attacco consecutivo senza blocco blocca sicuramente.
  *     - Il contatore NON si azzera al cambio wave.
  *
  *   MAGE (difensiva):
- *     - Scudo Magico: -30% danno fisico in arrivo (non assorbimento totale).
+ *     - Scudo Magico PERMANENTE: -30% danno fisico in arrivo (sempre attivo).
  *     - Vulnerabile a MAGICAL/MIXED: +30% danno subito.
  *
  *   THIEF (offensiva):
@@ -59,8 +59,8 @@ public class CombatSystem {
      *   1. Critico (stealth Ladro > normale)
      *   2. Incremento crit Ladro dopo ogni attacco
      *   3. Danno lordo
-     *   4. Blocco Warrior (20% cumulabile su fisico, 5° garantito)
-     *   5. Scudo -30% Mago su fisico / vulnerabilita' su magico
+     *   4. Blocco Warrior (20% su fisico, 5o garantito) — usa random iniettato
+     *   5. Passive Mago: -30% su fisico / +30% su magico (sempre attivo)
      *   6. takeDamage()
      *
      * @return danno effettivamente inflitto
@@ -87,14 +87,14 @@ public class CombatSystem {
         int baseDamage = attacker.getAttack();
         int damage = isCritical ? baseDamage * 2 : baseDamage;
 
-        // 4. Blocco Warrior (solo fisico) — contatore cumulabile, 5° garantito
+        // 4. Blocco Warrior (solo fisico) — usa il random iniettato per determinismo
         if (defender instanceof Warrior warrior && attackType == AttackType.PHYSICAL) {
-            if (warrior.testBlock()) {
+            if (warrior.testBlock(random)) {
                 return 0;
             }
         }
 
-        // 5. Scudo e vulnerabilita' Mago
+        // 5. Passive Mago (sempre attiva per GAME_SPEC)
         damage = applyMagePassive(defender, attackType, damage);
         if (damage < 0) return 0;
 
@@ -126,8 +126,9 @@ public class CombatSystem {
 
     /**
      * Applica le passive del Mago come difensore (GAME_SPEC):
-     *   - Fisico: -30% danno
-     *   - Magico/Misto: +30% danno
+     *   - Fisico: -30% danno (scudo magico permanente)
+     *   - Magico/Misto: +30% danno (vulnerabilita')
+     *
      * @return danno modificato
      */
     private int applyMagePassive(GameCharacter defender, AttackType attackType, int damage) {

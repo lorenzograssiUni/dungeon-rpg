@@ -8,6 +8,11 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Verifica passive di Warrior/Mage/Thief in CombatSystem.executeAttack().
  * Usa Enemy con ATK fisso per calcoli deterministici.
+ *
+ * Allineato a GAME_SPEC.md:
+ *   - Warrior: blocco 20% cumulabile, 5o attacco garantito, reset al blocco.
+ *   - Mage: scudo passivo PERMANENTE -30% fisico, +30% magico.
+ *   - Thief: primo attacco wave critico garantito, +2% crit dopo ogni attacco.
  */
 public class CombatSystemPassiveTest {
 
@@ -39,19 +44,33 @@ public class CombatSystemPassiveTest {
     }
 
     @Test
-    void warrior_blockChance_preventsAllDamage() {
-        // ATK fisso 12, DEF warrior 8 -> 4 danno/attacco
-        // 4 attacchi non bloccati con NO_LUCK -> blockStreak=4
-        // 5° attacco: blocco garantito -> HP invariato
+    void warrior_blockStreak_incrementsOnMiss() {
+        // Con NO_LUCK (nextDouble=1.0) il blocco casuale (20%) non scatta mai.
+        // Dopo N attacchi il counter deve valere N (finche' < 4).
         Warrior w = new Warrior("G");
         Enemy e = fixedEnemy();
-        CombatSystem csNoLuck = new CombatSystem(NO_LUCK);
+        CombatSystem cs = new CombatSystem(NO_LUCK);
+        cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
+        assertEquals(1, w.getBlockStreak());
+        cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
+        assertEquals(2, w.getBlockStreak());
+    }
+
+    @Test
+    void warrior_fifthAttack_isAlwaysBlocked() {
+        // Con NO_LUCK il blocco casuale non scatta: dopo 4 attacchi counter=4.
+        // Il 5o deve essere garantito e azzerare il counter.
+        Warrior w = new Warrior("G");
+        Enemy e = fixedEnemy();
+        CombatSystem cs = new CombatSystem(NO_LUCK);
         for (int i = 0; i < 4; i++) {
-            csNoLuck.executeAttack(e, w, AttackType.PHYSICAL, 0);
+            cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
         }
         int hpBefore = w.getCurrentHp();
-        csNoLuck.executeAttack(e, w, AttackType.PHYSICAL, 0);
-        assertEquals(hpBefore, w.getCurrentHp(), "Il 5° attacco deve essere bloccato");
+        int dmg = cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
+        assertEquals(0, dmg, "Il 5o attacco deve essere bloccato (danno 0)");
+        assertEquals(hpBefore, w.getCurrentHp(), "Gli HP non devono diminuire al 5o attacco");
+        assertEquals(0, w.getBlockStreak(), "Il counter si azzera dopo un blocco");
     }
 
     @Test
@@ -75,14 +94,15 @@ public class CombatSystemPassiveTest {
     }
 
     @Test
-    void mage_magicShield_reduces30percent() {
-        // ATK fisso 12, scudo -30% -> floor(12*0.70)=8, DEF mago=4 -> 4 danno
+    void mage_physicalPassive_reduces30percent() {
+        // ATK fisso 12, scudo passivo -30% -> floor(12*0.70)=8, DEF mago=4 -> 4 danno
         Mage m = new Mage("Ma");
         Enemy e = fixedEnemy();
         int hpBefore = m.getCurrentHp();
         new CombatSystem(NO_LUCK).executeAttack(e, m, AttackType.PHYSICAL, 0);
-        assertEquals(hpBefore - 4, m.getCurrentHp(),
-                "Il Mage deve subire esattamente 4 danno (ATK12 *0.70 -DEF4)");
+        int expectedDmg = Math.max(0, (int)(12 * 0.70) - m.getDefense()); // (8-4)=4
+        assertEquals(hpBefore - expectedDmg, m.getCurrentHp(),
+                "Il Mage deve subire " + expectedDmg + " danno (ATK12 *0.70 -DEF4)");
     }
 
     @Test
