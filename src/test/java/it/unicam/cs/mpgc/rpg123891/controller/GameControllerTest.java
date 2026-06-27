@@ -11,8 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test sul GameController: gestione loot, avanzamento, pozioni.
- * startNewGame() NON chiama collectEntryLoot() per la prima stanza;
- * il Bastone Magico viene consegnato tramite la wave 0 (Stanza del Bastone).
+ * La foresta ora ha wave0 = "Stanza del Bastone" (no nemici, loot=MagicStaff).
  */
 public class GameControllerTest {
 
@@ -45,8 +44,6 @@ public class GameControllerTest {
 
     @Test
     void collectEntryLoot_emptyAfterCollection() {
-        // startNewGame() non svuota più l'entryLoot automaticamente:
-        // chiamiamo collectEntryLoot() esplicitamente e verifichiamo che sia vuoto.
         gc.collectEntryLoot();
         assertTrue(gc.getCurrentRoom().getEntryLoot().isEmpty(),
                 "entryLoot deve essere vuoto dopo collectEntryLoot()");
@@ -56,6 +53,7 @@ public class GameControllerTest {
     void checkWaveCleared_wave0_advancesToWave1() {
         Room forest = gc.getCurrentRoom();
         Wave wave0 = forest.getCurrentWave();
+        // wave0 = "Stanza del Bastone" (no nemici -> cleared automaticamente)
         assertEquals("Stanza del Bastone", wave0.getName());
         wave0.setCleared(true);
         gc.checkWaveCleared();
@@ -70,6 +68,7 @@ public class GameControllerTest {
 
     @Test
     void canFlee_falseOnWave0_noEnemies() {
+        // wave0 ha canFlee=false
         assertFalse(gc.canFlee());
     }
 

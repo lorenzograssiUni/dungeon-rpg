@@ -49,19 +49,19 @@ public class DungeonMapTest {
     }
 
     @Test
-    void forestRoom_hasEntryLoot() {
+    void forestRoom_hasNoEntryLoot() {
+        // Il Bastone Magico ora e' nella wave0, non nell'entryLoot
         DungeonMap map = new DungeonMap();
         Room forest = map.getCurrentRoom();
-        // L'entryLoot contiene il Bastone Magico (registrato per compatibilità test)
-        assertFalse(forest.getEntryLoot().isEmpty(),
-                "La foresta deve avere il Bastone Magico come entry loot");
+        assertTrue(forest.getEntryLoot().isEmpty(),
+                "La foresta non deve avere entryLoot: il Bastone e' nella wave0");
     }
 
     @Test
     void forestRoom_hasThreeWaves() {
         DungeonMap map = new DungeonMap();
         Room forest = map.getCurrentRoom();
-        // wave 0 = Stanza del Bastone (loot), wave 1 = Ondata A, wave 2 = Ondata B
+        // wave 0 = Stanza del Bastone, wave 1 = Ondata A, wave 2 = Ondata B
         assertEquals(3, forest.getTotalWaves());
     }
 
@@ -70,6 +70,7 @@ public class DungeonMapTest {
         DungeonMap map = new DungeonMap();
         Room forest = map.getCurrentRoom();
         Wave w0 = forest.getWaves().get(0);
+        assertEquals("Stanza del Bastone", w0.getName());
         assertTrue(w0.getEnemies().isEmpty(), "Wave 0 non deve avere nemici");
         assertFalse(w0.getLoot().isEmpty(), "Wave 0 deve contenere il Bastone Magico");
         assertEquals("Bastone Magico", w0.getLoot().get(0).getName());

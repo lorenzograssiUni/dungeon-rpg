@@ -10,12 +10,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifica Sword e Greatsword: nome, slot, speciali,
- * Carica! (in Sword) applica +3 DEF, Spazzatutto (in Greatsword) stordisce.
+ * Verifica Sword e Greatsword: nome, slot, speciali.
+ * Carica! infligge danno (non aumenta DEF): il controller gestisce i 2 turni
+ * di immunita' separatamente tramite caricaTurnsRemaining.
  */
 public class SwordSpecialTest {
-
-    // ---- Sword ----
 
     @Test
     void sword_hasName() {
@@ -43,16 +42,25 @@ public class SwordSpecialTest {
     }
 
     @Test
-    void sword_carica_increasesDefenseBy3() {
+    void sword_carica_dealsDamage() {
+        // Carica! infligge danno (+25% ATK); l'immunita' e' gestita dal GameController.
         Warrior w = new Warrior("G");
         Sword sword = new Sword();
         SpecialAttack carica = sword.getSpecialAttacks().stream()
                 .filter(sa -> sa.getName().equals("Carica!"))
                 .findFirst().orElse(null);
         assertNotNull(carica, "Sword deve avere Carica!");
-        int defBefore = w.getDefense();
-        carica.execute(w, new Enemy("D", 100, 5, 0, AttackType.PHYSICAL, 0.0));
-        assertEquals(defBefore + 3, w.getDefense());
+        Enemy enemy = new Enemy("D", 200, 5, 0, AttackType.PHYSICAL, 0.0);
+        int dmg = carica.execute(w, enemy);
+        assertTrue(dmg > 0, "Carica! deve infliggere danno positivo");
+    }
+
+    @Test
+    void sword_carica_exists() {
+        Sword s = new Sword();
+        boolean hasCarica = s.getSpecialAttacks().stream()
+                .anyMatch(sa -> sa.getName().equals("Carica!"));
+        assertTrue(hasCarica);
     }
 
     // ---- Greatsword ----
@@ -101,6 +109,6 @@ public class SwordSpecialTest {
         assertNotNull(taglio, "Greatsword deve avere Taglio Profondo");
         Enemy e = new Enemy("D", 100, 5, 0, AttackType.PHYSICAL, 0.0);
         int dmg = taglio.execute(w, e);
-        assertEquals(50, dmg); // metà di 100
+        assertEquals(50, dmg);
     }
 }

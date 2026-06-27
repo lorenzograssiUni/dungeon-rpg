@@ -8,7 +8,6 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DungeonMap implements Serializable {
 
@@ -38,8 +37,12 @@ public class DungeonMap implements Serializable {
                 "Un vecchio bastone intagliato \u00e8 appoggiato a un tronco \u2014 " +
                 "sembra aspettarti.");
 
-        // GAME_SPEC: drop prima stanza prima che arrivino i nemici: Bastone Magico
-        room.addEntryLoot(new MagicStaff());
+        // Wave 0: nessun nemico, loot = Bastone Magico (GAME_SPEC)
+        Wave waveBastone = new Wave("Stanza del Bastone", false,
+                "Un vecchio bastone intagliato \u00e8 appoggiato a un tronco. " +
+                "Sembra aspettarti. Lo raccogli.");
+        waveBastone.addLoot(new MagicStaff());
+        room.addWave(waveBastone);
 
         Wave waveA = new Wave("Ondata A", true,
                 "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
@@ -66,7 +69,6 @@ public class DungeonMap implements Serializable {
                 "L'aria puzza di fumo e carne bruciata. " +
                 "I goblin ti fissano con odio dagli anfratti.");
 
-        // Ondata A: Goblin x2, drop assicurato Doppie Daghe
         Wave waveA = new Wave("Ondata A", true,
                 "Due goblin saltano fuori da dietro una capanna, armati di coltellacci arrugginiti. " +
                 "Uno di essi porta con s\u00e9 un fodero con doppie daghe lucenti \u2014 roba rubata.");
@@ -75,7 +77,6 @@ public class DungeonMap implements Serializable {
         waveA.addLoot(new DualDaggers());
         room.addWave(waveA);
 
-        // Ondata B: Goblin Guardie x3, drop assicurato Spada + (Scudo o Armatura)
         Wave waveB = new Wave("Ondata B", true,
                 "Un fischio acuto riecheggia nel villaggio. Tre goblin guardia si fanno avanti, " +
                 "equipaggiati con armature rozze e spade di ferro.");
@@ -83,7 +84,6 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addLoot(new Sword());
-        // Scudo o Armatura aggiunto dinamicamente da addConditionalLoot() in GameController
         room.addWave(waveB);
 
         Wave waveC = new Wave("Miniboss: Re Goblin", false,
@@ -103,7 +103,6 @@ public class DungeonMap implements Serializable {
                 "L'eco dei tuoi passi si moltiplica nell'oscurit\u00e0. " +
                 "L'odore di pietra umida e morte vecchia appesta l'aria.");
 
-        // Ondata A: Scheletri x3
         Wave waveA = new Wave("Ondata A", true,
                 "Tre scheletri si svegliano dalle nicchie scavate nelle pareti. " +
                 "Le loro orbite vuote brillano di luce bluastra. Le ossa scricchiolano mentre avanzano.");
@@ -112,7 +111,6 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createScheletro());
         room.addWave(waveA);
 
-        // Wave ricompensa esplorazione: Spadone (loot senza nemici)
         Wave waveStatua = new Wave("Stanza dello Spadone", true,
                 "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
                 "di un guerriero in armatura piena \u2014 alta il doppio di un uomo. " +
@@ -121,7 +119,6 @@ public class DungeonMap implements Serializable {
         waveStatua.addLoot(new Greatsword());
         room.addWave(waveStatua);
 
-        // Ondata B: Statua Gigante -> Scheletri x3 + Scheletro Guardia; drop Spadone
         Wave waveB = new Wave("Ondata B", true,
                 "Dalle pareti emergono altri scheletri, stavolta tre comuni e uno corazzato " +
                 "con scudo e armatura. Si muovono con sincronia innaturale.");
@@ -131,27 +128,11 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createScheletroGuardia());
         room.addWave(waveB);
 
-        // Ondata C: Scheletri x3 + Scheletro Guardia; drop item mancante (gestito da controller)
-        Wave waveC_skeletons = new Wave("Ondata C", true,
-                "Un'altra ondata di scheletri emerge dall'oscurita'. Questa volta uno di loro " +
-                "porta l'equipaggiamento che ti manca.");
-        waveC_skeletons.addEnemy(EnemyFactory.createScheletro());
-        waveC_skeletons.addEnemy(EnemyFactory.createScheletro());
-        waveC_skeletons.addEnemy(EnemyFactory.createScheletro());
-        waveC_skeletons.addEnemy(EnemyFactory.createScheletroGuardia());
-        room.addWave(waveC_skeletons);
-
-        // Miniboss: Strega; drop assicurato Pendente Magico + 3 Pozioni
-        Wave waveD = new Wave("Miniboss: Strega", false,
-                "Una risata acuta echeggia dalle volte. Candele si accendono da sole. " +
-                "La Strega scende lentamente dal soffitto, circondata da un alone verdastro. " +
-                "\"Benvenuto, sciocco eroe. I miei figli ti accoglieranno.\"");
-        waveD.addEnemy(EnemyFactory.createStrega());
-        waveD.addLoot(new MagicAmulet());
-        waveD.addLoot(new Potion());
-        waveD.addLoot(new Potion());
-        waveD.addLoot(new Potion());
-        room.addWave(waveD);
+        Wave waveC = new Wave("Miniboss: Strega", false,
+                "Un sibilo acuto penetra l'oscurit\u00e0. Da un corridoio laterale emerge la Strega: " +
+                "vesti lacere, occhi color sangue, dita adunche che tracciano rune nell'aria.");
+        waveC.addEnemy(EnemyFactory.createStrega());
+        room.addWave(waveC);
 
         return room;
     }
@@ -159,68 +140,60 @@ public class DungeonMap implements Serializable {
     /** r4 - Sala del Tesoro */
     private Room buildTreasureRoom() {
         Room room = new Room("r4", "Sala del Tesoro",
-                "Oro e gemme scintillano ovunque, ammassati in pile impossibili. " +
-                "Ma il pavimento trema. Qualcosa di enorme respira nell'ombra in fondo alla sala.");
+                "Uno scintillio dorato filtra da sotto la porta. " +
+                "Entri: scaffali di legno marcio stracolmi di monete e gioielli. " +
+                "Al centro, tre forzieri di ferro.");
 
-        Wave waveA = new Wave("Ondata A", true,
-                "Tra i mucchi d'oro, tre grosse uova di drago pulsano di calore. " +
-                "Crepe compaiono sui gusci \u2014 stanno per schiudersi!");
-        waveA.addEnemy(EnemyFactory.createUovo());
-        waveA.addEnemy(EnemyFactory.createUovo());
-        waveA.addEnemy(EnemyFactory.createUovo());
-        room.addWave(waveA);
+        room.addEntryLoot(new MagicAmulet());
 
-        Wave waveB = new Wave("Ondata B", true,
-                "Altre due uova emergono dall'ombra. Accanto a esse, un cucciolo gi\u00e0 schiuso " +
-                "spalanca le fauci e lancia fiammate basse.");
-        waveB.addEnemy(EnemyFactory.createUovo());
-        waveB.addEnemy(EnemyFactory.createUovo());
-        waveB.addEnemy(EnemyFactory.createCuccioloDrago());
-        room.addWave(waveB);
-
-        Wave waveC = new Wave("Ondata C", true,
-                "Tre cuccioli di drago si avventano su di te, artigli lucidi e occhi di brace. " +
-                "Sono pi\u00f9 veloci di quanto sembrino.");
-        waveC.addEnemy(EnemyFactory.createCuccioloDrago());
-        waveC.addEnemy(EnemyFactory.createCuccioloDrago());
-        waveC.addEnemy(EnemyFactory.createCuccioloDrago());
-        room.addWave(waveC);
+        Wave wavePozioni = new Wave("Forzieri", true,
+                "I forzieri si aprono rivelando provviste e armi abbandonate da avventurieri caduti.");
+        wavePozioni.addLoot(new Potion());
+        wavePozioni.addLoot(new Potion());
+        room.addWave(wavePozioni);
 
         return room;
     }
 
-    /** r5 - Boss Finale */
+    /** r5 - Covo del Drago */
     private Room buildBossRoom() {
-        Room room = new Room("r5", "Sala del Drago",
-                "Il soffitto \u00e8 altissimo e buio. Le pareti sono annerite dalle fiamme. " +
-                "Al centro della sala, una sagoma immensa apre lentamente un occhio dorato.");
+        Room room = new Room("r5", "Covo del Drago",
+                "Il soffitto si perde nell'oscurit\u00e0. Ossa di avventurieri decorano il pavimento. " +
+                "Al centro della caverna, L'Ultimo Drago apre un occhio.");
 
-        Wave boss = new Wave("Boss Finale: L'Ultimo Drago", false,
-                "L'Ultimo Drago si alza in tutta la sua maestosit\u00e0, le ali scagliate che " +
-                "proiettano ombre enormi sulle pareti. Un ruggito fa tremare le pietre. " +
-                "\"PICCOLO INSETTO... sei venuto a morire?\"");
-        boss.addEnemy(EnemyFactory.createUltimoDrago());
-        room.addWave(boss);
+        Wave waveUova = new Wave("Uova del Drago", true,
+                "Prima di raggiungere il drago devi farti largo tra le sue uova " +
+                "e i cuccioli gi\u00e0 schiusi. Attento: il drago osserva.");
+        waveUova.addEnemy(EnemyFactory.createUovo());
+        waveUova.addEnemy(EnemyFactory.createUovo());
+        waveUova.addEnemy(EnemyFactory.createCucciolo());
+        room.addWave(waveUova);
+
+        Wave waveDrago = new Wave("Boss: L'Ultimo Drago", false,
+                "L'Ultimo Drago si alza in piedi. La sua ombra copre l'intera caverna. " +
+                "\"Piccolo insetto... osi sfidarmi?\"");
+        waveDrago.addEnemy(EnemyFactory.createDrago());
+        room.addWave(waveDrago);
 
         return room;
     }
 
-    public Room getCurrentRoom()    { return rooms.get(currentRoomIndex); }
-    public boolean hasNextRoom()    { return currentRoomIndex < rooms.size() - 1; }
-    public void advanceToNextRoom() { if (hasNextRoom()) currentRoomIndex++; }
-    public int getCurrentRoomIndex(){ return currentRoomIndex; }
-    public int getTotalRooms()      { return rooms.size(); }
-    public List<Room> getRooms()    { return List.copyOf(rooms); }
+    // -------------------------------------------------------------------------
+    // Navigazione
+    // -------------------------------------------------------------------------
 
-    public boolean areAllRoomsCleared() {
-        return rooms.stream().allMatch(Room::isCleared);
+    public Room getCurrentRoom()      { return rooms.get(currentRoomIndex); }
+    public int  getCurrentRoomIndex() { return currentRoomIndex; }
+    public int  getTotalRooms()       { return rooms.size(); }
+
+    public boolean hasNextRoom() {
+        return currentRoomIndex < rooms.size() - 1;
     }
 
-    public List<String> getVisitedRoomNames() {
-        return rooms.stream().filter(Room::isVisited)
-                .map(Room::getName).collect(Collectors.toList());
+    public void advanceToNextRoom() {
+        if (hasNextRoom()) currentRoomIndex++;
     }
 
-    public boolean isTreasureRoomCleaned()      { return treasureRoomCleaned; }
-    public void setTreasureRoomCleaned(boolean v){ this.treasureRoomCleaned = v; }
+    public boolean isTreasureRoomCleaned()          { return treasureRoomCleaned; }
+    public void    setTreasureRoomCleaned(boolean v) { this.treasureRoomCleaned = v; }
 }

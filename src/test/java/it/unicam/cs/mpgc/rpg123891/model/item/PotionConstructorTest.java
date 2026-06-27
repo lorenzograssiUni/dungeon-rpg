@@ -6,14 +6,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifica tutti i costruttori di Potion e che use() sia consistente.
- * Valori aggiornati: pozione default = 10 HP, 5 Stamina.
+ * Valori aggiornati: pozione default = 30 HP, 5 Stamina.
  */
 public class PotionConstructorTest {
 
     @Test
-    void potion_defaultConstructor_10hp_5stamina() {
+    void potion_defaultConstructor_30hp_5stamina() {
         Potion p = new Potion();
-        assertEquals(10, p.getHealAmount());
+        assertEquals(30, p.getHealAmount());
         assertEquals(5,  p.getStaminaAmount());
     }
 
@@ -46,9 +46,9 @@ public class PotionConstructorTest {
         Warrior w = new Warrior("G");
         w.takeDamage(50); // perde 42 HP (50-8 difesa)
         int hpBefore = w.getCurrentHp();
-        new Potion().use(w);
-        // heal(10): hpBefore+10
-        assertEquals(hpBefore + 10, w.getCurrentHp());
+        Potion p = new Potion(); // heal=30
+        p.use(w);
+        assertEquals(Math.min(hpBefore + 30, w.getMaxHp()), w.getCurrentHp());
     }
 
     @Test

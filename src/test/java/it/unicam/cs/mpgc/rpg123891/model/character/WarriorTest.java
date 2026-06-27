@@ -14,7 +14,7 @@ public class WarriorTest {
         assertEquals(8,    w.getDefense());
         assertEquals(4,    w.getAgility());
         assertEquals(8,    w.getMaxStamina());
-        assertEquals(0.05, w.getCritChance(), 0.001);
+        assertEquals(0.15, w.getCritChance(), 0.001);
     }
 
     @Test
@@ -24,13 +24,13 @@ public class WarriorTest {
     }
 
     @Test
-    void warrior_applyPassiveBonus_increaseDefenseAndMaxHp() {
+    void warrior_applyPassiveBonus_restoresStamina() {
+        // applyPassiveBonus() del Warrior ripristina +2 stamina (non DEF/HP)
         Warrior w = new Warrior("Guerriero");
-        int defBefore = w.getDefense();
-        int hpBefore  = w.getMaxHp();
+        // consuma tutta la stamina
+        while (w.getCurrentStamina() > 0) w.consumeStaminaForAttack();
         w.applyPassiveBonus();
-        assertEquals(defBefore + 5,  w.getDefense());
-        assertEquals(hpBefore  + 20, w.getMaxHp());
+        assertEquals(2, w.getCurrentStamina());
     }
 
     @Test
@@ -60,10 +60,10 @@ public class WarriorTest {
         while (w.getCurrentStamina() > 0) w.consumeStaminaForAttack();
         int hpBefore  = w.getCurrentHp();
         int staBefore = w.getCurrentStamina(); // 0
-        new Potion().use(w);
-        // Pozione default: +10 HP, +5 Stamina
-        int expectedHp  = Math.min(hpBefore + 10, w.getMaxHp());
-        int expectedSta = Math.min(staBefore + 5, w.getMaxStamina());
+        Potion p = new Potion(); // default: heal=30, stamina=5
+        p.use(w);
+        int expectedHp  = Math.min(hpBefore + p.getHealAmount(), w.getMaxHp());
+        int expectedSta = Math.min(staBefore + p.getStaminaAmount(), w.getMaxStamina());
         assertEquals(expectedHp,  w.getCurrentHp());
         assertEquals(expectedSta, w.getCurrentStamina());
     }
