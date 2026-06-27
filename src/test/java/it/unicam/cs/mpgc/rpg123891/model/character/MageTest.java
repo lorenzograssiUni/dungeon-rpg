@@ -8,74 +8,105 @@ import org.junit.jupiter.api.Test;
 import java.util.Random;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Test per la classe Mage.
+ *
+ * Scudo Magico (GAME_SPEC): riduce del 30% i danni fisici in arrivo.
+ * Non si tratta di assorbimento totale: lo scudo è applicato da CombatSystem
+ * tramite applyMagePassive() ad ogni attacco fisico ricevuto.
+ * Vulnerabilità: +30% danno MAGICAL/MIXED.
+ */
 public class MageTest {
 
-    private static final Random NEVER_LUCK = new Random(0) {
+    // nextDouble() = 1.0 → mai critico
+    private static final Random NO_LUCK = new Random(0) {
         @Override public double nextDouble() { return 1.0; }
     };
 
     @Test
     void mage_baseStats() {
         Mage m = new Mage("Mago");
-        assertEquals(75,   m.getMaxHp());
-        assertEquals(15,   m.getAttack());
-        assertEquals(4,    m.getDefense());
-        assertEquals(6,    m.getAgility());
-        assertEquals(10,   m.getMaxStamina());
-        assertEquals(0.05, m.getCritChance(), 0.001);
+        assertEquals(90,   m.getMaxHp(),      "HP base deve essere 90");
+        assertEquals(15,   m.getAttack(),      "ATK base deve essere 15");
+        assertEquals(4,    m.getDefense(),     "DEF base deve essere 4");
+        assertEquals(6,    m.getAgility(),     "AGI base deve essere 6");
+        assertEquals(15,   m.getMaxStamina(),  "STA base deve essere 15");
+        assertEquals(0.05, m.getCritChance(), 0.001, "CRIT base deve essere 5%");
     }
 
     @Test
-    void mage_magicShield_activeAtStart() {
-        Mage m = new Mage("Mago");
-        m.applyPassiveBonus();
-        assertTrue(m.isMagicShieldActive());
-    }
-
-    @Test
-    void mage_magicShield_absorbsFirstPhysicalAttack() {
-        Mage m = new Mage("Mago");
-        m.applyPassiveBonus();
+    void mage_physicalDamage_reducedBy30Percent() {
+        // Lo scudo -30% fisico è sempre attivo via CombatSystem.applyMagePassive()
+        Mage m = new Mage("Mago"); // DEF=4
         int hpBefore = m.getCurrentHp();
-        CombatSystem cs = new CombatSystem(NEVER_LUCK);
-        Enemy goblin = EnemyFactory.createGoblin();
-        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0);
-        assertEquals(hpBefore, m.getCurrentHp(), "Lo scudo deve assorbire il primo fisico");
-        assertFalse(m.isMagicShieldActive(), "Lo scudo deve disattivarsi dopo l'assorbimento");
+        CombatSystem cs = new CombatSystem(NO_LUCK);
+        Enemy goblin = EnemyFactory.createGoblin(); // ATK variabile, usiamo attacco diretto
+
+        // Creiamo un nemico con ATK fisso per rendere il test deterministico
+        Enemy attacker = new Enemy("Test", 100, 20, 0, AttackType.PHYSICAL, 0.0);
+        cs.executeAttack(attacker, m, AttackType.PHYSICAL, 0);
+
+        // Danno atteso: (20 * 0.70) = 14, poi 14 - 4(DEF) = 10
+        int expectedDamage = Math.max(0, (int)(20 * 0.70) - m.getDefense());
+        assertEquals(hpBefore - expectedDamage, m.getCurrentHp(),
+                "Il danno fisico deve essere ridotto del 30% dallo scudo magico");
     }
 
     @Test
-    void mage_magicShield_secondAttackDealsNormalDamage() {
+    void mage_physicalDamage_isLowerThanRaw() {
+        // Verifica che il danno fisico subito sia < danno senza scudo
         Mage m = new Mage("Mago");
-        m.applyPassiveBonus();
-        CombatSystem cs = new CombatSystem(NEVER_LUCK);
-        Enemy goblin = EnemyFactory.createGoblin();
-        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // scudo
-        int hpAfterShield = m.getCurrentHp();
-        cs.executeAttack(goblin, m, AttackType.PHYSICAL, 0); // danno reale
-        assertTrue(m.getCurrentHp() < hpAfterShield);
+        int hpBefore = m.getCurrentHp();
+        CombatSystem cs = new CombatSystem(NO_LUCK);
+        Enemy attacker = new Enemy("Test", 100, 30, 0, AttackType.PHYSICAL, 0.0);
+        cs.executeAttack(attacker, m, AttackType.PHYSICAL, 0);
+        int actualDamage = hpBefore - m.getCurrentHp();
+
+        // Danno senza scudo sarebbe: 30 - 4(DEF) = 26
+        int rawDamage = Math.max(0, 30 - m.getDefense());
+        assertTrue(actualDamage < rawDamage,
+                "Il danno fisico con scudo deve essere minore del danno grezzo");
     }
 
     @Test
     void mage_magicVulnerability_increasesMagicalDamage() {
         Mage m = new Mage("Mago"); // DEF=4
-        m.setMagicShieldActive(false);
         int hpBefore = m.getCurrentHp();
-        CombatSystem cs = new CombatSystem(NEVER_LUCK);
-        Enemy goblin = EnemyFactory.createGoblin(); // ATK=12
-        cs.executeAttack(goblin, m, AttackType.MAGICAL, 0);
-        // flusso: damage=12, *1.30=15 (int), takeDamage(15) -> 15-4=11 netto
-        int amplified = (int)(goblin.getAttack() * 1.30);
-        int expected  = Math.max(0, amplified - m.getDefense());
-        assertEquals(hpBefore - expected, m.getCurrentHp());
+        CombatSystem cs = new CombatSystem(NO_LUCK);
+        Enemy attacker = new Enemy("Test", 100, 20, 0, AttackType.MAGICAL, 0.0);
+        cs.executeAttack(attacker, m, AttackType.MAGICAL, 0);
+
+        // Danno atteso: (20 * 1.30) = 26, poi 26 - 4(DEF) = 22
+        int expectedDamage = Math.max(0, (int)(20 * 1.30) - m.getDefense());
+        assertEquals(hpBefore - expectedDamage, m.getCurrentHp(),
+                "Il danno magico deve essere aumentato del 30% per la vulnerabilità");
     }
 
     @Test
-    void mage_applyPassiveBonus_reactivatesShield() {
+    void mage_magicVulnerability_isHigherThanRaw() {
+        // Verifica che danno MAGICAL subito sia > danno grezzo senza vulnerabilità
         Mage m = new Mage("Mago");
-        m.setMagicShieldActive(false);
+        int hpBefore = m.getCurrentHp();
+        CombatSystem cs = new CombatSystem(NO_LUCK);
+        Enemy attacker = new Enemy("Test", 100, 20, 0, AttackType.MAGICAL, 0.0);
+        cs.executeAttack(attacker, m, AttackType.MAGICAL, 0);
+        int actualDamage = hpBefore - m.getCurrentHp();
+
+        // Danno senza vulnerabilità: 20 - 4(DEF) = 16
+        int rawDamage = Math.max(0, 20 - m.getDefense());
+        assertTrue(actualDamage > rawDamage,
+                "Il danno magico con vulnerabilità deve essere maggiore del danno grezzo");
+    }
+
+    @Test
+    void mage_applyPassiveBonus_restoresStamina() {
+        Mage m = new Mage("Mago");
+        // Consuma tutta la stamina
+        while (m.getCurrentStamina() > 0) m.consumeStaminaForAttack();
+        assertEquals(0, m.getCurrentStamina());
         m.applyPassiveBonus();
-        assertTrue(m.isMagicShieldActive());
+        assertTrue(m.getCurrentStamina() > 0,
+                "applyPassiveBonus deve ripristinare stamina");
     }
 
     @Test
