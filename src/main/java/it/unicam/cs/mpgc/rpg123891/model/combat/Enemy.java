@@ -69,7 +69,9 @@ public class Enemy extends GameCharacter {
 
     public void setTurnsToHatch(int turns) { this.turnsToHatch = turns; }
     public int  getTurnsToHatch()          { return turnsToHatch; }
+    public int  getHatchCounter()          { return hatchCounter; }
     public boolean isEgg()                 { return turnsToHatch > 0; }
+    public boolean isReadyToHatch()        { return isEgg() && hatchCounter >= turnsToHatch; }
 
     /**
      * Incrementa il contatore di turni.

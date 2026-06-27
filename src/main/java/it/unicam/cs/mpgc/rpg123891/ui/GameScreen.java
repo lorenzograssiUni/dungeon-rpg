@@ -84,13 +84,12 @@ public class GameScreen {
     private static final double ENEMY_SPRITE_W    = 110;
     private static final double MINIBOSS_SPRITE_H = 190;
     private static final double MINIBOSS_SPRITE_W = 160;
-    private static final double DRAGON_SPRITE_H   = 220;
-    private static final double DRAGON_SPRITE_W   = 200;
+    private static final double DRAGON_SPRITE_H   = 340;
+    private static final double DRAGON_SPRITE_W   = 310;
     private static final double LOOT_SPRITE_H     = 160;
     private static final double LOOT_SPRITE_W     = 120;
     private static final double LOOT_SPRITE_OFFSET_Y = 10;
 
-    // FIX: nomi corretti dal modello ("Cucciolo di Drago", rimosso "Cucciolo Uovo" che non esiste)
     private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo di Drago");
     private static final Set<String> DRAGON_NAMES   = Set.of("L'Ultimo Drago");
 
@@ -131,9 +130,10 @@ public class GameScreen {
         ENEMY_SPRITES.put("Scheletro",         List.of("/assets/enemies/scheletro.png","/assets/enemies/scheletro2.png"));
         ENEMY_SPRITES.put("Scheletro Guardia", List.of("/assets/enemies/scheletroGuardia.png","/assets/enemies/scheletroGuardia2.png"));
         ENEMY_SPRITES.put("Strega",            List.of("/assets/enemies/Strega.png"));
-        // FIX: "Uovo" usa cuccioloUovo1/2 (sprite dell'uovo che si sta per schiudere)
-        ENEMY_SPRITES.put("Uovo",              List.of("/assets/enemies/cuccioloUovo1.png","/assets/enemies/cuccioloUovo2.png"));
-        // FIX: "Cucciolo di Drago" (nome esatto dal modello) usa cucciolo1/2
+        // Uovo: sprite base (non ancora schiuso)
+        ENEMY_SPRITES.put("Uovo",              List.of("/assets/enemies/uovo1.png","/assets/enemies/uovo2.png"));
+        // Sprite uovo schiuso (usato quando hatchCounter >= turnsToHatch)
+        ENEMY_SPRITES.put("Uovo_hatching",     List.of("/assets/enemies/cuccioloUovo1.png","/assets/enemies/cuccioloUovo2.png"));
         ENEMY_SPRITES.put("Cucciolo di Drago", List.of("/assets/enemies/cucciolo1.png","/assets/enemies/cucciolo2.png"));
         ENEMY_SPRITES.put("L'Ultimo Drago",    List.of("/assets/enemies/UltimoDrago.png"));
     }
@@ -195,7 +195,6 @@ public class GameScreen {
     // ── Public refresh ────────────────────────────────────────────────
 
     public void refresh() {
-        // Invalida selectedTarget se il nemico è morto o non più nella wave corrente
         Wave curWave = gc.getCurrentRoom().getCurrentWave();
         if (selectedTarget != null) {
             boolean stillAlive = curWave != null
@@ -240,7 +239,6 @@ public class GameScreen {
         if (wave == null) return;
         List<Enemy> alive = aliveTargets(wave);
         if (alive.isEmpty()) return;
-        // Usa il bersaglio selezionato se valido, altrimenti mostra dialog solo se >1 nemico
         if (selectedTarget != null && alive.contains(selectedTarget)) {
             executeTurn(combatController.playerNormalAttack(selectedTarget));
         } else if (alive.size() == 1) {
@@ -377,7 +375,6 @@ public class GameScreen {
             } else {
                 List<Enemy> alive = aliveTargets(wave);
                 if (alive.isEmpty()) return;
-                // Usa bersaglio selezionato se disponibile
                 if (selectedTarget != null && alive.contains(selectedTarget)) {
                     executeTurn(combatController.playerSpecialAttack(chosen, selectedTarget));
                 } else if (alive.size() == 1) {
@@ -511,8 +508,7 @@ public class GameScreen {
     }
 
     /**
-     * DEBUG: salta direttamente alla stanza con indice targetIndex,
-     * marcando tutte le stanze intermedie come cleared.
+     * DEBUG: salta direttamente alla stanza con indice targetIndex.
      */
     private void debugJumpToRoom(int targetIndex) {
         var map = gc.getGameState().getDungeonMap();
@@ -603,7 +599,14 @@ public class GameScreen {
             String name = enemy.getName();
             int used    = usageCount.getOrDefault(name, 0);
             usageCount.put(name, used + 1);
-            List<String> variants = ENEMY_SPRITES.getOrDefault(name, List.of());
+
+            // Scegli la chiave sprite: se è un uovo pronto a schiudersi usa Uovo_hatching
+            String spriteKey = name;
+            if ("Uovo".equals(name) && enemy.isEgg() && enemy.isReadyToHatch()) {
+                spriteKey = "Uovo_hatching";
+            }
+
+            List<String> variants = ENEMY_SPRITES.getOrDefault(spriteKey, List.of());
             if (variants.isEmpty()) continue;
             double spriteW, spriteH;
             if (DRAGON_NAMES.contains(name)) {
@@ -622,10 +625,6 @@ public class GameScreen {
         return row;
     }
 
-    /**
-     * Enemy Stats panel: ogni riga è cliccabile per selezionare il bersaglio.
-     * La riga selezionata ha un highlight dorato.
-     */
     private void buildEnemyStatsPanel() {
         paneEnemyStats.getChildren().clear();
         paneEnemyStats.setAlignment(Pos.CENTER);
@@ -642,7 +641,6 @@ public class GameScreen {
             paneEnemyStats.getChildren().add(empty);
             return;
         }
-        // Auto-seleziona il primo nemico se nessuno è selezionato
         if (selectedTarget == null || !alive.contains(selectedTarget)) {
             selectedTarget = alive.get(0);
         }
@@ -787,10 +785,6 @@ public class GameScreen {
         paneLog.getChildren().add(scroll);
     }
 
-    /**
-     * MAP panel: disegna la mappa con le stanze e le wave.
-     * Le stanze future sono cliccabili per il debug jump (label arancione con ►).
-     */
     private void buildMapPanel() {
         paneRightTop.getChildren().clear();
         paneRightTop.setStyle("-fx-background-color:transparent;");
@@ -881,12 +875,6 @@ public class GameScreen {
             return "Boss";
         }
         return "Wave " + (index + 1);
-    }
-
-    private int indexOf(List<Room> rooms, Room target) {
-        for (int i = 0; i < rooms.size(); i++)
-            if (rooms.get(i).getId().equals(target.getId())) return i;
-        return 0;
     }
 
     private void buildCharacterPanel() {
