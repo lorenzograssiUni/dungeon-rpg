@@ -7,7 +7,7 @@ import java.io.Serial;
  * Stat base: HP 90, ATK 15, DEF 4, AGI 6, STA 15, CRIT 5%
  *
  * Scudo Magico (GAME_SPEC): riduce del 30% i danni fisici in arrivo.
- * Vulnerabilita': subisce +30% danno da attacchi MAGICAL e MIXED.
+ * Vulnerabilità: subisce +30% danno da attacchi MAGICAL e MIXED.
  */
 public class Mage extends GameCharacter implements PlayerCharacter {
 
@@ -41,5 +41,12 @@ public class Mage extends GameCharacter implements PlayerCharacter {
     /** Restituisce true se lo Scudo Magico è attualmente attivo. */
     public boolean isMagicShieldActive() {
         return magicShieldActive;
+    }
+
+    /**
+     * Setter diretto per i test: equivale a activateMagicShield()/deactivateMagicShield().
+     */
+    public void setMagicShieldActive(boolean active) {
+        this.magicShieldActive = active;
     }
 }

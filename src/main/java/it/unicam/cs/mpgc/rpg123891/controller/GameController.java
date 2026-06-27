@@ -71,7 +71,6 @@ public class GameController {
     }
 
     public int enemyAttack(Enemy enemy) {
-        // Se Carica! e' attiva, il giocatore subisce 0 danno
         if (caricaTurnsRemaining > 0) return 0;
         return combatSystem.executeAttack(
                 enemy, asGameCharacter(gameState.getPlayer()),
@@ -92,10 +91,6 @@ public class GameController {
         return damage;
     }
 
-    /**
-     * Esegue un attacco speciale AOE standard (Onda Magica, Spazzatutto).
-     * Per Onda Magica il danno per ogni nemico e' ATK + (3 * num nemici vivi).
-     */
     public Map<Enemy, Integer> executeAoeSpecial(SpecialAttack special) {
         GameCharacter player = asGameCharacter(gameState.getPlayer());
         player.consumeStaminaForSpecial(special.getStaminaCost());
@@ -111,7 +106,6 @@ public class GameController {
 
         for (Enemy enemy : aliveEnemies) {
             if (isOndaMagica) {
-                // Danno diretto: ATK + bonus, bypassa difesa
                 int damage = player.getAttack() + bonusOndaMagica;
                 int hpBefore = enemy.getCurrentHp();
                 enemy.applyBurnDamage(damage);
@@ -123,10 +117,6 @@ public class GameController {
         return results;
     }
 
-    /**
-     * Esegue Ira delle Doppie Daghe:
-     * attacca ogni nemico vivo una volta con +25% critico temporaneo.
-     */
     public Map<Enemy, Integer> executeIra(SpecialAttack special) {
         GameCharacter player = asGameCharacter(gameState.getPlayer());
         player.consumeStaminaForSpecial(special.getStaminaCost());
@@ -135,31 +125,34 @@ public class GameController {
         List<Enemy> aliveEnemies = wave == null ? List.of() :
                 wave.getEnemies().stream().filter(Enemy::isAlive).toList();
 
-        // +25% crit temporaneo
         player.increaseCritChance(0.25);
         Map<Enemy, Integer> results = new java.util.LinkedHashMap<>();
         for (Enemy enemy : aliveEnemies) {
             results.put(enemy, special.execute(player, enemy));
         }
-        // Rimuovi il +25% temporaneo
         player.increaseCritChance(-0.25);
         return results;
     }
 
     // -------------------------------------------------------------------------
-    // Carica! rollback (chiamato a fine turno nemici)
+    // Carica! tick / rollback
     // -------------------------------------------------------------------------
 
+    /** Decrementa il contatore di Carica! di un turno. */
     public void tickCarica() {
         if (caricaTurnsRemaining > 0) caricaTurnsRemaining--;
     }
 
+    /**
+     * Alias di tickCarica() usato dai test.
+     * Decrementa il contatore di Carica! di un turno.
+     */
+    public void rollbackCarica() {
+        tickCarica();
+    }
+
     public boolean isCaricaActive() { return caricaTurnsRemaining > 0; }
 
-    /**
-     * Verifica che il giocatore possa usare Carica! (GAME_SPEC):
-     * richiede Spada Semplice equipaggiata in MAIN_HAND e Scudo in OFF_HAND.
-     */
     public boolean canUseCarica() {
         GameCharacter player = asGameCharacter(gameState.getPlayer());
         boolean hasSword  = player.getEquipmentManager()
@@ -175,9 +168,6 @@ public class GameController {
 
     // -------------------------------------------------------------------------
     // Fuga (GAME_SPEC)
-    // Possibile solo se AGI giocatore < AGI media dei nemici vivi.
-    // Impossibile contro miniboss o nemici con drop assicurato.
-    // Nella stanza finale (r5) si puo' fuggire sempre da uova e cuccioli.
     // -------------------------------------------------------------------------
 
     public boolean canFlee() {
@@ -189,7 +179,6 @@ public class GameController {
                 .filter(Enemy::isAlive).toList();
         if (alive.isEmpty()) return false;
 
-        // Nella stanza finale puoi sempre fuggire da uova e cuccioli
         boolean isFinalRoom = getCurrentRoom().getId().equals("r5");
         if (isFinalRoom) {
             boolean onlyEggsAndCubs = alive.stream().allMatch(
@@ -203,13 +192,6 @@ public class GameController {
         return playerAgi < avgEnemyAgi;
     }
 
-    /**
-     * Esegue la fuga: ritorna alla wave corrente svuotando il combattimento
-     * attivo. Il giocatore rimane nella stanza corrente ma la wave viene
-     * reimpostata alla prima (il dungeon non retrocede di stanza).
-     *
-     * @return true se la fuga e' stata eseguita con successo
-     */
     public boolean flee() {
         if (!canFlee()) return false;
         getCurrentRoom().resetToFirstWave();
@@ -257,18 +239,11 @@ public class GameController {
         gameState.getDungeonMap().advanceToNextRoom();
         Room next = getCurrentRoom();
         next.setVisited(true);
-        // Applica passive bonus SOLO ai nemici (es. DragonPassiveBuff);
-        // il +2 stamina al giocatore e' gia' dato in checkWaveCleared() per ogni wave.
         next.getAllEnemies().forEach(Enemy::applyPassiveBonus);
         collectEntryLoot();
         return true;
     }
 
-    /**
-     * Chiamato quando una wave viene completata.
-     * Aggiunge loot condizionale, raccoglie il loot, da' +2 stamina al giocatore,
-     * avanza alla prossima wave o marca la stanza come finita.
-     */
     public boolean checkWaveCleared() {
         Room room = getCurrentRoom();
         Wave wave = room.getCurrentWave();
@@ -277,7 +252,6 @@ public class GameController {
         addConditionalLoot(room, wave);
         collectWaveLoot(wave);
 
-        // +2 stamina per wave completata (GAME_SPEC)
         asGameCharacter(gameState.getPlayer()).restoreStamina(2);
 
         if (room.getId().equals("r4") && !room.hasMoreWaves()) {
@@ -296,12 +270,6 @@ public class GameController {
         return true;
     }
 
-    /**
-     * Loot condizionale (GAME_SPEC):
-     *   r2 Ondata A: drop assicurato Doppie Daghe (gia' in Wave).
-     *   r2 Ondata B: drop assicurato Spada + (Scudo o Armatura mancante).
-     *   r3 Ondata C: drop item mancante (Scudo o Armatura).
-     */
     private void addConditionalLoot(Room room, Wave wave) {
         List<Item> inv = gameState.getPlayer().getInventory();
         boolean hasShield = inv.stream().anyMatch(i -> i instanceof Shield);
@@ -310,7 +278,6 @@ public class GameController {
         switch (room.getId()) {
             case "r2" -> {
                 if (wave.getName().equals("Ondata B")) {
-                    // Spada gia' nel loot della wave; aggiunge Scudo o Armatura
                     if (!hasShield)     wave.addLoot(new Shield());
                     else if (!hasArmor) wave.addLoot(new Armor());
                 }
@@ -324,11 +291,6 @@ public class GameController {
         }
     }
 
-    /**
-     * Verifica se il giocatore puo' usare Colpo Vitale (GAME_SPEC):
-     * richiede MagicStaff equipaggiato in MAIN_HAND e MagicAmulet in BODY.
-     * Controlla gli slot dell'EquipmentManager, non l'inventario.
-     */
     public boolean canUseColpoVitale() {
         GameCharacter player = asGameCharacter(gameState.getPlayer());
         boolean staffEquipped = player.getEquipmentManager()
@@ -342,10 +304,6 @@ public class GameController {
         return staffEquipped && amuletEquipped;
     }
 
-    /**
-     * Verifica se il giocatore non-Mago puo' usare gli special del Bastone:
-     * richiede il Pendente Magico equipaggiato in BODY.
-     */
     public boolean canUseStaffSpecials() {
         it.unicam.cs.mpgc.rpg123891.model.character.CharacterClass cls =
             asGameCharacter(gameState.getPlayer()).getCharacterClass();
