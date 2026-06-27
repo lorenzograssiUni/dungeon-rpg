@@ -6,20 +6,19 @@ import java.util.Random;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifica che l'attacco normale NON consumi stamina
- * e che le passive di Warrior/Mage/Thief funzionino
- * in CombatSystem.executeAttack().
+ * Verifica passive di Warrior/Mage/Thief in CombatSystem.executeAttack().
+ * Usa Enemy con ATK fisso per calcoli deterministici.
  */
 public class CombatSystemPassiveTest {
 
-    // nextDouble() = 1.0 -> mai critico, mai blocco
     private static final Random NO_LUCK = new Random(0) {
         @Override public double nextDouble() { return 1.0; }
     };
-    // nextDouble() = 0.0 -> critico garantito E blocco garantito
-    private static final Random ALL_LUCK = new Random(0) {
-        @Override public double nextDouble() { return 0.0; }
-    };
+
+    /** Nemico con ATK fisso a 12. */
+    private static Enemy fixedEnemy() {
+        return new Enemy("TestEnemy", 200, 12, 0, AttackType.PHYSICAL, 0.0);
+    }
 
     @Test
     void normalAttack_doesNotConsumeStamina() {
@@ -41,17 +40,17 @@ public class CombatSystemPassiveTest {
 
     @Test
     void warrior_blockChance_preventsAllDamage() {
-        // Forza blockStreak=4 (garantito al 5° attacco)
+        // ATK fisso 12, DEF warrior 8 -> 4 danno/attacco
+        // 4 attacchi non bloccati con NO_LUCK -> blockStreak=4
+        // 5° attacco: blocco garantito -> HP invariato
         Warrior w = new Warrior("G");
-        // 4 attacchi non bloccati con NO_LUCK incrementano blockStreak a 4
-        Enemy goblin = EnemyFactory.createGoblin();
+        Enemy e = fixedEnemy();
         CombatSystem csNoLuck = new CombatSystem(NO_LUCK);
         for (int i = 0; i < 4; i++) {
-            csNoLuck.executeAttack(goblin, w, AttackType.PHYSICAL, 0);
+            csNoLuck.executeAttack(e, w, AttackType.PHYSICAL, 0);
         }
-        // 5° attacco: blocco garantito
         int hpBefore = w.getCurrentHp();
-        csNoLuck.executeAttack(goblin, w, AttackType.PHYSICAL, 0);
+        csNoLuck.executeAttack(e, w, AttackType.PHYSICAL, 0);
         assertEquals(hpBefore, w.getCurrentHp(), "Il 5° attacco deve essere bloccato");
     }
 
@@ -77,30 +76,20 @@ public class CombatSystemPassiveTest {
 
     @Test
     void mage_magicShield_reduces30percent() {
-        // Lo scudo del Mago riduce SEMPRE del 30% i danni fisici (non on/off)
+        // ATK fisso 12, scudo -30% -> floor(12*0.70)=8, DEF mago=4 -> 4 danno
         Mage m = new Mage("Ma");
-        Enemy goblin = EnemyFactory.createGoblin(); // ATK=12
+        Enemy e = fixedEnemy();
         int hpBefore = m.getCurrentHp();
-        new CombatSystem(NO_LUCK).executeAttack(goblin, m, AttackType.PHYSICAL, 0);
-        // danno lordo = 12, ridotto 30% -> 8, netto su Mage (DEF=4) -> 8-4=4
-        // (il -30% si applica prima della DEF)
-        int hpAfter = m.getCurrentHp();
-        assertTrue(hpAfter < hpBefore, "Il Mage deve subire danno ridotto");
-        // verifica che il danno sia inferiore a quello senza scudo
-        Warrior w = new Warrior("G"); // DEF=8, ATK goblin=12 -> 4 danno
-        int wHpBefore = w.getCurrentHp();
-        new CombatSystem(NO_LUCK).executeAttack(goblin, w, AttackType.PHYSICAL, 0);
-        int warriorDamage = wHpBefore - w.getCurrentHp();
-        int mageDamage    = hpBefore  - hpAfter;
-        // Il danno al Mage e' ridotto del 30% prima di applicare la DEF
-        assertTrue(mageDamage >= 0);
+        new CombatSystem(NO_LUCK).executeAttack(e, m, AttackType.PHYSICAL, 0);
+        assertEquals(hpBefore - 4, m.getCurrentHp(),
+                "Il Mage deve subire esattamente 4 danno (ATK12 *0.70 -DEF4)");
     }
 
     @Test
     void damage_reducedByDefense() {
         Warrior w = new Warrior("G"); // DEF=8
-        Enemy goblin = EnemyFactory.createGoblin(); // ATK=12
-        int dmg = new CombatSystem(NO_LUCK).executeAttack(goblin, w, AttackType.PHYSICAL, 0);
-        assertEquals(Math.max(0, goblin.getAttack() - w.getDefense()), dmg);
+        Enemy e = fixedEnemy(); // ATK=12 fisso
+        int dmg = new CombatSystem(NO_LUCK).executeAttack(e, w, AttackType.PHYSICAL, 0);
+        assertEquals(Math.max(0, 12 - w.getDefense()), dmg); // 12-8=4
     }
 }
