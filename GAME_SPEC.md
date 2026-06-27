@@ -8,11 +8,11 @@
 
 | Stat | Warrior | Mage | Thief |
 |------|---------|------|-------|
-| HP | 120 | 75 | 90 |
+| HP | 120 | 90 | 100 |
 | Attacco | 22 | 15 | 18 |
 | Difesa | 8 | 4 | 6 |
 | Agilità | 4 | 6 | 8 |
-| Stamina | 8 | 10 | 12 |
+| Stamina | 8 | 15 | 10 |
 | Critico | 15% | 5% | 25% |
 
 > Abbreviazioni usate nelle schede item: **W** = Warrior, **M** = Mage, **T** = Thief
@@ -74,7 +74,7 @@ Implementare la possibilità di scappare (impossibile contro i miniboss o nemici
 
 ### 5. Boss Finale — L'Ultimo Drago
 
-Vedi scheda nemico dedicata nella sezione Nemici.
+Vedi scheda nemico dedicata nella sezione Schede Nemici.
 
 ---
 
@@ -83,50 +83,55 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 ### Cinghiale
 - **HP:** 36
 - **Attacco:** 7–10
+- **Agilità** 3
 - **Loot:** 50% probabilità Carne
 
 ### Lupo
 - **HP:** 45
 - **Attacco:** 10–12
+- **Agilità** 3
 - **Loot:** 50% probabilità Carne
 
 ### Goblin
 - **HP:** 42
-- **Attacco:** 10–15
+- **Attacco:** 15–20
+- **Agilità** 4
 - **Loot:** —
 
 ### Goblin Guardia
-- **HP:** come Goblin normale
+- **HP e attacco:** come Goblin normale + bonus spada e scudo/armatura
 - **Equipaggiamento:** Spada + Scudo o Armatura
+- **Agilità** 4
 - **Loot drop assicurato:** Spada + Scudo o Armatura
 
 ### Re Goblin *(Miniboss)*
-- **HP:** 55
-- **Attacco:** 15–20
-- **Abilità Speciale:** 3 Lanci (20 ATK l'uno)
+- **HP:** 90
+- **Attacco:** 20-25
+- **Agilità** 4
+- **Abilità Speciale:** 3 Lanci (20 ATK l'uno), **si attiva ogni 3-5 turni**.
 
 ### Scheletro
-- **HP:** 50
-- **Attacco:** 12–17
+- **HP:** 55
+- **Attacco:** 12–20
 - **Loot:** —
 
 ### Scheletro Guardia
-- **HP:** come Scheletro normale
+- **HP e attacco:** come Goblin normale + bonus spada e scudo/armatura
 - **Equipaggiamento:** Spada + Scudo/Armatura
-- **Abilità Speciale:** Carica!
+- **Abilità Speciale:** Carica! **si attiva ogni 3 turni**
 - **Loot drop assicurato:** l'item mancante al giocatore (Scudo o Armatura)
 
 ### Strega *(Miniboss)*
-- **HP:** 80
+- **HP:** 90
 - **Attacco:** 15–25
-- **Abilità Speciale:** Evoca 3 scheletri — immune agli attacchi durante finchè gli scheletri sono in vita.
-- **Loot drop assicurato:** Pendente Magico + 3 Pozioni
+- **Abilità Speciale:** Evoca 3 scheletri — immune agli attacchi durante finchè gli scheletri sono in vita. **si attiva ogni 3-5 turni** (counter per l'abilità bloccato finchè ci sono scheletri)
+- **Loot drop assicurato:** Pendente Magico + 3 Pozioni.
 
 ### Uovo
-- **HP:** 20
+- **HP:** 40
 - **Attacco:** 1 (danno sicuro, ignora difesa)
-- **Meccanica:** diventa Cucciolo di Drago entro 3 turni se non sconfitto
-- **Loot:** 50% probabilità Carne
+- **Meccanica:** diventa Cucciolo di Drago entro 3 turni se non sconfitto.
+- **Loot:** 50% probabilità Carne (se diventa cucciolo di drago).
 
 ### Cucciolo di Drago
 - **HP:** 65
@@ -137,7 +142,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 - **HP:** 140
 - **Attacco:** 30–60
 - **Buff passivo:** se ha ucciso tutti i Cuccioli e le Uova nella stanza → +20% danno
-- **Abilità Speciale — Soffio del Drago:** infligge bruciatura — 5–8 HP di danno per turno, dura 3–5 turni
+- **Abilità Speciale — Soffio del Drago:** infligge bruciatura — 5–8 HP di danno per turno, dura 3–5 turni, **si attiva ogni 5 turni**
 
 ---
 
@@ -154,7 +159,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 
 **Attacchi Speciali:**
 - **Fendente** — +25% attacco, +5% Critico. Costo: 2 stamina
-- **Carica!** *(richiede Spada + Scudo)* — equivale al Fendente + ricevi 0 danno nel turno corrente. Costo: 4 stamina
+- **Carica!** *(richiede Spada + Scudo)* — equivale al Fendente + ricevi 0 danno nel turno corrente e successivo. Costo: 4 stamina
 
 ---
 
@@ -168,6 +173,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 **Attacchi Speciali:**
 - **Onda Magica** — colpisce tutti i nemici nella stanza; danno = ATK + (3 di danno × numero nemici). Costo: 4 stamina
 - **Colpo Vitale** *(richiede Bastone + Pendente Magico)* — infligge danni pari alla vita attuale del personaggio. Malus: perdi metà vita Costo: 6 stamina
+**se non viene utilizzata la classe mago è necessario il pendente magico equipaggiato per poter utilizzare gli attacchi speciali**
 
 ---
 
@@ -179,7 +185,7 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 | Stamina | 0 | -1 | +2 |
 
 **Attacchi Speciali:**
-- **Sfuriata** — 3 attacchi: 1° 100% danno, 2° 50% danno, 3° 50% danno + 25% prob. Critico. Costo: 5 stamina
+- **Sfuriata** — 3 attacchi: 1° 100% danno, 2° 50% danno, 3° 50% danno + 25% prob. Critico sul danno. Costo: 5 stamina
 - **Ira** — +25% prob. Critico; attacca tante volte quanti nemici nella stanza. Costo: 3 stamina
 
 ---
@@ -233,20 +239,20 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 ### Consumabili
 
 #### Carne
-- **Effetto:** +40 HP
+- **Effetto:** +40 HP, +3 stamina
 
 #### Pozione
-- **Effetto:** Stamina +3 (per tutti i personaggi)
+- **Effetto:** riempe completamente la stamina del giocatore.
 
 ---
 
 ## Regole di Combattimento (Riepilogo)
 
 - **Iniziativa:** chi ha Agilità maggiore attacca per primo; parità → priorità al giocatore.
-- **Stamina:** consumata ad ogni attacco normale (1 stamina). Gli attacchi speciali hanno costo variabile. I **nemici non consumano stamina**.
-- **Critico:** danno × 2. Il Thief ha critico garantito al primo attacco se `stealthBonusActive = true`.
-- **Blocco Warrior:** chance di annullare completamente un attacco **fisico** in arrivo.
-- **Scudo Magico Mage:** blocca 1 attacco **fisico** in arrivo, poi si disattiva.
+- **Stamina:** Gli attacchi speciali hanno costo variabile. I **nemici non consumano stamina**. Ogni wave completata da +2 stamina.
+- **Critico:** danno × 2. Il Thief ha critico garantito al primo attacco di ogni wave.
+- **Blocco Warrior:** chance di annullare completamente un attacco **fisico** in arrivo. (20% di chance ad ogni attacco comulabile, il quinto attacco ricevuto se i 4 prima non hanno attivato questa abilità blocca sicuramente, si resetta ogni volta che blocca un attacco, **non si resetta ogni nuova wave**).
+- **Scudo Magico Mage:** 30% in meno se è un danno **fisico** in arrivo.
 - **Vulnerabilità Mage:** subisce +30% danno da attacchi magici.
 - **Danno minimo:** 0 (il danno non può essere negativo).
 - **HP minimo:** 0 (non scendono sotto zero).
@@ -262,4 +268,6 @@ Vedi scheda nemico dedicata nella sezione Nemici.
 - **Colpo Vitale** richiede entrambi gli slot: Bastone Magico in MAIN_HAND e Pendente Magico in BODY.
 - **Carica!** richiede Spada Semplice in MAIN_HAND e Scudo in OFF_HAND.
 - Il **buff passivo del Drago** si attiva solo se nella Sala del Tesoro il giocatore ha ucciso tutti i cuccioli/uova prima di affrontare il Boss.
-- La **fuga** è possibile solo se l'agilità del giocatore è minore a l'agilità media dei nemici all'interno della stanza. Nella stanza finale può fuggire sempre per uova e cuccioli di drago
+- La **fuga** è possibile solo se l'agilità del giocatore è minore a l'agilità media dei nemici all'interno della stanza. Nella stanza finale può fuggire sempre per uova e cuccioli di drago.
+- Gli S. Attack sono disponibili solo con l'arma equipaggiata, **non basta che sia nell'inventario**.
+
