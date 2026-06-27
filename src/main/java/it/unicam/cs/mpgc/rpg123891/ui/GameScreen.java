@@ -119,7 +119,7 @@ public class GameScreen {
     private static final Map<String, String> LOOT_WAVE_SPRITES = new HashMap<>();
     static {
         LOOT_WAVE_SPRITES.put("stanza del bastone",  "/assets/weapons/bastone.png");
-        LOOT_WAVE_SPRITES.put("stanza dello spadone", "/assets/weapons/spadone.png");
+        LOOT_WAVE_SPRITES.put("stanza dello spadone", "/assets/weapons/statua.png");
     }
 
     private static final Map<String, List<String>> ENEMY_SPRITES = new HashMap<>();
