@@ -70,6 +70,7 @@ public class GameScreen {
     private static final String LABEL_FG     = "#D4A96A";
     private static final String SYS_TEXT     = "#ffffff";
     private static final String WHITE        = "#cccccc";
+    private static final String SEL_BG       = "rgba(212,169,106,0.15)";
     private static final double GRID_OPACITY = 0.06;
     private static final int    GRID_SIZE    = 24;
 
@@ -87,12 +88,9 @@ public class GameScreen {
     private static final double DRAGON_SPRITE_W   = 200;
     private static final double LOOT_SPRITE_H     = 160;
     private static final double LOOT_SPRITE_W     = 120;
-    /** Offset verticale (px) per abbassare lo sprite dell'arma nella card Encounter */
     private static final double LOOT_SPRITE_OFFSET_Y = 10;
 
-    /** Nemici che usano le dimensioni miniboss */
     private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo Drago", "Cucciolo Uovo");
-    /** Nemici che usano le dimensioni drago */
     private static final Set<String> DRAGON_NAMES   = Set.of("L'Ultimo Drago");
 
     // ── HP bar ────────────────────────────────────────────────────────
@@ -169,6 +167,9 @@ public class GameScreen {
 
     private final List<String> logEntries = new ArrayList<>();
 
+    /** Bersaglio attualmente selezionato nella card Enemy Stats. */
+    private Enemy selectedTarget = null;
+
     // ── Constructor ───────────────────────────────────────────────────
 
     public GameScreen(GameController gc, Stage stage, FxApp app) {
@@ -192,6 +193,14 @@ public class GameScreen {
     // ── Public refresh ────────────────────────────────────────────────
 
     public void refresh() {
+        // Invalida selectedTarget se il nemico è morto o non più nella wave corrente
+        Wave curWave = gc.getCurrentRoom().getCurrentWave();
+        if (selectedTarget != null) {
+            boolean stillAlive = curWave != null
+                && curWave.getEnemies().contains(selectedTarget)
+                && selectedTarget.isAlive();
+            if (!stillAlive) selectedTarget = null;
+        }
         buildEncounterPanel();
         buildEnemyStatsPanel();
         buildCharacterPanel();
@@ -229,11 +238,17 @@ public class GameScreen {
         if (wave == null) return;
         List<Enemy> alive = aliveTargets(wave);
         if (alive.isEmpty()) return;
-        if (alive.size() == 1) {
-            executeTurn(combatController.playerNormalAttack(alive.get(0)));
+        // Usa il bersaglio selezionato se valido, altrimenti mostra dialog solo se >1 nemico
+        if (selectedTarget != null && alive.contains(selectedTarget)) {
+            executeTurn(combatController.playerNormalAttack(selectedTarget));
+        } else if (alive.size() == 1) {
+            selectedTarget = alive.get(0);
+            executeTurn(combatController.playerNormalAttack(selectedTarget));
         } else {
-            showTargetDialog(alive, target ->
-                executeTurn(combatController.playerNormalAttack(target)));
+            showTargetDialog(alive, target -> {
+                selectedTarget = target;
+                executeTurn(combatController.playerNormalAttack(target));
+            });
         }
     }
 
@@ -360,11 +375,17 @@ public class GameScreen {
             } else {
                 List<Enemy> alive = aliveTargets(wave);
                 if (alive.isEmpty()) return;
-                if (alive.size() == 1) {
-                    executeTurn(combatController.playerSpecialAttack(chosen, alive.get(0)));
+                // Usa bersaglio selezionato se disponibile
+                if (selectedTarget != null && alive.contains(selectedTarget)) {
+                    executeTurn(combatController.playerSpecialAttack(chosen, selectedTarget));
+                } else if (alive.size() == 1) {
+                    selectedTarget = alive.get(0);
+                    executeTurn(combatController.playerSpecialAttack(chosen, selectedTarget));
                 } else {
-                    showTargetDialog(alive, target ->
-                        executeTurn(combatController.playerSpecialAttack(chosen, target)));
+                    showTargetDialog(alive, target -> {
+                        selectedTarget = target;
+                        executeTurn(combatController.playerSpecialAttack(chosen, target));
+                    });
                 }
             }
         });
@@ -487,6 +508,37 @@ public class GameScreen {
         return (GameCharacter) gc.getPlayer();
     }
 
+    /**
+     * DEBUG: salta direttamente alla stanza con indice targetIndex,
+     * marcando tutte le stanze intermedie come cleared.
+     */
+    private void debugJumpToRoom(int targetIndex) {
+        var map = gc.getGameState().getDungeonMap();
+        int current = map.getCurrentRoomIndex();
+        if (targetIndex == current) return;
+        if (targetIndex < current) {
+            // Non si può tornare indietro — avvisa solo nel log
+            addLogEntry("[DEBUG] Impossibile tornare a una stanza precedente.");
+            return;
+        }
+        // Marca tutte le stanze intermedie come cleared per sbloccare advanceToNextRoom
+        for (int i = current; i < targetIndex; i++) {
+            Room r = map.getRooms().get(i);
+            // Marca tutte le wave come cleared
+            r.getWaves().forEach(w -> w.setCleared(true));
+            // Forza il wave index all'ultima wave così isCleared() ritorna true
+            while (r.hasMoreWaves()) r.advanceWave();
+            map.advanceToNextRoom();
+        }
+        Room next = map.getCurrentRoom();
+        next.setVisited(true);
+        next.getAllEnemies().forEach(Enemy::applyPassiveBonus);
+        logEntries.clear();
+        addLogEntry("[DEBUG] Saltato a: " + next.getName());
+        refresh();
+        handleLootWaveAutoAdvance();
+    }
+
     // =========================================================================
     // PANEL BUILDERS
     // =========================================================================
@@ -524,7 +576,6 @@ public class GameScreen {
                     StackPane glowBox = new StackPane(weaponIv);
                     glowBox.setStyle("-fx-effect: dropshadow(gaussian, #D4A96A, 28, 0.55, 0, 0);");
                     StackPane.setAlignment(glowBox, Pos.CENTER);
-                    // Abbassa lo sprite di LOOT_SPRITE_OFFSET_Y px
                     StackPane.setMargin(glowBox, new Insets(LOOT_SPRITE_OFFSET_Y, 0, 0, 0));
                     paneEncounter.getChildren().add(glowBox);
                 }
@@ -573,6 +624,10 @@ public class GameScreen {
         return row;
     }
 
+    /**
+     * Enemy Stats panel: ogni riga è cliccabile per selezionare il bersaglio.
+     * La riga selezionata ha un highlight dorato.
+     */
     private void buildEnemyStatsPanel() {
         paneEnemyStats.getChildren().clear();
         paneEnemyStats.setAlignment(Pos.CENTER);
@@ -589,18 +644,46 @@ public class GameScreen {
             paneEnemyStats.getChildren().add(empty);
             return;
         }
+        // Auto-seleziona il primo nemico se nessuno è selezionato
+        if (selectedTarget == null || !alive.contains(selectedTarget)) {
+            selectedTarget = alive.get(0);
+        }
         boolean compact = alive.size() > 3;
-        double vPad  = compact ? 6  : 14;
-        double vGap  = compact ? 5  : 12;
-        double hPad  = compact ? 10 : 20;
+        double vPad  = compact ? 6  : 10;
+        double vGap  = compact ? 4  : 8;
+        double hPad  = compact ? 8  : 14;
         paneEnemyStats.setPadding(new Insets(vPad, hPad, vPad, hPad));
         paneEnemyStats.setSpacing(vGap);
-        for (Enemy enemy : alive)
-            paneEnemyStats.getChildren().add(buildEnemyStatRow(enemy, compact));
+        for (Enemy enemy : alive) {
+            VBox row = buildEnemyStatRow(enemy, compact);
+            boolean isSelected = enemy == selectedTarget;
+            // Stile della riga: highlight se selezionato, hover cursor hand
+            String rowStyle = isSelected
+                ? "-fx-background-color:" + SEL_BG + ";-fx-border-color:" + LABEL_FG +
+                  ";-fx-border-width:1;-fx-border-radius:6;-fx-background-radius:6;-fx-padding:4 6;-fx-cursor:hand;"
+                : "-fx-background-color:transparent;-fx-border-color:transparent;" +
+                  "-fx-border-width:1;-fx-border-radius:6;-fx-padding:4 6;-fx-cursor:hand;";
+            row.setStyle(rowStyle);
+            row.setOnMouseClicked(e -> {
+                selectedTarget = enemy;
+                buildEnemyStatsPanel(); // ridisegna solo questo panel
+            });
+            row.setOnMouseEntered(e -> {
+                if (enemy != selectedTarget)
+                    row.setStyle("-fx-background-color:rgba(212,169,106,0.07);-fx-border-color:#555566;" +
+                        "-fx-border-width:1;-fx-border-radius:6;-fx-padding:4 6;-fx-cursor:hand;");
+            });
+            row.setOnMouseExited(e -> {
+                if (enemy != selectedTarget)
+                    row.setStyle("-fx-background-color:transparent;-fx-border-color:transparent;" +
+                        "-fx-border-width:1;-fx-border-radius:6;-fx-padding:4 6;-fx-cursor:hand;");
+            });
+            paneEnemyStats.getChildren().add(row);
+        }
     }
 
     private VBox buildEnemyStatRow(Enemy enemy, boolean compact) {
-        double rowW    = ENEMY_ROW_W;
+        double rowW    = ENEMY_ROW_W - 16; // -16 per il padding del wrapper
         Font nameFont  = compact ? pixelFontTiny  : pixelFontSmall;
         Font statFont  = compact ? pixelFontTiny  : pixelFontSmall;
         double barH    = compact ? 5  : HP_BAR_H;
@@ -685,6 +768,7 @@ public class GameScreen {
                 String entry = logEntries.get(i);
                 String color = entry.startsWith(">") ? "#f44336"
                              : entry.startsWith("\u2726") || entry.startsWith("\u2605") ? LABEL_FG
+                             : entry.startsWith("[DEBUG]") ? "#ff9800"
                              : WHITE;
                 Label lbl = new Label(entry);
                 lbl.setFont(pixelFontTiny);
@@ -706,37 +790,63 @@ public class GameScreen {
         paneLog.getChildren().add(scroll);
     }
 
+    /**
+     * MAP panel: disegna la mappa con le stanze e le wave.
+     * Le stanze future sono cliccabili per il debug jump (label arancione con ►).
+     */
     private void buildMapPanel() {
         paneRightTop.getChildren().clear();
         paneRightTop.setStyle("-fx-background-color:transparent;");
         List<Room> rooms    = gc.getGameState().getDungeonMap().getRooms();
         Room currentRoom    = gc.getCurrentRoom();
+        int  currentRoomIdx = gc.getGameState().getDungeonMap().getCurrentRoomIndex();
         int  currentWaveI   = currentRoom.getWaveIndex();
+
         double cardW    = COL_RIGHT, cardH = ROW_TOP;
         double lineX    = 28, dotR = 5, waveDotR = 3;
         double textOffX = lineX + dotR + 10;
         double topPad   = 20, areaH = 18, waveH = 14, connH = 10;
+
+        // Calcola l'altezza di ogni room nel canvas per posizionare le hit areas
+        // stessa logica del disegno
+        double[] roomY = new double[rooms.size()];
+        {
+            double y = topPad;
+            for (int ri = 0; ri < rooms.size(); ri++) {
+                if (ri > 0) y += connH;
+                roomY[ri] = y;
+                y += areaH;
+                y += rooms.get(ri).getWaves().size() * waveH;
+            }
+        }
+
         Canvas canvas = new Canvas(cardW, cardH);
         GraphicsContext g = canvas.getGraphicsContext2D();
-        Color colGold = Color.web(LABEL_FG), colCleared = Color.web("#447744");
-        Color colDim  = Color.web("#555566"), lineColor   = Color.web("#443355");
+        Color colGold    = Color.web(LABEL_FG);
+        Color colCleared = Color.web("#447744");
+        Color colDim     = Color.web("#555566");
+        Color colDebug   = Color.web("#ff9800");
+        Color lineColor  = Color.web("#443355");
         double y = topPad;
         for (int ri = 0; ri < rooms.size(); ri++) {
-            Room room      = rooms.get(ri);
+            Room room     = rooms.get(ri);
             boolean isCur  = room.getId().equals(currentRoom.getId());
-            boolean isPast = ri < indexOf(rooms, currentRoom);
+            boolean isPast = ri < currentRoomIdx;
+            boolean isFut  = ri > currentRoomIdx;
             if (ri > 0) {
                 g.setStroke(lineColor); g.setLineWidth(2);
                 g.strokeLine(lineX, y, lineX, y + connH); y += connH;
             }
-            Color dotFill = isCur ? colGold : isPast ? colCleared : colDim;
+            Color dotFill = isCur ? colGold : isPast ? colCleared : isFut ? colDebug : colDim;
             g.setFill(dotFill);
             g.fillOval(lineX - dotR, y + areaH / 2 - dotR, dotR * 2, dotR * 2);
             g.setFont(pixelFontSmall != null ? pixelFontSmall : Font.font("Courier New", 10));
-            g.fillText(ROOM_NAMES_EN.getOrDefault(room.getId(), room.getName()).toUpperCase(), textOffX, y + areaH / 2 + 4);
+            String roomLabel = ROOM_NAMES_EN.getOrDefault(room.getId(), room.getName()).toUpperCase();
+            if (isFut) roomLabel = "\u25ba " + roomLabel; // freccia per le stanze saltabili
+            g.fillText(roomLabel, textOffX, y + areaH / 2 + 4);
             y += areaH;
             for (int wi = 0; wi < room.getWaves().size(); wi++) {
-                Wave wv          = room.getWaves().get(wi);
+                Wave wv         = room.getWaves().get(wi);
                 boolean isActive = isCur && wi == currentWaveI;
                 Color wc = isActive ? colGold : (wv.isCleared() || isPast) ? colCleared : colDim;
                 double indentX = lineX + 12;
@@ -751,6 +861,19 @@ public class GameScreen {
         }
         paneRightTop.getChildren().add(canvas);
         StackPane.setAlignment(canvas, Pos.TOP_LEFT);
+
+        // Overlay trasparente con hit areas cliccabili per le stanze future (debug jump)
+        for (int ri = currentRoomIdx + 1; ri < rooms.size(); ri++) {
+            final int targetIdx = ri;
+            double ry = roomY[ri];
+            Region hitArea = new Region();
+            hitArea.setPrefSize(cardW - lineX - 4, areaH);
+            hitArea.setStyle("-fx-cursor:hand;");
+            hitArea.setOnMouseClicked(e -> debugJumpToRoom(targetIdx));
+            StackPane.setAlignment(hitArea, Pos.TOP_LEFT);
+            StackPane.setMargin(hitArea, new Insets(ry, 0, 0, lineX + 2));
+            paneRightTop.getChildren().add(hitArea);
+        }
     }
 
     private String waveLabel(int index, int total, String name) {
@@ -1051,13 +1174,6 @@ public class GameScreen {
         Label l = new Label(text); l.setFont(font);
         l.setStyle("-fx-text-fill:" + color + ";"); l.setWrapText(false);
         return l;
-    }
-
-    private VBox statChip(String key, String val) {
-        Label k = new Label(key); k.setFont(pixelFontTiny); k.setStyle("-fx-text-fill:#888888;");
-        Label v = new Label(val); v.setFont(pixelFontSmall); v.setStyle("-fx-text-fill:" + WHITE + ";");
-        VBox chip = new VBox(2, k, v); chip.setAlignment(Pos.CENTER);
-        return chip;
     }
 
     private VBox statChipSmall(String key, String val, Font valFont) {
