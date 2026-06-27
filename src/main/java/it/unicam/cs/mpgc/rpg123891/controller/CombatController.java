@@ -1,12 +1,11 @@
 package it.unicam.cs.mpgc.rpg123891.controller;
 
-import it.unicam.cs.mpgc.rpg123891.model.character.Mage;
+import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.combat.AttackType;
 import it.unicam.cs.mpgc.rpg123891.model.combat.BurnEffect;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
-import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
 import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
@@ -17,7 +16,6 @@ import java.util.Map;
 
 /**
  * Gestisce il flusso di un turno di combattimento.
- * Fix: logica schiusa Uovo dopo 3 turni.
  */
 public class CombatController {
 
@@ -111,10 +109,30 @@ public class CombatController {
         return new TurnResult(log, playerDead, waveCleared, false);
     }
 
+    /** Esegue Ira: attacca ogni nemico vivo una volta con +25% critico. */
+    public TurnResult playerIraAttack(SpecialAttack special) {
+        List<String> log = new ArrayList<>();
+        GameCharacter player = player();
+
+        Map<Enemy, Integer> results = gc.executeIra(special);
+        log.add("[IRA] " + player.getName() + " scatena l'Ira!");
+        for (Map.Entry<Enemy, Integer> e : results.entrySet()) {
+            log.add("  -> " + e.getKey().getName() + ": " + e.getValue() + " danni.");
+            if (!e.getKey().isAlive()) {
+                log.add("  [\u2020] " + e.getKey().getName() + " e' stato sconfitto!");
+                rollMeatDrop(e.getKey(), log);
+            }
+        }
+
+        boolean waveCleared = handleEnemyTurns(log);
+        boolean playerDead  = checkPlayerDead(log);
+        return new TurnResult(log, playerDead, waveCleared, false);
+    }
+
     public TurnResult playerUsePotion() {
         List<String> log = new ArrayList<>();
         boolean used = gc.useFirstPotion();
-        log.add(used ? "[ITEM] Hai usato una Pozione! +10 HP, +5 Stamina."
+        log.add(used ? "[ITEM] Hai usato una Pozione! Stamina completamente ripristinata."
                      : "[!] Nessuna pozione disponibile.");
         return new TurnResult(log, false, false, false);
     }
@@ -122,7 +140,7 @@ public class CombatController {
     public TurnResult playerFlee() {
         List<String> log = new ArrayList<>();
         if (!gc.canFlee()) {
-            log.add("[FUGA] Non puoi fuggire da qui!");
+            log.add("[FUGA] Non puoi fuggire: la tua agilita' non e' abbastanza bassa rispetto ai nemici!");
             return new TurnResult(log, false, false, false);
         }
         gc.flee();
@@ -147,7 +165,7 @@ public class CombatController {
         if (!isMeatDropper(enemy.getName())) return;
         if (Math.random() < 0.5) {
             player().addItem(new it.unicam.cs.mpgc.rpg123891.model.item.Meat());
-            log.add("[DROP] " + enemy.getName() + " ha lasciato della Carne! (+10 HP +2 Stamina se usata)");
+            log.add("[DROP] " + enemy.getName() + " ha lasciato della Carne! (+40 HP +3 Stamina se usata)");
         }
     }
 
@@ -159,7 +177,7 @@ public class CombatController {
     }
 
     // =========================================================================
-    // Turni nemici + schiusa Uovo
+    // Turni nemici + schiusa Uovo + tick abilita'
     // =========================================================================
 
     private boolean handleEnemyTurns(List<String> log) {
@@ -176,18 +194,25 @@ public class CombatController {
         for (Enemy enemy : alive) {
             if (!player.isAlive()) break;
 
+            // --- Tick abilita' nemico ---
+            if (enemy.hasAbility()) {
+                enemy.getAbility().tick();
+            }
+
             // --- Schiusa Uovo ---
             if (enemy.isEgg()) {
                 boolean hatches = enemy.tickHatch();
-                log.add("[UOVO] " + enemy.getName() + " pulsa... (turno " + enemy.getTurnsToHatch() + ")");
+                log.add("[UOVO] " + enemy.getName() + " pulsa... (turno " + enemy.getHatchCounter() + "/" + enemy.getTurnsToHatch() + ")");
                 if (hatches) {
-                    // Trasforma: uccidi l'uovo e aggiungi un Cucciolo vivo alla wave
-                    enemy.takeDamage(enemy.getMaxHp()); // forza morte
+                    enemy.applyBurnDamage(enemy.getMaxHp());
                     Enemy cucciolo = EnemyFactory.createCuccioloDrago();
                     wave.getEnemies().add(cucciolo);
                     log.add("[SCHIUSA] L'Uovo si e' schiuso! E' nato un Cucciolo di Drago!");
                 }
-                continue; // l'uovo non attacca
+                // L'uovo attacca con danno 1 diretto (ignora difesa)
+                player.applyBurnDamage(1);
+                log.add("[UOVO] L'uovo crepita e ti infligge 1 danno diretto.");
+                continue;
             }
 
             if (enemy.isStunned()) {
@@ -200,33 +225,39 @@ public class CombatController {
                 continue;
             }
 
+            // --- Abilita' speciale nemico ---
+            if (enemy.hasAbility() && enemy.getAbility().isReady()) {
+                int abilityDmg = enemy.getAbility().execute(enemy, player);
+                log.add("[ABILITY] " + enemy.getName() + " usa la sua abilita' speciale per " + abilityDmg + " danni!");
+                continue;
+            }
+
+            // --- Attacco normale nemico ---
             int rawDamage = enemy.getAttack();
             int defense   = player.getDefense();
+            int dmg       = gc.enemyAttack(enemy);
 
-            if (player instanceof Warrior) {
-                int dmg = gc.enemyAttack(enemy);
+            if (player instanceof Warrior && dmg == 0 && gc.isCaricaActive()) {
+                log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage + " lordo) — CARICA! 0 danni subiti.");
+            } else if (player instanceof Warrior warrior) {
+                // Il blocco e' gia' testato dentro gc.enemyAttack -> combatSystem.executeAttack
                 if (dmg == 0) {
                     log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage + " lordo) — BLOCCATO!");
                 } else {
                     log.add("[ENEMY] " + enemy.getName() + " attacca per " + rawDamage
                             + " lordo — " + defense + " difesa = " + dmg + " danni subiti.");
                 }
-            } else if (player instanceof Mage mage && mage.isMagicShieldActive()) {
-                int dmg = gc.enemyAttack(enemy);
-                if (dmg == 0) {
-                    log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage
-                            + " lordo) — ASSORBITO dallo Scudo Magico!");
+            } else {
+                if (dmg == 0 && gc.isCaricaActive()) {
+                    log.add("[ENEMY] " + enemy.getName() + " attacca — CARICA! 0 danni subiti.");
                 } else {
                     log.add("[ENEMY] " + enemy.getName() + " attacca per " + rawDamage
                             + " lordo — " + defense + " difesa = " + dmg + " danni subiti.");
                 }
-            } else {
-                int dmg = gc.enemyAttack(enemy);
-                log.add("[ENEMY] " + enemy.getName() + " attacca per " + rawDamage
-                        + " lordo — " + defense + " difesa = " + dmg + " danni subiti.");
             }
         }
 
+        // --- Bruciatura ---
         if (activeBurn != null) {
             int burnDmg = activeBurn.applyTo(player);
             log.add("[BURN] La bruciatura ti infligge " + burnDmg + " danni!"
@@ -234,7 +265,9 @@ public class CombatController {
             if (activeBurn.isExpired()) activeBurn = null;
         }
 
-        gc.rollbackCarica();
+        // --- Tick Carica! ---
+        gc.tickCarica();
+
         return wave.isCleared();
     }
 

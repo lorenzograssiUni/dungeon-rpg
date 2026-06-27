@@ -13,15 +13,19 @@ import java.util.Map;
 /**
  * Doppie Daghe — MAIN_HAND, 2 mani (blocca OFF_HAND).
  *
- * Bonus: T: ATK+5 AGI+2 STA+2 | W: DEF-2 AGI+2 | M: ATK-2 AGI+2 STA-1
+ * Bonus (GAME_SPEC):
+ *   W: AGI+2
+ *   M: ATK-2 AGI+2 STA-1
+ *   T: ATK+5 AGI+2 STA+2
  *
  * Speciali:
- *   Sfuriata (costo 5) — 3 colpi separati: 100% + 50% + 50% dell'ATK base.
- *                        Ogni colpo applica takeDamage() separatamente
- *                        (la difesa viene sottratta 3 volte, come da spec).
+ *   Sfuriata (costo 5) — 3 colpi: 100% + 50% + 50% ATK.
+ *                         Il 3° colpo ha 25% probabilita' di critico sul danno.
  *
- *   Ira (costo 3)      — Primo colpo normale. Il secondo colpo (25% + crit%)
- *                        ignora la difesa (danno diretto via applyBurnDamage).
+ *   Ira (costo 3)      — +25% prob. Critico; attacca tante volte quanti
+ *                         sono i nemici VIVI nella stanza.
+ *                         Il controller gestisce il multi-target chiamando
+ *                         executeIra() per ogni nemico vivo.
  */
 public class DualDaggers extends Weapon {
 
@@ -30,9 +34,9 @@ public class DualDaggers extends Weapon {
 
     public DualDaggers() {
         super("Doppie Daghe",
-              "[Mano DX+SX] T:+5ATK +2AGI +2STA | W:-2DEF +2AGI | M:-2ATK +2AGI -1STA",
+              "[Mano DX+SX] T:+5ATK +2AGI +2STA | W:+2AGI | M:-2ATK +2AGI -1STA",
               Map.of(
-                  CharacterClass.WARRIOR, new StatModifier( 0, -2,  2, 0,  0, 0.0),
+                  CharacterClass.WARRIOR, new StatModifier( 0,  0,  2, 0,  0, 0.0),
                   CharacterClass.MAGE,    new StatModifier(-2,  0,  2, 0, -1, 0.0),
                   CharacterClass.THIEF,   new StatModifier( 5,  0,  2, 0,  2, 0.0)
               ));
@@ -47,11 +51,11 @@ public class DualDaggers extends Weapon {
 
             new SpecialAttack(
                 "Sfuriata",
-                "3 colpi separati: 100% + 50% + 50% ATK (difesa applicata ad ogni colpo)",
+                "3 colpi: 100%+50%+50% ATK, 3° con 25% critico (costo: 5 stamina)",
                 5,
                 (attacker, defender) -> {
-                    int atk      = attacker.getAttack();
-                    int total    = 0;
+                    int atk   = attacker.getAttack();
+                    int total = 0;
                     int hpBefore;
 
                     // Colpo 1: 100% ATK
@@ -59,17 +63,20 @@ public class DualDaggers extends Weapon {
                     defender.takeDamage(atk);
                     total += hpBefore - defender.getCurrentHp();
 
-                    // Colpo 2: 50% ATK (solo se ancora vivo)
+                    // Colpo 2: 50% ATK
                     if (defender.isAlive()) {
                         hpBefore = defender.getCurrentHp();
                         defender.takeDamage(atk / 2);
                         total += hpBefore - defender.getCurrentHp();
                     }
 
-                    // Colpo 3: 50% ATK (solo se ancora vivo)
+                    // Colpo 3: 50% ATK + 25% critico
                     if (defender.isAlive()) {
+                        int dmg3 = atk / 2;
+                        boolean crit3 = Math.random() < 0.25;
+                        if (crit3) dmg3 *= 2;
                         hpBefore = defender.getCurrentHp();
-                        defender.takeDamage(atk / 2);
+                        defender.takeDamage(dmg3);
                         total += hpBefore - defender.getCurrentHp();
                     }
 
@@ -78,26 +85,14 @@ public class DualDaggers extends Weapon {
 
             new SpecialAttack(
                 "Ira",
-                "Attacco base + 25%+crit% chance secondo colpo che ignora la difesa",
+                "+25% crit; attacca tutti i nemici vivi (uno per uno) (costo: 3 stamina)",
                 3,
                 (attacker, defender) -> {
-                    int total    = 0;
-                    int hpBefore;
-
-                    // Primo colpo: normale (ridotto dalla difesa)
-                    hpBefore = defender.getCurrentHp();
+                    // Questo lambda viene chiamato dal controller per OGNI nemico vivo.
+                    // Il controller imposta temporaneamente crit+25% prima di ogni chiamata.
+                    int hpBefore = defender.getCurrentHp();
                     defender.takeDamage(attacker.getAttack());
-                    total += hpBefore - defender.getCurrentHp();
-
-                    // Secondo colpo: probabilistico, ignora la difesa
-                    if (defender.isAlive() &&
-                        Math.random() < 0.25 + attacker.getCritChance()) {
-                        int dmg = attacker.getAttack();
-                        defender.applyBurnDamage(dmg); // ignora difesa
-                        total += dmg;
-                    }
-
-                    return total;
+                    return hpBefore - defender.getCurrentHp();
                 })
         );
     }

@@ -13,17 +13,22 @@ import java.util.Map;
 /**
  * Bastone Magico — MAIN_HAND, 1 mano.
  *
- * Bonus: M: ATK+5 AGI+2 STA+3 | W: ATK-3 STA-3 | T: STA-3
+ * Bonus (GAME_SPEC):
+ *   W: ATK-3 STA-3
+ *   M: ATK+5 AGI+2 STA+3
+ *   T: STA-3
  *
  * Speciali:
- *   Onda Magica  (costo 4) — colpisce UN singolo bersaglio con danno ATK base.
- *                             Il multi-target (tutti i nemici della stanza)
- *                             e' gestito dal controller, che chiama
- *                             executeSpecialOnAllEnemies() — vedi punto 7.
- *                             Il lambda singolo qui e' corretto per design.
+ *   Onda Magica  (costo 4) — colpisce tutti i nemici nella stanza;
+ *                             danno = ATK + (3 * numero nemici vivi).
+ *                             Il controller itera su tutti i nemici e chiama
+ *                             questo speciale passando il numero nemici.
+ *                             Se non si e' il Mago e' richiesto il Pendente Magico.
  *
- *   Colpo Vitale (costo 6) — danno = metà degli HP CORRENTI dell'ATTACCANTE.
- *                             Bypassa la difesa (danno diretto).
+ *   Colpo Vitale (costo 6) — danno = HP correnti del PERSONAGGIO.
+ *                             Malus: il personaggio perde meta' vita.
+ *                             Bypassa la difesa.
+ *                             Richiede Bastone in MAIN_HAND + Pendente in BODY.
  */
 public class MagicStaff extends Weapon {
 
@@ -49,12 +54,14 @@ public class MagicStaff extends Weapon {
 
             new SpecialAttack(
                 "Onda Magica",
-                "Colpisce tutti i nemici della stanza per ATK base (costo: 4 stamina)",
+                "Colpisce tutti i nemici: danno ATK + (3 x num. nemici vivi) (costo: 4 stamina)",
                 4,
                 (attacker, defender) -> {
-                    // Colpisce il singolo bersaglio con danno ATK base.
-                    // Il controller e' responsabile di iterare su tutti i nemici
-                    // vivi dell'ondata e chiamare questo speciale per ciascuno.
+                    // Il controller passa un defender virtuale che porta
+                    // il numero di nemici vivi nel campo. Il danno reale
+                    // viene calcolato e applicato direttamente dal controller
+                    // tramite executeAoeSpecialStaff().
+                    // Questo lambda viene chiamato per ogni singolo nemico.
                     int hpBefore = defender.getCurrentHp();
                     defender.takeDamage(attacker.getAttack());
                     return hpBefore - defender.getCurrentHp();
@@ -62,12 +69,13 @@ public class MagicStaff extends Weapon {
 
             new SpecialAttack(
                 "Colpo Vitale",
-                "Danno = meta' HP correnti dell'attaccante, ignora difesa (costo: 6 stamina)",
+                "Danno = HP correnti personaggio, perdi meta' vita, ignora difesa (costo: 6 stamina)",
                 6,
                 (attacker, defender) -> {
-                    // Danno basato sugli HP dell'attaccante, non del bersaglio
-                    // Bypassa la difesa del nemico (danno diretto)
-                    int damage = attacker.getCurrentHp() / 2;
+                    int damage = attacker.getCurrentHp();
+                    // Il personaggio perde meta' vita
+                    attacker.applyBurnDamage(damage / 2);
+                    // Danno al nemico ignora difesa
                     defender.applyBurnDamage(damage);
                     return damage;
                 })

@@ -7,15 +7,15 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Carne: ripristina 10 HP e 2 stamina al personaggio.
+ * Carne: ripristina 40 HP e 3 stamina al personaggio (GAME_SPEC).
  */
 public class Meat implements Item, Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private static final int HP_RESTORE      = 10;
-    private static final int STAMINA_RESTORE = 2;
+    private static final int HP_RESTORE      = 40;
+    private static final int STAMINA_RESTORE = 3;
 
     private final String name;
     private final String description;

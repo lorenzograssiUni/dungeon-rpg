@@ -11,21 +11,22 @@ import java.util.Random;
 /**
  * Gestisce la logica del combattimento a turni.
  *
- * Passive attive integrate:
+ * Passive attive integrate (GAME_SPEC):
  *
  *   WARRIOR (difensiva):
- *     - 20% blocco attacchi FISICI in arrivo.
+ *     - 20% chance blocco per ogni attacco FISICO ricevuto.
+ *     - Il 5° attacco consecutivo senza blocco blocca sicuramente.
+ *     - Il contatore NON si azzera al cambio wave.
  *
  *   MAGE (difensiva):
- *     - Scudo magico assorbe il primo attacco FISICO (poi si disattiva).
+ *     - Scudo Magico: -30% danno fisico in arrivo (non assorbimento totale).
  *     - Vulnerabile a MAGICAL/MIXED: +30% danno subito.
  *
  *   THIEF (offensiva):
- *     - Primo attacco della stanza SEMPRE critico (stealthBonusActive).
+ *     - Primo attacco della wave SEMPRE critico (stealthBonusActive).
  *     - Dopo ogni attacco NORMALE: +2% crit, fino a 50%.
  *
  * NOTA: l'attacco NORMALE del giocatore NON consuma stamina.
- * La stamina e' riservata esclusivamente agli attacchi speciali.
  */
 public class CombatSystem {
 
@@ -58,12 +59,9 @@ public class CombatSystem {
      *   1. Critico (stealth Ladro > normale)
      *   2. Incremento crit Ladro dopo ogni attacco
      *   3. Danno lordo
-     *   4. Blocco Warrior (20% su fisico)
-     *   5. Scudo/vulnerabilita' Mago
+     *   4. Blocco Warrior (20% cumulabile su fisico, 5° garantito)
+     *   5. Scudo -30% Mago su fisico / vulnerabilita' su magico
      *   6. takeDamage()
-     *
-     * La stamina NON viene consumata dagli attacchi normali del giocatore;
-     * e' riservata agli attacchi speciali.
      *
      * @return danno effettivamente inflitto
      */
@@ -89,9 +87,9 @@ public class CombatSystem {
         int baseDamage = attacker.getAttack();
         int damage = isCritical ? baseDamage * 2 : baseDamage;
 
-        // 4. Blocco Warrior (solo fisico)
+        // 4. Blocco Warrior (solo fisico) — contatore cumulabile, 5° garantito
         if (defender instanceof Warrior warrior && attackType == AttackType.PHYSICAL) {
-            if (random.nextDouble() < warrior.getBlockChance()) {
+            if (warrior.testBlock()) {
                 return 0;
             }
         }
@@ -110,11 +108,6 @@ public class CombatSystem {
     // Attacco speciale
     // -------------------------------------------------------------------------
 
-    /**
-     * Esegue un attacco speciale (consuma stamina).
-     *
-     * @throws IllegalStateException se la stamina e' insufficiente
-     */
     public int executeSpecialAttack(GameCharacter attacker, GameCharacter defender,
                                     SpecialAttack specialAttack) {
         int cost = specialAttack.getStaminaCost();
@@ -132,33 +125,27 @@ public class CombatSystem {
     // -------------------------------------------------------------------------
 
     /**
-     * Applica le passive del Mago come difensore.
-     * @return danno modificato; -1 se lo scudo ha assorbito l'attacco
+     * Applica le passive del Mago come difensore (GAME_SPEC):
+     *   - Fisico: -30% danno
+     *   - Magico/Misto: +30% danno
+     * @return danno modificato
      */
     private int applyMagePassive(GameCharacter defender, AttackType attackType, int damage) {
-        if (!(defender instanceof Mage mageChar)) return damage;
+        if (!(defender instanceof Mage)) return damage;
 
-        if (attackType == AttackType.PHYSICAL && mageChar.isMagicShieldActive()) {
-            mageChar.setMagicShieldActive(false);
-            return -1;
+        if (attackType == AttackType.PHYSICAL) {
+            return (int)(damage * 0.70);
         }
-
         if (attackType == AttackType.MAGICAL || attackType == AttackType.MIXED) {
             return (int)(damage * 1.30);
         }
-
         return damage;
     }
 
     // -------------------------------------------------------------------------
-    // Utility pubblica per il log dettagliato
+    // Utility
     // -------------------------------------------------------------------------
 
-    /**
-     * Calcola il danno netto sottraendo la difesa del difensore,
-     * senza applicare passives o effetti speciali.
-     * Usato per costruire messaggi di log dettagliati.
-     */
     public static int netDamage(int rawDamage, int defense) {
         return Math.max(0, rawDamage - defense);
     }

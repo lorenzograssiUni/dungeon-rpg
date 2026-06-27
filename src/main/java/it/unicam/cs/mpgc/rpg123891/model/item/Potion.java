@@ -7,8 +7,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Pozione: ripristina HP e Stamina al personaggio.
- * Valori standard: +10 HP, +5 Stamina.
+ * Pozione: riempie COMPLETAMENTE la stamina del personaggio (GAME_SPEC).
  */
 public class Potion implements Item, Serializable {
 
@@ -17,49 +16,26 @@ public class Potion implements Item, Serializable {
 
     private final String name;
     private final String description;
-    private final int healAmount;
-    private final int staminaAmount;
 
-    public Potion(String name, String description, int healAmount, int staminaAmount) {
-        this.name          = name;
-        this.description   = description;
-        this.healAmount    = healAmount;
-        this.staminaAmount = staminaAmount;
-    }
-
-    public Potion(String name, int healAmount, int staminaAmount) {
-        this(name, "Ripristina " + healAmount + " HP e " + staminaAmount + " Stamina", healAmount, staminaAmount);
-    }
-
-    public Potion(String name, int healAmount) {
-        this(name, healAmount, 5);
-    }
-
-    /** Costruttore standard: +10 HP, +5 Stamina. */
     public Potion() {
-        this("Pozione", 10, 5);
+        this.name        = "Pozione";
+        this.description = "Riempie completamente la stamina";
     }
 
     @Override
     public void use(GameCharacter character) {
-        character.heal(healAmount);
-        character.restoreStamina(staminaAmount);
+        character.restoreStamina(character.getMaxStamina());
     }
 
     @Override public String getName()        { return name; }
     @Override public String getDescription() { return description; }
-    public int getHealAmount()               { return healAmount; }
-    public int getStaminaAmount()            { return staminaAmount; }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Potion other)) return false;
-        return healAmount == other.healAmount
-                && staminaAmount == other.staminaAmount
-                && Objects.equals(name, other.name);
+        return o instanceof Potion;
     }
 
     @Override
-    public int hashCode() { return Objects.hash(name, healAmount, staminaAmount); }
+    public int hashCode() { return Objects.hash(name); }
 }

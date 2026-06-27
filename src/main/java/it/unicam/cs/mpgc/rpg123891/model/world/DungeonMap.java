@@ -38,14 +38,8 @@ public class DungeonMap implements Serializable {
                 "Un vecchio bastone intagliato \u00e8 appoggiato a un tronco \u2014 " +
                 "sembra aspettarti.");
 
+        // GAME_SPEC: drop prima stanza prima che arrivino i nemici: Bastone Magico
         room.addEntryLoot(new MagicStaff());
-
-        Wave waveLootBastone = new Wave("Stanza del Bastone", true,
-                "Tra le radici di un albero secolare scorgi un bagliore dorato. " +
-                "Un antico bastone magico giace l\u00ec, come se ti stesse aspettando da secoli. " +
-                "Lo raccogli: la magia vibra tra le tue dita.");
-        waveLootBastone.addLoot(new MagicStaff());
-        room.addWave(waveLootBastone);
 
         Wave waveA = new Wave("Ondata A", true,
                 "Dal fogliame emergono tre cinghiali dagli occhi rossi. Grugniscono e caricano!");
@@ -72,6 +66,7 @@ public class DungeonMap implements Serializable {
                 "L'aria puzza di fumo e carne bruciata. " +
                 "I goblin ti fissano con odio dagli anfratti.");
 
+        // Ondata A: Goblin x2, drop assicurato Doppie Daghe
         Wave waveA = new Wave("Ondata A", true,
                 "Due goblin saltano fuori da dietro una capanna, armati di coltellacci arrugginiti. " +
                 "Uno di essi porta con s\u00e9 un fodero con doppie daghe lucenti \u2014 roba rubata.");
@@ -80,6 +75,7 @@ public class DungeonMap implements Serializable {
         waveA.addLoot(new DualDaggers());
         room.addWave(waveA);
 
+        // Ondata B: Goblin Guardie x3, drop assicurato Spada + (Scudo o Armatura)
         Wave waveB = new Wave("Ondata B", true,
                 "Un fischio acuto riecheggia nel villaggio. Tre goblin guardia si fanno avanti, " +
                 "equipaggiati con armature rozze e spade di ferro.");
@@ -87,6 +83,7 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addEnemy(EnemyFactory.createGoblinGuardia());
         waveB.addLoot(new Sword());
+        // Scudo o Armatura aggiunto dinamicamente da addConditionalLoot() in GameController
         room.addWave(waveB);
 
         Wave waveC = new Wave("Miniboss: Re Goblin", false,
@@ -106,7 +103,7 @@ public class DungeonMap implements Serializable {
                 "L'eco dei tuoi passi si moltiplica nell'oscurit\u00e0. " +
                 "L'odore di pietra umida e morte vecchia appesta l'aria.");
 
-        // Wave 0 — combattimento iniziale
+        // Ondata A: Scheletri x3
         Wave waveA = new Wave("Ondata A", true,
                 "Tre scheletri si svegliano dalle nicchie scavate nelle pareti. " +
                 "Le loro orbite vuote brillano di luce bluastra. Le ossa scricchiolano mentre avanzano.");
@@ -115,8 +112,7 @@ public class DungeonMap implements Serializable {
         waveA.addEnemy(EnemyFactory.createScheletro());
         room.addWave(waveA);
 
-        // Wave 1 — Stanza dello Spadone: nessun nemico, loot narrativo.
-        // handleLootWaveAutoAdvance() la intercetta dopo waveA e mostra la card con statua.png.
+        // Wave ricompensa esplorazione: Spadone (loot senza nemici)
         Wave waveStatua = new Wave("Stanza dello Spadone", true,
                 "Arrivi in una camera circolare silenziosa. Al centro, un'imponente statua " +
                 "di un guerriero in armatura piena \u2014 alta il doppio di un uomo. " +
@@ -125,7 +121,7 @@ public class DungeonMap implements Serializable {
         waveStatua.addLoot(new Greatsword());
         room.addWave(waveStatua);
 
-        // Wave 2
+        // Ondata B: Statua Gigante -> Scheletri x3 + Scheletro Guardia; drop Spadone
         Wave waveB = new Wave("Ondata B", true,
                 "Dalle pareti emergono altri scheletri, stavolta tre comuni e uno corazzato " +
                 "con scudo e armatura. Si muovono con sincronia innaturale.");
@@ -135,17 +131,27 @@ public class DungeonMap implements Serializable {
         waveB.addEnemy(EnemyFactory.createScheletroGuardia());
         room.addWave(waveB);
 
-        // Wave 3 — Miniboss
-        Wave waveC = new Wave("Miniboss: Strega", false,
+        // Ondata C: Scheletri x3 + Scheletro Guardia; drop item mancante (gestito da controller)
+        Wave waveC_skeletons = new Wave("Ondata C", true,
+                "Un'altra ondata di scheletri emerge dall'oscurita'. Questa volta uno di loro " +
+                "porta l'equipaggiamento che ti manca.");
+        waveC_skeletons.addEnemy(EnemyFactory.createScheletro());
+        waveC_skeletons.addEnemy(EnemyFactory.createScheletro());
+        waveC_skeletons.addEnemy(EnemyFactory.createScheletro());
+        waveC_skeletons.addEnemy(EnemyFactory.createScheletroGuardia());
+        room.addWave(waveC_skeletons);
+
+        // Miniboss: Strega; drop assicurato Pendente Magico + 3 Pozioni
+        Wave waveD = new Wave("Miniboss: Strega", false,
                 "Una risata acuta echeggia dalle volte. Candele si accendono da sole. " +
                 "La Strega scende lentamente dal soffitto, circondata da un alone verdastro. " +
                 "\"Benvenuto, sciocco eroe. I miei figli ti accoglieranno.\"");
-        waveC.addEnemy(EnemyFactory.createStrega());
-        waveC.addLoot(new MagicAmulet());
-        waveC.addLoot(new Potion());
-        waveC.addLoot(new Potion());
-        waveC.addLoot(new Potion());
-        room.addWave(waveC);
+        waveD.addEnemy(EnemyFactory.createStrega());
+        waveD.addLoot(new MagicAmulet());
+        waveD.addLoot(new Potion());
+        waveD.addLoot(new Potion());
+        waveD.addLoot(new Potion());
+        room.addWave(waveD);
 
         return room;
     }
