@@ -1,8 +1,10 @@
 package it.unicam.cs.mpgc.rpg123891.model.character;
 
 import it.unicam.cs.mpgc.rpg123891.model.combat.Combatable;
+import it.unicam.cs.mpgc.rpg123891.model.item.EquipmentManager;
 import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,17 +14,20 @@ import java.util.Objects;
  * Classe astratta che rappresenta un personaggio generico del gioco.
  *
  * Stat:
- *   - hp       : punti vita
- *   - attack   : danno base per attacco
- *   - defense  : riduzione danno subito
- *   - agility  : determina l'iniziativa (chi attacca prima nel turno)
- *   - stamina  : risorsa consumata dagli attacchi (1 per attacco normale,
- *                variabile per attacchi speciali). A 0 il personaggio non
- *                puo' attaccare finche' non la recupera.
+ *   - hp        : punti vita
+ *   - attack    : danno base per attacco
+ *   - defense   : riduzione danno subito
+ *   - agility   : determina l'iniziativa
+ *   - stamina   : risorsa consumata dagli attacchi
  *   - critChance: probabilita' di critico (0.0 - 1.0)
+ *
+ * Ogni personaggio possiede un EquipmentManager che gestisce gli slot
+ * MAIN_HAND, OFF_HAND e BODY. Il manager viene creato on-demand al primo
+ * accesso cosi' da non rompere la serializzazione degli oggetti esistenti.
  */
 public abstract class GameCharacter implements Combatable, Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     protected String name;
@@ -37,17 +42,39 @@ public abstract class GameCharacter implements Combatable, Serializable {
 
     protected List<Item> inventory = new ArrayList<>();
 
+    /**
+     * Manager degli slot di equipaggiamento.
+     * Inizializzato lazy (transient per compatibilita' serializzazione;
+     * viene ricreato al primo accesso dopo deserializzazione).
+     */
+    private transient EquipmentManager equipmentManager;
+
     protected GameCharacter(String name, int maxHp, int attack, int defense,
                             int agility, int maxStamina, double critChance) {
-        this.name          = name;
-        this.maxHp         = maxHp;
-        this.currentHp     = maxHp;
-        this.attack        = attack;
-        this.defense       = defense;
-        this.agility       = agility;
-        this.maxStamina    = maxStamina;
+        this.name           = name;
+        this.maxHp          = maxHp;
+        this.currentHp      = maxHp;
+        this.attack         = attack;
+        this.defense        = defense;
+        this.agility        = agility;
+        this.maxStamina     = maxStamina;
         this.currentStamina = maxStamina;
-        this.critChance    = critChance;
+        this.critChance     = critChance;
+    }
+
+    // -------------------------------------------------------------------------
+    // Equipaggiamento
+    // -------------------------------------------------------------------------
+
+    /**
+     * Restituisce l'EquipmentManager del personaggio.
+     * Creato on-demand; sicuro anche dopo deserializzazione (campo transient).
+     */
+    public EquipmentManager getEquipmentManager() {
+        if (equipmentManager == null) {
+            equipmentManager = new EquipmentManager(this);
+        }
+        return equipmentManager;
     }
 
     // -------------------------------------------------------------------------
@@ -97,18 +124,18 @@ public abstract class GameCharacter implements Combatable, Serializable {
     // Inventario
     // -------------------------------------------------------------------------
 
-    public void addItem(Item item) { inventory.add(item); }
+    public void addItem(Item item)    { inventory.add(item); }
     public void removeItem(Item item) { inventory.remove(item); }
-    public List<Item> getInventory() { return inventory; }
+    public List<Item> getInventory()  { return inventory; }
 
     // -------------------------------------------------------------------------
     // Modificatori stat (usati dagli item)
     // -------------------------------------------------------------------------
 
-    public void increaseAttack(int amount)        { this.attack   += amount; }
-    public void increaseDefense(int amount)       { this.defense  += amount; }
-    public void increaseAgility(int amount)       { this.agility  += amount; }
-    public void increaseMaxHp(int amount)         { this.maxHp    += amount; currentHp = Math.min(currentHp, maxHp); }
+    public void increaseAttack(int amount)        { this.attack     += amount; }
+    public void increaseDefense(int amount)       { this.defense    += amount; }
+    public void increaseAgility(int amount)       { this.agility    += amount; }
+    public void increaseMaxHp(int amount)         { this.maxHp      += amount; currentHp = Math.min(currentHp, maxHp); }
     public void increaseMaxStamina(int amount)    { this.maxStamina += amount; }
     public void increaseCritChance(double amount) { this.critChance += amount; }
 

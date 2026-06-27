@@ -77,6 +77,15 @@ public class Room implements Serializable {
         this.waveIndex = 0;
     }
 
+    /**
+     * Riporta la stanza alla prima ondata (usato dalla fuga, GAME_SPEC).
+     * Azzera waveIndex senza toccare lo stato dei nemici o del loot:
+     * il giocatore dovra' affrontare di nuovo la wave dall'inizio.
+     */
+    public void resetToFirstWave() {
+        this.waveIndex = 0;
+    }
+
     public boolean hasMoreWaves() {
         return waveIndex < waves.size() - 1;
     }
