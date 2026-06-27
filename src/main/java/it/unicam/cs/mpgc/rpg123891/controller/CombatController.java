@@ -5,6 +5,7 @@ import it.unicam.cs.mpgc.rpg123891.model.character.Warrior;
 import it.unicam.cs.mpgc.rpg123891.model.combat.AttackType;
 import it.unicam.cs.mpgc.rpg123891.model.combat.BurnEffect;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
+import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyAbility;
 import it.unicam.cs.mpgc.rpg123891.model.combat.EnemyFactory;
 import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
@@ -227,8 +228,15 @@ public class CombatController {
 
             // --- Abilita' speciale nemico ---
             if (enemy.hasAbility() && enemy.getAbility().isReady()) {
-                int abilityDmg = enemy.getAbility().execute(enemy, player);
-                log.add("[ABILITY] " + enemy.getName() + " usa la sua abilita' speciale per " + abilityDmg + " danni!");
+                EnemyAbility.AbilityResult result = enemy.getAbility().use(enemy, player);
+                log.add("[ABILITY] " + result.message());
+                if (result.burnEffect() != null) {
+                    activeBurn = result.burnEffect();
+                }
+                if (!result.summonedEnemies().isEmpty()) {
+                    wave.getEnemies().addAll(result.summonedEnemies());
+                    log.add("[EVOCA] " + result.summonedEnemies().size() + " nemici evocati!");
+                }
                 continue;
             }
 
@@ -240,7 +248,6 @@ public class CombatController {
             if (player instanceof Warrior && dmg == 0 && gc.isCaricaActive()) {
                 log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage + " lordo) — CARICA! 0 danni subiti.");
             } else if (player instanceof Warrior warrior) {
-                // Il blocco e' gia' testato dentro gc.enemyAttack -> combatSystem.executeAttack
                 if (dmg == 0) {
                     log.add("[ENEMY] " + enemy.getName() + " attacca (" + rawDamage + " lordo) — BLOCCATO!");
                 } else {

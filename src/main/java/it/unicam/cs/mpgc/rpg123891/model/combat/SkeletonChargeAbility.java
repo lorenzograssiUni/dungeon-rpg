@@ -9,20 +9,18 @@ import it.unicam.cs.mpgc.rpg123891.model.character.GameCharacter;
  */
 public class SkeletonChargeAbility implements EnemyAbility {
 
+    private static final long serialVersionUID = 1L;
     private static final int COOLDOWN = 3;
     private int turnCounter = 0;
 
     @Override
-    public boolean isReady() {
-        return turnCounter >= COOLDOWN;
+    public String getName() {
+        return "Carica!";
     }
 
     @Override
-    public int execute(GameCharacter user, GameCharacter target) {
-        turnCounter = 0;
-        int damage = user.getAttack() * 2;
-        target.applyBurnDamage(damage); // ignora difesa
-        return damage;
+    public boolean isReady() {
+        return turnCounter >= COOLDOWN;
     }
 
     @Override
@@ -31,7 +29,10 @@ public class SkeletonChargeAbility implements EnemyAbility {
     }
 
     @Override
-    public String getDescription() {
-        return "Carica! (x2 ATK, ignora difesa, ogni 3 turni)";
+    public AbilityResult use(Enemy user, GameCharacter target) {
+        turnCounter = 0;
+        int damage = user.getAttack() * 2;
+        target.applyBurnDamage(damage); // ignora difesa
+        return AbilityResult.of(user.getName() + " usa Carica! e infligge " + damage + " danni diretti!", damage);
     }
 }

@@ -14,6 +14,8 @@ public class Mage extends GameCharacter implements PlayerCharacter {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    private boolean magicShieldActive = false;
+
     public Mage(String name) {
         super(name, 90, 15, 4, 6, 15, 0.05);
     }
@@ -25,4 +27,19 @@ public class Mage extends GameCharacter implements PlayerCharacter {
 
     @Override
     public CharacterClass getCharacterClass() { return CharacterClass.MAGE; }
+
+    /** Attiva lo Scudo Magico (riduce del 30% i danni fisici in arrivo). */
+    public void activateMagicShield() {
+        this.magicShieldActive = true;
+    }
+
+    /** Disattiva lo Scudo Magico. */
+    public void deactivateMagicShield() {
+        this.magicShieldActive = false;
+    }
+
+    /** Restituisce true se lo Scudo Magico è attualmente attivo. */
+    public boolean isMagicShieldActive() {
+        return magicShieldActive;
+    }
 }

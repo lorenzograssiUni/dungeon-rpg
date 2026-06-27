@@ -31,6 +31,18 @@ public interface EnemyAbility extends Serializable {
     /** Nome dell'abilità (mostrato nella UI). */
     String getName();
 
+    /**
+     * Avanza il contatore interno di un turno.
+     * Deve essere chiamato ogni turno dal CombatController.
+     */
+    void tick();
+
+    /**
+     * Restituisce true se l'abilità è pronta ad essere usata
+     * (il cooldown è scaduto).
+     */
+    boolean isReady();
+
     // -------------------------------------------------------------------------
     // Result record
     // -------------------------------------------------------------------------
