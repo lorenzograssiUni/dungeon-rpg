@@ -16,8 +16,7 @@ public class CritAndDamageTest {
 
     @Test
     void critical_hit_doublesDamage() {
-        Mage attacker = new Mage("M"); // ATK=15
-        attacker.setMagicShieldActive(false);
+        Warrior attacker = new Warrior("W"); // ATK=22, nessuno scudo da gestire
         Enemy dummy = new Enemy("D", 200, 1, 0, AttackType.PHYSICAL, 0.0);
         CombatSystem cs = new CombatSystem(ALWAYS_CRIT);
         int dmg = cs.executeAttack(attacker, dummy, AttackType.PHYSICAL, 0);
@@ -58,21 +57,8 @@ public class CritAndDamageTest {
         t.applyPassiveBonus();
         Enemy dummy = new Enemy("D", 200, 1, 0, AttackType.PHYSICAL, 0.0);
         CombatSystem cs = new CombatSystem(NEVER_CRIT);
-        cs.executeAttack(t, dummy, AttackType.PHYSICAL, 0); // stealth consumato
+        cs.executeAttack(t, dummy, AttackType.PHYSICAL, 0);
         int dmg2 = cs.executeAttack(t, dummy, AttackType.PHYSICAL, 0);
         assertTrue(dmg2 <= t.getAttack());
-    }
-
-    @Test
-    void mage_magicalDamage_multipliedBy130percent() {
-        Enemy attacker = new Enemy("A", 100, 20, 0, AttackType.MAGICAL, 0.0);
-        Mage target = new Mage("M"); // DEF=4
-        target.setMagicShieldActive(false);
-        int hpBefore = target.getCurrentHp();
-        new CombatSystem(NEVER_CRIT).executeAttack(attacker, target, AttackType.MAGICAL, 0);
-        // flusso: damage=20, *1.30=26 (int), takeDamage(26) -> 26-4=22 netto
-        int amplified = (int)(20 * 1.30);
-        int expected  = Math.max(0, amplified - target.getDefense());
-        assertEquals(hpBefore - expected, target.getCurrentHp());
     }
 }

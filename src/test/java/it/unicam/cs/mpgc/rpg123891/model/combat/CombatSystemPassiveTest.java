@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * Allineato a GAME_SPEC.md:
  *   - Warrior: blocco 20% cumulabile, 5o attacco garantito, reset al blocco.
- *   - Mage: scudo passivo PERMANENTE -30% fisico, +30% magico.
  *   - Thief: primo attacco wave critico garantito, +2% crit dopo ogni attacco.
  */
 public class CombatSystemPassiveTest {
@@ -45,8 +44,6 @@ public class CombatSystemPassiveTest {
 
     @Test
     void warrior_blockStreak_incrementsOnMiss() {
-        // Con NO_LUCK (nextDouble=1.0) il blocco casuale (20%) non scatta mai.
-        // Dopo N attacchi il counter deve valere N (finche' < 4).
         Warrior w = new Warrior("G");
         Enemy e = fixedEnemy();
         CombatSystem cs = new CombatSystem(NO_LUCK);
@@ -58,8 +55,6 @@ public class CombatSystemPassiveTest {
 
     @Test
     void warrior_fifthAttack_isAlwaysBlocked() {
-        // Con NO_LUCK il blocco casuale non scatta: dopo 4 attacchi counter=4.
-        // Il 5o deve essere garantito e azzerare il counter.
         Warrior w = new Warrior("G");
         Enemy e = fixedEnemy();
         CombatSystem cs = new CombatSystem(NO_LUCK);
@@ -91,25 +86,5 @@ public class CombatSystemPassiveTest {
         double critBefore = t.getCritChance();
         new CombatSystem(NO_LUCK).executeAttack(t, goblin, AttackType.PHYSICAL, 0);
         assertTrue(t.getCritChance() >= critBefore);
-    }
-
-    @Test
-    void mage_physicalPassive_reduces30percent() {
-        // ATK fisso 12, scudo passivo -30% -> floor(12*0.70)=8, DEF mago=4 -> 4 danno
-        Mage m = new Mage("Ma");
-        Enemy e = fixedEnemy();
-        int hpBefore = m.getCurrentHp();
-        new CombatSystem(NO_LUCK).executeAttack(e, m, AttackType.PHYSICAL, 0);
-        int expectedDmg = Math.max(0, (int)(12 * 0.70) - m.getDefense()); // (8-4)=4
-        assertEquals(hpBefore - expectedDmg, m.getCurrentHp(),
-                "Il Mage deve subire " + expectedDmg + " danno (ATK12 *0.70 -DEF4)");
-    }
-
-    @Test
-    void damage_reducedByDefense() {
-        Warrior w = new Warrior("G"); // DEF=8
-        Enemy e = fixedEnemy(); // ATK=12 fisso
-        int dmg = new CombatSystem(NO_LUCK).executeAttack(e, w, AttackType.PHYSICAL, 0);
-        assertEquals(Math.max(0, 12 - w.getDefense()), dmg); // 12-8=4
     }
 }

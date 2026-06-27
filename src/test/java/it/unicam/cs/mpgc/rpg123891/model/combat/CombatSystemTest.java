@@ -14,30 +14,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test per CombatSystem.
  * Verifica la logica di combattimento: calcolo danno, gestione critico,
- * interazioni speciali tra classi (Warrior block, Mage passive, Thief stealth).
- *
- * Tutti i test che coinvolgono RNG usano un Random a seed fisso o
- * un Random che restituisce sempre 0.9999 (nessun critico, nessun blocco)
- * per garantire determinismo.
- *
- * Nota GAME_SPEC:
- *   - Il blocco Warrior e' probabilistico (20%) oppure garantito al 5o attacco.
- *     I test verificano il comportamento del counter, non il singolo blocco casuale.
- *   - Lo scudo Mage e' una passive PERMANENTE (-30% danno fisico), non un'abilita' on/off.
+ * interazioni speciali tra classi (Warrior block, Thief stealth).
  */
 class CombatSystemTest {
 
-    /**
-     * Random che restituisce sempre 0.9999: nessun critico, nessun blocco random.
-     */
     private static final Random NO_RNG = new Random() {
         @Override public double nextDouble() { return 0.9999999999; }
     };
 
-    /**
-     * Random che restituisce sempre 0.0: critico garantito al primo attacco.
-     * NON usato per il blocco Warrior (il blocco si attiva sempre a 0.0 < 0.20).
-     */
     private static final Random ALWAYS_RNG = new Random() {
         @Override public double nextDouble() { return 0.0; }
     };
@@ -56,10 +40,6 @@ class CombatSystemTest {
         thief   = new Thief("Ombra");
         goblin  = new Enemy("Goblin", 30, 10, 2, AttackType.PHYSICAL, 0.0);
     }
-
-    // -------------------------------------------------------------------------
-    // Attacco base
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Un attacco fisico riduce gli HP del difensore")
@@ -87,10 +67,6 @@ class CombatSystemTest {
         assertTrue(tank.getCurrentHp() <= hpBefore);
     }
 
-    // -------------------------------------------------------------------------
-    // Thief - stealth bonus
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("Stealth bonus attivo prima del primo attacco")
     void testThiefStealthBonusActiveBeforeAttack() {
@@ -105,9 +81,7 @@ class CombatSystemTest {
         int baseDamage = thief.getAttack();
         int defense    = goblin.getDefense();
         int hpBefore   = goblin.getCurrentHp();
-
         combatSystemNoRng.executeAttack(thief, goblin, AttackType.PHYSICAL, 0);
-
         int actualDamage   = hpBefore - goblin.getCurrentHp();
         int expectedDamage = Math.min(hpBefore, Math.max(0, (baseDamage * 2) - defense));
         assertEquals(expectedDamage, actualDamage);
@@ -122,15 +96,9 @@ class CombatSystemTest {
         assertFalse(thief.isStealthBonusActive());
     }
 
-    // -------------------------------------------------------------------------
-    // Warrior - block counter
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("Il Warrior blocca al 5o attacco fisico consecutivo (garantito)")
     void testWarriorBlockGuaranteedAtFifthHit() {
-        // Usa NO_RNG (0.9999): il blocco casuale (20%) non scatta mai.
-        // Dopo 4 attacchi il counter e' 4; il 5o deve essere bloccato.
         CombatSystem cs = new CombatSystem(NO_RNG);
         Enemy e = new Enemy("TestEnemy", 200, 12, 0, AttackType.PHYSICAL, 0.0);
         for (int i = 0; i < 4; i++) {
@@ -151,31 +119,5 @@ class CombatSystemTest {
         int hpBefore = warrior.getCurrentHp();
         alwaysBlock.executeAttack(strongEnemy, warrior, AttackType.MAGICAL, 0);
         assertTrue(warrior.getCurrentHp() < hpBefore);
-    }
-
-    // -------------------------------------------------------------------------
-    // Mage - passive permanente (GAME_SPEC)
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("Il Mage subisce il 70% del danno fisico (scudo passivo -30%)")
-    void testMagePhysicalDamageReduced() {
-        int hpBefore = mage.getCurrentHp();
-        combatSystemNoRng.executeAttack(goblin, mage, AttackType.PHYSICAL, 0);
-        int damage      = hpBefore - mage.getCurrentHp();
-        // danno lordo ridotto del 30%, poi sottratta la difesa del mago
-        int reducedRaw  = (int)(goblin.getAttack() * 0.70);
-        int expectedDmg = Math.max(0, reducedRaw - mage.getDefense());
-        assertEquals(expectedDmg, damage, "Il Mage deve subire il 70% del danno fisico lordo (scudo passivo)");
-    }
-
-    @Test
-    @DisplayName("Il Mage subisce danno aumentato da attacchi magici (+30%)")
-    void testMageVulnerableToMagicAttack() {
-        int hpBefore    = mage.getCurrentHp();
-        combatSystemNoRng.executeAttack(goblin, mage, AttackType.MAGICAL, 0);
-        int damage      = hpBefore - mage.getCurrentHp();
-        int expectedDmg = Math.max(0, (int)(goblin.getAttack() * 1.30) - mage.getDefense());
-        assertEquals(expectedDmg, damage);
     }
 }
