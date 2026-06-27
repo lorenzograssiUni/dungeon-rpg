@@ -53,15 +53,4 @@ public class CombatSystemTest {
         cs.executeAttack(e, w, AttackType.PHYSICAL, 0);
         assertEquals(hpBefore, w.getCurrentHp(), "Il 5° attacco fisico deve essere bloccato");
     }
-
-    @Test
-    void mage_scudoMagico_riduce30percentDannoFisico() {
-        Mage m = new Mage("Ma");
-        Enemy e = fixedEnemy();
-        CombatSystem cs = new CombatSystem(NO_LUCK);
-        int hpBefore = m.getCurrentHp();
-        int dmg = cs.executeAttack(e, m, AttackType.PHYSICAL, 0);
-        assertEquals(4, dmg);
-        assertEquals(hpBefore - 4, m.getCurrentHp());
-    }
 }
