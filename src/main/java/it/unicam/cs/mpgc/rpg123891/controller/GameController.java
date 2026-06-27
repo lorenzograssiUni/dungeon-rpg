@@ -6,6 +6,7 @@ import it.unicam.cs.mpgc.rpg123891.model.combat.AttackType;
 import it.unicam.cs.mpgc.rpg123891.model.combat.CombatSystem;
 import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.game.GameState;
+import it.unicam.cs.mpgc.rpg123891.model.item.EquipSlot;
 import it.unicam.cs.mpgc.rpg123891.model.item.Item;
 import it.unicam.cs.mpgc.rpg123891.model.item.Potion;
 import it.unicam.cs.mpgc.rpg123891.model.item.SpecialAttack;
@@ -155,6 +156,23 @@ public class GameController {
 
     public boolean isCaricaActive() { return caricaTurnsRemaining > 0; }
 
+    /**
+     * Verifica che il giocatore possa usare Carica! (GAME_SPEC):
+     * richiede Spada Semplice equipaggiata in MAIN_HAND e Scudo in OFF_HAND.
+     */
+    public boolean canUseCarica() {
+        GameCharacter player = asGameCharacter(gameState.getPlayer());
+        boolean hasSword  = player.getEquipmentManager()
+                .getEquipped(EquipSlot.MAIN_HAND)
+                .map(w -> w instanceof Sword)
+                .orElse(false);
+        boolean hasShield = player.getEquipmentManager()
+                .getEquipped(EquipSlot.OFF_HAND)
+                .map(w -> w instanceof Shield)
+                .orElse(false);
+        return hasSword && hasShield;
+    }
+
     // -------------------------------------------------------------------------
     // Fuga (GAME_SPEC)
     // Possibile solo se AGI giocatore < AGI media dei nemici vivi.
@@ -185,8 +203,17 @@ public class GameController {
         return playerAgi < avgEnemyAgi;
     }
 
+    /**
+     * Esegue la fuga: ritorna alla wave corrente svuotando il combattimento
+     * attivo. Il giocatore rimane nella stanza corrente ma la wave viene
+     * reimpostata alla prima (il dungeon non retrocede di stanza).
+     *
+     * @return true se la fuga e' stata eseguita con successo
+     */
     public boolean flee() {
-        return canFlee();
+        if (!canFlee()) return false;
+        getCurrentRoom().resetToFirstWave();
+        return true;
     }
 
     // -------------------------------------------------------------------------
@@ -230,8 +257,9 @@ public class GameController {
         gameState.getDungeonMap().advanceToNextRoom();
         Room next = getCurrentRoom();
         next.setVisited(true);
+        // Applica passive bonus SOLO ai nemici (es. DragonPassiveBuff);
+        // il +2 stamina al giocatore e' gia' dato in checkWaveCleared() per ogni wave.
         next.getAllEnemies().forEach(Enemy::applyPassiveBonus);
-        asGameCharacter(gameState.getPlayer()).applyPassiveBonus();
         collectEntryLoot();
         return true;
     }
@@ -297,26 +325,36 @@ public class GameController {
     }
 
     /**
-     * Verifica se il giocatore puo' usare Colpo Vitale:
-     * deve avere Bastone Magico in MAIN_HAND e Pendente Magico in BODY.
+     * Verifica se il giocatore puo' usare Colpo Vitale (GAME_SPEC):
+     * richiede MagicStaff equipaggiato in MAIN_HAND e MagicAmulet in BODY.
+     * Controlla gli slot dell'EquipmentManager, non l'inventario.
      */
     public boolean canUseColpoVitale() {
-        List<Item> inv = gameState.getPlayer().getInventory();
-        boolean hasStaff   = inv.stream().anyMatch(i -> i instanceof MagicStaff);
-        boolean hasAmulet  = inv.stream().anyMatch(i -> i instanceof MagicAmulet);
-        return hasStaff && hasAmulet;
+        GameCharacter player = asGameCharacter(gameState.getPlayer());
+        boolean staffEquipped = player.getEquipmentManager()
+                .getEquipped(EquipSlot.MAIN_HAND)
+                .map(w -> w instanceof MagicStaff)
+                .orElse(false);
+        boolean amuletEquipped = player.getEquipmentManager()
+                .getEquipped(EquipSlot.BODY)
+                .map(w -> w instanceof MagicAmulet)
+                .orElse(false);
+        return staffEquipped && amuletEquipped;
     }
 
     /**
      * Verifica se il giocatore non-Mago puo' usare gli special del Bastone:
-     * richiede il Pendente Magico equipaggiato.
+     * richiede il Pendente Magico equipaggiato in BODY.
      */
     public boolean canUseStaffSpecials() {
         it.unicam.cs.mpgc.rpg123891.model.character.CharacterClass cls =
             asGameCharacter(gameState.getPlayer()).getCharacterClass();
         if (cls == it.unicam.cs.mpgc.rpg123891.model.character.CharacterClass.MAGE) return true;
-        List<Item> inv = gameState.getPlayer().getInventory();
-        return inv.stream().anyMatch(i -> i instanceof MagicAmulet);
+        GameCharacter player = asGameCharacter(gameState.getPlayer());
+        return player.getEquipmentManager()
+                .getEquipped(EquipSlot.BODY)
+                .map(w -> w instanceof MagicAmulet)
+                .orElse(false);
     }
 
     public boolean checkPlayerDead() {
