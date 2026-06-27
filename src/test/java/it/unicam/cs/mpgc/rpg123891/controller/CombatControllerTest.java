@@ -5,7 +5,7 @@ import it.unicam.cs.mpgc.rpg123891.model.combat.Enemy;
 import it.unicam.cs.mpgc.rpg123891.model.world.DungeonMap;
 import it.unicam.cs.mpgc.rpg123891.model.world.Room;
 import it.unicam.cs.mpgc.rpg123891.model.world.Wave;
-import it.unicam.cs.mpgc.rpg123891.persistence.PersistenceManager;
+import it.unicam.cs.mpgc.rpg123891.persistence.JsonPersistenceManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +26,7 @@ public class CombatControllerTest {
 
     @BeforeEach
     void setup() {
-        gc = new GameController(new PersistenceManager());
+        gc = new GameController(new JsonPersistenceManager());
         gc.startNewGame(new Warrior("TestWarrior"));
         // Avanza dalla wave 0 (Stanza del Bastone, no nemici) alla wave 1
         Room forest = gc.getCurrentRoom();
@@ -62,14 +62,12 @@ public class CombatControllerTest {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
         Enemy target = wave.getEnemies().get(0);
         CombatController.TurnResult result = cc.playerNormalAttack(target);
-        // Il log deve contenere almeno la riga dell'attacco del giocatore
         assertFalse(result.log().isEmpty());
     }
 
     @Test
     void waveClearedFlag_setAfterAllEnemiesDead() {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
-        // Uccidi tutti i nemici direttamente
         for (Enemy e : wave.getEnemies()) {
             while (e.isAlive()) cc.playerNormalAttack(e);
         }
@@ -80,10 +78,8 @@ public class CombatControllerTest {
     @Test
     void playerFlee_succeedsWhenWaveAllowsIt() {
         Wave wave = gc.getCurrentRoom().getCurrentWave();
-        // Ondata A della foresta permette la fuga (canFlee = true)
         if (wave.canFlee()) {
             CombatController.TurnResult result = cc.playerFlee();
-            // Fuga ha probabilità: non assert su esito, solo su non-null
             assertNotNull(result);
         }
     }
