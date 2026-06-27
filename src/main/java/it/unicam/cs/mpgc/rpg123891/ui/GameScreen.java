@@ -87,6 +87,8 @@ public class GameScreen {
     private static final double DRAGON_SPRITE_W   = 200;
     private static final double LOOT_SPRITE_H     = 160;
     private static final double LOOT_SPRITE_W     = 120;
+    /** Offset verticale (px) per abbassare lo sprite dell'arma nella card Encounter */
+    private static final double LOOT_SPRITE_OFFSET_Y = 10;
 
     /** Nemici che usano le dimensioni miniboss */
     private static final Set<String> MINIBOSS_NAMES = Set.of("Re Goblin", "Strega", "Cucciolo Drago", "Cucciolo Uovo");
@@ -522,6 +524,8 @@ public class GameScreen {
                     StackPane glowBox = new StackPane(weaponIv);
                     glowBox.setStyle("-fx-effect: dropshadow(gaussian, #D4A96A, 28, 0.55, 0, 0);");
                     StackPane.setAlignment(glowBox, Pos.CENTER);
+                    // Abbassa lo sprite di LOOT_SPRITE_OFFSET_Y px
+                    StackPane.setMargin(glowBox, new Insets(LOOT_SPRITE_OFFSET_Y, 0, 0, 0));
                     paneEncounter.getChildren().add(glowBox);
                 }
                 if (!wave.getLoot().isEmpty()) {
@@ -585,7 +589,6 @@ public class GameScreen {
             paneEnemyStats.getChildren().add(empty);
             return;
         }
-        // Compact mode when more than 3 enemies are alive
         boolean compact = alive.size() > 3;
         double vPad  = compact ? 6  : 14;
         double vGap  = compact ? 5  : 12;
@@ -1057,7 +1060,6 @@ public class GameScreen {
         return chip;
     }
 
-    /** Variante di statChip con font configurabile, usata in compact mode */
     private VBox statChipSmall(String key, String val, Font valFont) {
         Label k = new Label(key); k.setFont(pixelFontTiny); k.setStyle("-fx-text-fill:#888888;");
         Label v = new Label(val); v.setFont(valFont);        v.setStyle("-fx-text-fill:" + WHITE + ";");
